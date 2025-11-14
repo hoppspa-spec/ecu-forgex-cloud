@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>ECU FORGE X - Taller</title>
+  <title>ECU FORGE X – Motor de parches para talleres</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -28,7 +28,9 @@
       color: var(--text-main);
     }
 
-    header {
+    /* HEADER -------------------------------------------------- */
+
+    header.site-header {
       background: #0f172a;
       color: #e5e7eb;
       padding: 12px 24px;
@@ -37,231 +39,526 @@
       justify-content: space-between;
     }
 
-    header h1 {
-      margin: 0;
-      font-size: 20px;
-      letter-spacing: 0.06em;
+    .logo {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    header span {
+    .logo-row {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .logo-ecu {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      font-size: 18px;
+    }
+
+    .logo-forge {
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      font-size: 18px;
+      color: #3b82f6;
+    }
+
+    .logo-x {
+      font-weight: 800;
+      font-size: 20px;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .logo-subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+    }
+
+    .session-text {
       font-size: 13px;
       color: #9ca3af;
     }
 
-    main {
-      max-width: 900px;
-      margin: 24px auto 40px;
-      padding: 0 16px;
+    .session-text strong {
+      color: #e5e7eb;
+      font-weight: 600;
     }
+
+    /* LAYOUT GENERAL ------------------------------------------ */
+
+    main {
+      padding: 24px 16px 40px;
+    }
+
+    .main-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* HERO ---------------------------------------------------- */
+
+    .ecu-hero {
+      max-width: 1200px;
+      margin: 0 auto 2rem;
+      padding: 2.5rem 2rem;
+      border-radius: 18px;
+      background: radial-gradient(circle at top left, #1f334f 0%, #050915 55%, #02040a 100%);
+      color: #f5f7ff;
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1.2fr);
+      gap: 2.5rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+      border: 1px solid rgba(88, 182, 255, 0.3);
+    }
+
+    .ecu-hero__content {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .ecu-hero__badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(15, 118, 255, 0.1);
+      border: 1px solid rgba(96, 165, 250, 0.6);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #bfdbfe;
+    }
+
+    .ecu-hero__title {
+      font-size: 2.3rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #e5f0ff;
+      margin: 0;
+    }
+
+    .ecu-hero__subtitle {
+      font-size: 0.98rem;
+      color: #cbd5f5;
+      max-width: 32rem;
+      margin: 0;
+    }
+
+    .ecu-hero__highlights {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.35rem;
+      font-size: 0.9rem;
+      color: #dbe5ff;
+    }
+
+    .ecu-hero__cta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.5rem;
+    }
+
+    .ecu-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.7rem 1.6rem;
+      border-radius: 999px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .ecu-btn--primary {
+      background: linear-gradient(90deg, #3b82f6, #06b6d4);
+      color: white;
+      box-shadow: 0 12px 30px rgba(37, 99, 235, 0.45);
+    }
+
+    .ecu-btn--primary:hover {
+      filter: brightness(1.05);
+    }
+
+    .ecu-hero__note {
+      font-size: 0.78rem;
+      color: #9ca3ff;
+    }
+
+    .ecu-hero__panel {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .ecu-hero__chip {
+      padding: 1rem 1.2rem;
+      border-radius: 16px;
+      background: radial-gradient(circle at top, #0f172a 0%, #020617 80%);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
+    }
+
+    .ecu-chip__label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #93c5fd;
+    }
+
+    .ecu-chip__main {
+      margin-top: 0.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    .ecu-chip__ecu-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    .ecu-chip__ecu-meta {
+      display: flex;
+      gap: 0.75rem;
+      font-size: 0.78rem;
+      color: #9ca3af;
+    }
+
+    .ecu-hero__metrics {
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .ecu-metric {
+      padding: 0.7rem 0.9rem;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ecu-metric__label {
+      font-size: 0.78rem;
+      color: #9ca3af;
+    }
+
+    .ecu-metric__value {
+      font-size: 0.86rem;
+      color: #e5e7eb;
+    }
+
+    .ecu-metric--ok {
+      border-color: rgba(34, 197, 94, 0.6);
+    }
+
+    .ecu-metric--ok .ecu-metric__value {
+      color: #bbf7d0;
+    }
+
+    @media (max-width: 900px) {
+      .ecu-hero {
+        grid-template-columns: 1fr;
+        padding: 1.8rem 1.2rem;
+      }
+    }
+
+    /* CARDS / FORM -------------------------------------------- */
 
     .card {
       background: var(--card);
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      padding: 18px 20px;
-      margin-bottom: 18px;
+      border-radius: 16px;
+      padding: 20px 18px;
       box-shadow: 0 10px 25px rgba(15, 23, 42, 0.06);
+      border: 1px solid var(--border);
+      margin-top: 1.2rem;
     }
 
     .card h2 {
-      margin-top: 0;
-      margin-bottom: 4px;
+      margin: 0 0 8px;
       font-size: 20px;
     }
 
-    .card p {
-      margin: 4px 0 12px;
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-
     label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: var(--text-main);
+      font-size: 14px;
       font-weight: 500;
+      display: block;
+      margin-top: 10px;
+      margin-bottom: 4px;
     }
 
     input[type="text"],
     input[type="file"],
     textarea {
       width: 100%;
-      font: inherit;
-      padding: 7px 8px;
-      border-radius: 6px;
+      padding: 8px 10px;
+      border-radius: 8px;
       border: 1px solid var(--border);
-      margin-bottom: 10px;
+      font-family: inherit;
+      font-size: 14px;
     }
 
     textarea {
       resize: vertical;
-      min-height: 48px;
-      max-height: 120px;
-    }
-
-    input[type="text"]:focus,
-    textarea:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
-    }
-
-    button {
-      border: none;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font: inherit;
-      cursor: pointer;
-      background: var(--primary);
-      color: white;
-      font-weight: 600;
-      font-size: 14px;
-    }
-
-    button:hover {
-      background: var(--primary-dark);
-    }
-
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
+      min-height: 70px;
     }
 
     .row {
       display: flex;
+      gap: 16px;
       flex-wrap: wrap;
-      gap: 14px;
     }
 
     .col {
-      flex: 1;
-      min-width: 260px;
+      flex: 1 1 260px;
     }
 
-    .result-area {
-      min-height: 40px;
-      font-size: 14px;
+    .muted {
+      font-size: 12px;
+      color: var(--text-muted);
     }
 
     .badge {
       display: inline-block;
-      font-size: 11px;
-      padding: 2px 6px;
+      background: #eff6ff;
+      color: #1d4ed8;
       border-radius: 999px;
-      background: #e5e7eb;
-      color: #374151;
-      margin-left: 6px;
+      padding: 1px 8px;
+      font-size: 11px;
+      margin-left: 4px;
+    }
+
+    button#submitBtn {
+      background: var(--primary);
+      color: #fff;
+      border-radius: 999px;
+      border: none;
+      padding: 8px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button#submitBtn:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    button#submitBtn:hover:not(:disabled) {
+      background: var(--primary-dark);
+    }
+
+    #statusText {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .result-area {
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      background: #f9fafb;
+      font-size: 14px;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+    }
+
+    .result-area.danger {
+      border-color: var(--danger);
+      color: var(--danger);
+      background: #fef2f2;
     }
 
     .log {
       background: #020617;
       color: #e5e7eb;
-      font-family: "JetBrains Mono", monospace;
-      font-size: 12px;
+      border-radius: 8px;
       padding: 10px;
-      border-radius: 6px;
-      height: 150px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      min-height: 80px;
+      max-height: 220px;
       overflow-y: auto;
       white-space: pre-wrap;
     }
 
-    .log span.time {
-      color: #22c55e;
+    .log .time {
+      color: #6ee7b7;
     }
 
-    .log span.err {
-      color: #f97373;
+    .log .err {
+      color: #fecaca;
     }
 
-    .muted {
+    /* Detalle de archivo junto al input */
+
+    .file-detail-line {
+      margin-top: 6px;
+      font-size: 12px;
       color: var(--text-muted);
-      font-size: 13px;
-    }
-
-    .danger {
-      color: var(--danger);
-      font-weight: 500;
-    }
-
-    @media (max-width: 640px) {
-      header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
-      }
-      header h1 {
-        font-size: 18px;
-      }
     }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>ECU FORGE X</h1>
-      <span>Motor de parches para talleres profesionales</span>
+  <header class="site-header">
+    <div class="logo">
+      <div class="logo-row">
+        <span class="logo-ecu">ECU</span>
+        <span class="logo-forge">FORGE</span>
+        <span class="logo-x">X</span>
+      </div>
+      <span class="logo-subtitle">Motor de parches para talleres profesionales</span>
     </div>
-    <div>
-      <span>Usuario sesión demo · <strong>sin login aún</strong></span>
+    <div class="session-text">
+      Usuario sesión demo · <strong>sin login aún</strong>
     </div>
   </header>
 
   <main>
-    <!-- FORMULARIO PRINCIPAL -->
-    <section class="card">
-      <h2>Generar Bin.MOD</h2>
-      <p>Sube un archivo BIN, indica los DTC a tratar y el sistema generará un paquete Bin.MOD descargable.</p>
+    <!-- HERO -->
+    <section class="ecu-hero">
+      <div class="ecu-hero__content">
+        <p class="ecu-hero__badge">Motor de parches para talleres profesionales</p>
+        <h1 class="ecu-hero__title">ECU FORGE X</h1>
+        <p class="ecu-hero__subtitle">
+          Sube el BIN, selecciona los DTC y genera un Bin.MOD listo para programar,
+          sin instalar software y con auditoría en la nube.
+        </p>
 
-      <form id="patchForm">
-        <div class="row">
-          <div class="col">
-            <label for="userId">Usuario / ID de taller</label>
-            <input id="userId" name="user_id" type="text" value="taller-demo" />
+        <ul class="ecu-hero__highlights">
+          <li>✅ Compatible con workflows de chiptuning y diagnóstico</li>
+          <li>✅ Historial de parches por taller (últimos 30 días)</li>
+          <li>✅ Pensado para integrarse con <strong>hopp.cl</strong> sin romper el diseño</li>
+        </ul>
 
-            <label for="binFile">Archivo BIN</label>
-            <input id="binFile" name="binfile" type="file" accept=".bin,.BIN,.mpc,.MPC" required />
-            <div class="muted">Acepta BIN/flash de ECU. Tamaño debe ser razonable para el servidor.</div>
-          </div>
+        <div class="ecu-hero__cta">
+          <a href="#generar-bin" class="ecu-btn ecu-btn--primary">Subir BIN ahora</a>
+          <span class="ecu-hero__note">Demo gratuita limitada · luego paga por parche</span>
+        </div>
+      </div>
 
-          <div class="col">
-            <label for="dtcCodes">
-              DTC a tratar
-              <span class="badge">separados por coma</span>
-            </label>
-            <input id="dtcCodes" type="text" placeholder="Ej: P4A4,P4B4" />
-
-            <label for="comment">Comentario interno (opcional)</label>
-            <textarea id="comment" placeholder="Ej: Diagnóstico sonda lambda banco 2, cliente Pérez."></textarea>
+      <div class="ecu-hero__panel">
+        <div class="ecu-hero__chip">
+          <span class="ecu-chip__label">Live ECU Scan</span>
+          <div class="ecu-chip__main">
+            <div class="ecu-chip__ecu-name">MED17.3.9</div>
+            <div class="ecu-chip__ecu-meta">
+              <span>VIN: XXXX1234</span>
+              <span>HW: 03C906024</span>
+            </div>
           </div>
         </div>
 
-        <div style="margin-top: 10px; display:flex; gap:10px; align-items:center;">
-          <button type="submit" id="submitBtn">Subir y generar Bin.MOD</button>
-          <span id="statusText" class="muted"></span>
+        <div class="ecu-hero__metrics">
+          <div class="ecu-metric">
+            <span class="ecu-metric__label">DTC detectados</span>
+            <span class="ecu-metric__value">P0420, P04xx</span>
+          </div>
+          <div class="ecu-metric">
+            <span class="ecu-metric__label">Parche listo en</span>
+            <span class="ecu-metric__value">≈ 10 seg</span>
+          </div>
+          <div class="ecu-metric ecu-metric--ok">
+            <span class="ecu-metric__label">Estado</span>
+            <span class="ecu-metric__value">Bin.MOD generado ✅</span>
+          </div>
         </div>
-      </form>
-    </section>
-
-    <!-- RESULTADO -->
-    <section class="card">
-      <h2>Resultado</h2>
-      <div id="result" class="result-area muted">
-        Aún no se ha generado ningún archivo.
       </div>
     </section>
 
-    <!-- LOG -->
-    <section class="card">
-      <h2>Log</h2>
-      <div id="log" class="log"></div>
-      <div class="muted" style="margin-top:6px;">
-        Este log es sólo del lado frontend. Los logs de motor y auditoría reales se guardan en el servidor.
-      </div>
-    </section>
+    <div class="main-inner">
+      <!-- FORMULARIO PRINCIPAL -->
+      <section class="card" id="generar-bin">
+        <h2>Generar Bin.MOD</h2>
+        <p>Sube un archivo BIN, indica los DTC a tratar y el sistema generará un paquete Bin.MOD descargable.</p>
+
+        <form id="patchForm">
+          <div class="row">
+            <div class="col">
+              <label for="userId">Usuario / ID de taller</label>
+              <input id="userId" name="user_id" type="text" value="taller-demo" />
+
+              <label for="binFile">Archivo BIN</label>
+              <input id="binFile" name="binfile" type="file" accept=".bin,.BIN,.mpc,.MPC" required />
+              <div class="file-detail-line">
+                <span>Seleccionado: <strong id="fileNameDetail">ninguno</strong></span>
+                &nbsp;·&nbsp;
+                <span>Tamaño: <strong id="fileSizeDetail">–</strong></span>
+              </div>
+              <div class="muted">Acepta BIN/flash de ECU. Tamaño debe ser razonable para el servidor.</div>
+            </div>
+
+            <div class="col">
+              <label for="dtcCodes">
+                DTC a tratar
+                <span class="badge">separados por coma</span>
+              </label>
+              <input id="dtcCodes" type="text" placeholder="Ej: P4A4,P4B4" />
+
+              <label for="comment">Comentario interno (opcional)</label>
+              <textarea id="comment" placeholder="Ej: Diagnóstico sonda lambda banco 2, cliente Pérez."></textarea>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px; display:flex; gap:10px; align-items:center;">
+            <button type="submit" id="submitBtn">Subir y generar Bin.MOD</button>
+            <span id="statusText" class="muted"></span>
+          </div>
+        </form>
+      </section>
+
+      <!-- RESULTADO -->
+      <section class="card">
+        <h2>Resultado</h2>
+        <div id="result" class="result-area muted">
+          Aún no se ha generado ningún archivo.
+        </div>
+      </section>
+
+      <!-- LOG -->
+      <section class="card">
+        <h2>Log</h2>
+        <div id="log" class="log"></div>
+        <div class="muted" style="margin-top:6px;">
+          Este log es sólo del lado frontend. Los logs de motor y auditoría reales se guardan en el servidor.
+        </div>
+      </section>
+    </div>
   </main>
 
   <script>
+    // Detalle de archivo seleccionado (nombre y tamaño)
+    const binFileInput = document.getElementById("binFile");
+    const fileNameDetail = document.getElementById("fileNameDetail");
+    const fileSizeDetail = document.getElementById("fileSizeDetail");
+
+    if (binFileInput) {
+      binFileInput.addEventListener("change", () => {
+        const file = binFileInput.files[0];
+        if (!file) {
+          fileNameDetail.textContent = "ninguno";
+          fileSizeDetail.textContent = "–";
+          return;
+        }
+        fileNameDetail.textContent = file.name;
+        const kb = file.size / 1024;
+        fileSizeDetail.textContent = kb.toFixed(1) + " KB";
+      });
+    }
+
     const form = document.getElementById("patchForm");
     const resultDiv = document.getElementById("result");
     const logDiv = document.getElementById("log");
@@ -271,9 +568,7 @@
     function log(msg, isError = false) {
       const time = new Date().toLocaleTimeString();
       const spanTime = `<span class="time">[${time}]</span>`;
-      const spanMsg = isError
-        ? `<span class="err">${msg}</span>`
-        : msg;
+      const spanMsg = isError ? `<span class="err">${msg}</span>` : msg;
       logDiv.innerHTML += `${spanTime} ${spanMsg}\n`;
       logDiv.scrollTop = logDiv.scrollHeight;
     }
@@ -313,7 +608,6 @@
 
       log(`DTC solicitados: ${dtcList.length > 0 ? dtcList.join(", ") : "ninguno (descriptor vacío)"}`);
 
-      // Construir descriptor JSON (PatchDescriptor) del lado frontend
       const descriptor = {
         patch_id: "web-" + Date.now().toString(),
         user: { id: userId },
@@ -333,15 +627,13 @@
       const descJson = JSON.stringify(descriptor, null, 2);
       log("Descriptor generado en cliente.");
 
-      // Crear archivo descriptor.json en memoria
       const descFile = new File([descJson], "descriptor.json", {
         type: "application/json"
       });
 
-      // Preparar FormData para POST /patch_bin
       const fd = new FormData();
-      fd.append("bin_file", binFile);     // nombre del parámetro según backend
-      fd.append("descriptor", descFile);  // nombre del parámetro según backend
+      fd.append("bin_file", binFile);
+      fd.append("descriptor", descFile);
 
       try {
         log("Enviando solicitud a /patch_bin ...");
@@ -361,7 +653,6 @@
 
         log("Respuesta recibida, procesando archivo...");
 
-        // Esperamos un ZIP (FileResponse)
         const blob = await resp.blob();
         const disposition = resp.headers.get("Content-Disposition") || "";
         let filename = "ECUForgeX_Bin.MOD.zip";
