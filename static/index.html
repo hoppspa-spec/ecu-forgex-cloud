@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -434,14 +434,14 @@
         <p class="ecu-hero__badge">Motor de parches para talleres profesionales</p>
         <h1 class="ecu-hero__title">ECU FORGE X</h1>
         <p class="ecu-hero__subtitle">
-          Sube el BIN, selecciona los DTC y genera un Bin.MOD listo para programar,
-          sin instalar software y con auditoría en la nube.
+          Carga tu BIN, selecciona la opción que necesites y te enviaremos un archivo modificado
+          listo para programar, sin instalar software adicional y con auditoría en la nube.
         </p>
 
         <ul class="ecu-hero__highlights">
-          <li>✅ Compatible con workflows de chiptuning y diagnóstico</li>
-          <li>✅ Historial de parches por taller (últimos 30 días)</li>
-          <li>✅ Pensado para integrarse con <strong>hopp.cl</strong> sin romper el diseño</li>
+          <li>✅ Diseñado para talleres profesionales: flujos claros de chiptuning y diagnóstico.</li>
+          <li>✅ Historial y trazabilidad de parches por taller y por BIN trabajado.</li>
+          <li>✅ Pensado para integrarse con <strong>hopp.cl</strong> y otros sistemas de gestión del taller.</li>
         </ul>
 
         <div class="ecu-hero__cta">
@@ -468,8 +468,8 @@
             <span class="ecu-metric__value">P0420, P04xx</span>
           </div>
           <div class="ecu-metric">
-            <span class="ecu-metric__label">Parche listo en</span>
-            <span class="ecu-metric__value">≈ 10 seg</span>
+            <span class="ecu-metric__label">Tiempo estimado</span>
+            <span class="ecu-metric__value">En poco tiempo</span>
           </div>
           <div class="ecu-metric ecu-metric--ok">
             <span class="ecu-metric__label">Estado</span>
@@ -483,7 +483,9 @@
       <!-- FORMULARIO PRINCIPAL -->
       <section class="card" id="generar-bin">
         <h2>Generar Bin.MOD</h2>
-        <p>Sube un archivo BIN, indica los DTC a tratar y el sistema generará un paquete Bin.MOD descargable.</p>
+        <p class="muted">
+          Carga tu archivo BIN, indícanos qué solución necesitas y descarga tu archivo MOD listo para programar.
+        </p>
 
         <form id="patchForm">
           <div class="row">
@@ -493,12 +495,14 @@
 
               <label for="binFile">Archivo BIN</label>
               <input id="binFile" name="binfile" type="file" accept=".bin,.BIN,.mpc,.MPC" required />
-              <div class="file-detail-line">
+              <div class="file-detail-line" id="fileDetail" style="display:none;">
                 <span>Seleccionado: <strong id="fileNameDetail">ninguno</strong></span>
                 &nbsp;·&nbsp;
                 <span>Tamaño: <strong id="fileSizeDetail">–</strong></span>
               </div>
-              <div class="muted">Acepta BIN/flash de ECU. Tamaño debe ser razonable para el servidor.</div>
+              <div class="muted">
+                Acepta BIN/flash de ECU. Evita archivos excesivamente grandes.
+              </div>
             </div>
 
             <div class="col">
@@ -544,6 +548,7 @@
     const binFileInput = document.getElementById("binFile");
     const fileNameDetail = document.getElementById("fileNameDetail");
     const fileSizeDetail = document.getElementById("fileSizeDetail");
+    const fileDetail = document.getElementById("fileDetail");
 
     if (binFileInput) {
       binFileInput.addEventListener("change", () => {
@@ -551,11 +556,13 @@
         if (!file) {
           fileNameDetail.textContent = "ninguno";
           fileSizeDetail.textContent = "–";
+          if (fileDetail) fileDetail.style.display = "none";
           return;
         }
         fileNameDetail.textContent = file.name;
         const kb = file.size / 1024;
         fileSizeDetail.textContent = kb.toFixed(1) + " KB";
+        if (fileDetail) fileDetail.style.display = "inline-block";
       });
     }
 
