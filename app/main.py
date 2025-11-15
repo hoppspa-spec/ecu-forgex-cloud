@@ -1,4 +1,4 @@
-﻿from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -9,7 +9,8 @@ import uuid
 import os
 import json
 
-BASE_DIR = Path(__file__).parent
+# OJO: como este archivo está en /app, subimos un nivel a la raíz del proyecto
+BASE_DIR = Path(__file__).resolve().parent.parent
 STORAGE = BASE_DIR / "storage"
 STATIC = BASE_DIR / "static"
 
@@ -87,7 +88,6 @@ async def patch_bin(bin_file: UploadFile = File(...), descriptor: UploadFile = F
     # buscar el Bin.MOD que generó el patcher
     binmods = list(out_dir.glob("*Bin.MOD.zip"))
     if not binmods:
-        # si tu patcher genera otro nombre, ajusta este patrón
         return JSONResponse(status_code=500, content={"error": "no_binmod_generated"})
 
     binmod_path = binmods[0]
@@ -107,3 +107,4 @@ async def patch_bin(bin_file: UploadFile = File(...), descriptor: UploadFile = F
         filename=binmod_path.name,
         media_type="application/zip",
     )
+
