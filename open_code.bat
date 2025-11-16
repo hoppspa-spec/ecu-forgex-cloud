@@ -1,0 +1,3 @@
+﻿@echo off
+echo Abriendo proyecto ECU FORGE X en VSCode...
+code .

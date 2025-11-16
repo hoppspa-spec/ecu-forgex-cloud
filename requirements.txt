@@ -1,5 +1,5 @@
 fastapi
 uvicorn
-python-multipart
-Jinja2
-cryptography
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
