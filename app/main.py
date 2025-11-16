@@ -9,13 +9,15 @@ import uuid
 import json
 
 # -------------------------------------------------------------------
-# Rutas base (sirve tanto si este archivo está en raíz como en app/)
+# Rutas base
+#  - Este archivo está en app/main.py
+#  - El index.html está en /static a nivel raíz del proyecto
 # -------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BASE_DIR if (BASE_DIR / "static").exists() else BASE_DIR.parent
+BASE_DIR = Path(__file__).resolve().parent       # .../app
+PROJECT_ROOT = BASE_DIR.parent                   # raíz del repo
 
-STORAGE = PROJECT_ROOT / "storage"
 STATIC = PROJECT_ROOT / "static"
+STORAGE = PROJECT_ROOT / "storage"
 
 STORAGE.mkdir(exist_ok=True)
 STATIC.mkdir(exist_ok=True)
