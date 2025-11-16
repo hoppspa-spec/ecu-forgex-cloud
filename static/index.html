@@ -622,108 +622,112 @@
     }
 
     form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      logDiv.textContent = "";
-      resultDiv.textContent = "";
-      resultDiv.classList.remove("danger");
-      resultDiv.classList.remove("muted");
-      setBusy(true);
+  e.preventDefault();
+  logDiv.textContent = "";
+  resultDiv.textContent = "";
+  resultDiv.classList.remove("danger");
+  resultDiv.classList.add("muted");  // por si acaso
+  setBusy(true);
 
-      const userId = document.getElementById("userId").value.trim() || "anon";
-      const binInput = document.getElementById("binFile");
-      const dtcInput = document.getElementById("dtcCodes").value.trim();
-      const comment = document.getElementById("comment").value.trim();
+  const userId = document.getElementById("userId").value.trim() || "anon";
+  const binInput = document.getElementById("binFile");
+  const dtcInput = document.getElementById("dtcCodes")
+    ? document.getElementById("dtcCodes").value.trim()
+    : "";
+  const comment = document.getElementById("comment")
+    ? document.getElementById("comment").value.trim()
+    : "";
 
-      if (!binInput.files || binInput.files.length === 0) {
-        log("No se ha seleccionado archivo BIN.", true);
-        resultDiv.textContent = "Selecciona un archivo BIN antes de enviar.";
+  if (!binInput.files || binInput.files.length === 0) {
+    log("No se ha seleccionado archivo BIN.", true);
+    resultDiv.textContent = "Selecciona un archivo BIN antes de continuar.";
+    resultDiv.classList.add("danger");
+    setBusy(false);
+    return;
+  }
+
+  const binFile = binInput.files[0];
+
+  if (currentStep === "analyze") {
+    // PASO 1: analizar BIN
+    log(`Analizando BIN: ${binFile.name} (${binFile.size} bytes)`);
+    try {
+      const fd = new FormData();
+      fd.append("bin_file", binFile);
+
+      const resp = await fetch("/analyze_bin", {
+        method: "POST",
+        body: fd
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        log(`Error HTTP ${resp.status}: ${text}`, true);
+        resultDiv.textContent = `Error al analizar el BIN (${resp.status}). Revisa el log.`;
         resultDiv.classList.add("danger");
         setBusy(false);
         return;
       }
 
-      const binFile = binInput.files[0];
-      log(`BIN seleccionado: ${binFile.name} (${binFile.size} bytes)`);
+      const data = await resp.json();
+      lastAnalysis = data;
+      log("Análisis completado.");
 
-      const dtcList = dtcInput
-        ? dtcInput.split(",").map((c) => c.trim()).filter((c) => c.length > 0)
+      // Rellenar panel de ECU detectada
+      ecuTypeEl.textContent = data.ecu_type || "No detectado";
+      ecuPartNumberEl.textContent = data.ecu_part_number || "No disponible";
+      manufacturerNumberEl.textContent = data.manufacturer_number || "No disponible";
+
+      // Opciones de parche
+      const options = Array.isArray(data.available_patches)
+        ? data.available_patches
         : [];
 
-      log(`DTC solicitados: ${dtcList.length > 0 ? dtcList.join(", ") : "ninguno (descriptor vacío)"}`);
-
-      const descriptor = {
-        patch_id: "web-" + Date.now().toString(),
-        user: { id: userId },
-        bin_hash: "",
-        objectives: []
-      };
-
-      if (dtcList.length > 0) {
-        descriptor.objectives.push({
-          id: "obj-1",
-          type: "DTC_DISABLE",
-          target_codes: dtcList,
-          comment: comment || undefined
+      if (options.length === 0) {
+        patchOptionsEl.innerHTML = "<li>No se encontraron opciones de parche para este BIN.</li>";
+      } else {
+        patchOptionsEl.innerHTML = "";
+        options.forEach((opt, idx) => {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <label>
+              <input type="radio" name="patchOption" value="${opt.id || "opt-" + idx}">
+              <strong>${opt.label || "Opción " + (idx + 1)}</strong>
+              ${opt.description ? " – " + opt.description : ""}
+            </label>
+          `;
+          patchOptionsEl.appendChild(li);
         });
       }
 
-      const descJson = JSON.stringify(descriptor, null, 2);
-      log("Descriptor generado en cliente.");
+      // Cambiamos el estado al paso 2
+      currentStep = "request";
+      submitBtn.textContent = "Solicitar parche";
+      resultDiv.textContent = "Revisa la información detectada y selecciona una opción de parche.";
+      resultDiv.classList.remove("danger");
+    } catch (err) {
+      log(`Excepción en análisis: ${err}`, true);
+      resultDiv.textContent = "Error inesperado al analizar el BIN. Revisa conexión o consola.";
+      resultDiv.classList.add("danger");
+    } finally {
+      setBusy(false);
+    }
+    return;
+  }
 
-      const descFile = new File([descJson], "descriptor.json", {
-        type: "application/json"
-      });
+  if (currentStep === "request") {
+    // PASO 2: aquí debería ir REGISTRO + PAGO antes de generar el parche
+    log("Solicitar parche: aquí debería ir el flujo de registro/login + pago antes de generar el Bin.MOD.");
 
-      const fd = new FormData();
-      fd.append("bin_file", binFile);
-      fd.append("descriptor", descFile);
+    // Placeholder: redirigir a una página de registro/pago
+    // Cambia esta URL cuando tengas tu pantalla real:
+    window.location.href = "/registrarse-o-pagar";
 
-      try {
-        log("Enviando solicitud a /patch_bin ...");
-        const resp = await fetch("/patch_bin", {
-          method: "POST",
-          body: fd
-        });
+    setBusy(false);
+    return;
+  }
+});
 
-        if (!resp.ok) {
-          const text = await resp.text();
-          log(`Error HTTP ${resp.status}: ${text}`, true);
-          resultDiv.textContent = `Error del servidor (${resp.status}). Revisa el log.`;
-          resultDiv.classList.add("danger");
-          setBusy(false);
-          return;
-        }
-
-        log("Respuesta recibida, procesando archivo...");
-
-        const blob = await resp.blob();
-        const disposition = resp.headers.get("Content-Disposition") || "";
-        let filename = "ECUForgeX_Bin.MOD.zip";
-
-        const match = disposition.match(/filename="?([^"]+)"?/i);
-        if (match && match[1]) {
-          filename = match[1];
-        }
-
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        link.textContent = `Descargar ${filename}`;
-        link.style.display = "inline-block";
-        link.style.marginTop = "4px";
-
-        resultDiv.innerHTML = "";
-        resultDiv.appendChild(link);
-        log("Archivo listo para descarga.");
-      } catch (err) {
-        log(`Excepción en fetch: ${err}`, true);
-        resultDiv.textContent = "Error inesperado en el navegador. Revisa conexión o consola.";
-        resultDiv.classList.add("danger");
-      } finally {
-        setBusy(false);
-      }
-    });
   </script>
 </body>
 </html>
