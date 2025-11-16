@@ -20,6 +20,10 @@
       box-sizing: border-box;
     }
 
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
       padding: 0;
@@ -409,28 +413,28 @@
       margin-top: 6px;
       font-size: 12px;
       color: var(--text-muted);
-      
+    }
+
     .ecu-info {
       background: #f3f4f6;
       border-radius: 10px;
       padding: 10px 12px;
       border: 1px solid var(--border);
-     }
+    }
 
     .ecu-info div + div {
       margin-top: 4px;
-     }
+    }
 
     .ecu-patch-list {
       list-style: none;
       padding-left: 0;
       margin: 4px 0 0 0;
-     }
+    }
 
     .ecu-patch-list li {
       margin-bottom: 4px;
-     }
-
+    }
   </style>
 </head>
 <body>
@@ -502,54 +506,53 @@
 
     <div class="main-inner">
       <!-- FORMULARIO PRINCIPAL -->
-<section class="card" id="generar-bin">
-  <h2>Generar Bin.MOD</h2>
-  <p class="muted">
-    Carga tu archivo BIN, indícanos qué solución necesitas y descarga tu archivo MOD listo para programar.
-  </p>
+      <section class="card" id="generar-bin">
+        <h2>Generar Bin.MOD</h2>
+        <p class="muted">
+          Carga tu archivo BIN, indícanos qué solución necesitas y descarga tu archivo MOD listo para programar.
+        </p>
 
-  <form id="patchForm">
-    <div class="row">
-      <!-- Columna izquierda: datos de usuario + archivo -->
-      <div class="col">
-        <label for="userId">Usuario / ID de taller</label>
-        <input id="userId" name="user_id" type="text" value="taller-demo" />
+        <form id="patchForm">
+          <div class="row">
+            <!-- Columna izquierda: datos de usuario + archivo -->
+            <div class="col">
+              <label for="userId">Usuario / ID de taller</label>
+              <input id="userId" name="user_id" type="text" value="taller-demo" />
 
-        <label for="binFile">Archivo BIN</label>
-        <input id="binFile" name="binfile" type="file" accept=".bin,.BIN,.mpc,.MPC" required />
-        <div class="file-detail-line" id="fileDetail" style="display:none;">
-          <span>Seleccionado: <strong id="fileNameDetail">ninguno</strong></span>
-          &nbsp;·&nbsp;
-          <span>Tamaño: <strong id="fileSizeDetail">–</strong></span>
-        </div>
-        <div class="muted">
-          Acepta BIN/flash de ECU. Evita archivos excesivamente grandes.
-        </div>
-      </div>
+              <label for="binFile">Archivo BIN</label>
+              <input id="binFile" name="binfile" type="file" accept=".bin,.BIN,.mpc,.MPC" required />
+              <div class="file-detail-line" id="fileDetail" style="display:none;">
+                <span>Seleccionado: <strong id="fileNameDetail">ninguno</strong></span>
+                &nbsp;·&nbsp;
+                <span>Tamaño: <strong id="fileSizeDetail">–</strong></span>
+              </div>
+              <div class="muted">
+                Acepta BIN/flash de ECU. Evita archivos excesivamente grandes.
+              </div>
+            </div>
 
-      <!-- Columna derecha: info detectada + opciones de parche -->
-      <div class="col">
-        <h3 class="muted" style="margin-top:0;">ECU detectada</h3>
-        <div class="ecu-info muted">
-          <div><strong>Tipo ECU:</strong> <span id="ecuType">–</span></div>
-          <div><strong>ECU Part Number:</strong> <span id="ecuPartNumber">–</span></div>
-          <div><strong>Manufacturer Nº:</strong> <span id="manufacturerNumber">–</span></div>
-        </div>
+            <!-- Columna derecha: info detectada + opciones de parche -->
+            <div class="col">
+              <h3 class="muted" style="margin-top:0;">ECU detectada</h3>
+              <div class="ecu-info muted">
+                <div><strong>Tipo ECU:</strong> <span id="ecuType">–</span></div>
+                <div><strong>ECU Part Number:</strong> <span id="ecuPartNumber">–</span></div>
+                <div><strong>Manufacturer Nº:</strong> <span id="manufacturerNumber">–</span></div>
+              </div>
 
-        <h4 class="muted" style="margin-top:12px;">Opciones de parche disponibles</h4>
-        <ul id="patchOptions" class="ecu-patch-list muted">
-          <li>Sube un BIN para ver las opciones de parche disponibles.</li>
-        </ul>
-      </div>
-    </div>
+              <h4 class="muted" style="margin-top:12px;">Opciones de parche disponibles</h4>
+              <ul id="patchOptions" class="ecu-patch-list muted">
+                <li>Sube un BIN para ver las opciones de parche disponibles.</li>
+              </ul>
+            </div>
+          </div>
 
-    <div style="margin-top: 10px; display:flex; gap:10px; align-items:center;">
-      <button type="submit" id="submitBtn">Analizar BIN</button>
-      <span id="statusText" class="muted"></span>
-    </div>
-  </form>
-</section>
-
+          <div style="margin-top: 10px; display:flex; gap:10px; align-items:center;">
+            <button type="submit" id="submitBtn">Analizar BIN</button>
+            <span id="statusText" class="muted"></span>
+          </div>
+        </form>
+      </section>
 
       <!-- RESULTADO -->
       <section class="card">
@@ -584,23 +587,21 @@
     let currentStep = "analyze";    // "analyze" -> "request"
     let lastAnalysis = null;        // aquí guardaremos lo que devuelva /analyze_bin
 
-
     if (binFileInput) {
-  binFileInput.addEventListener("change", () => {
-    const file = binFileInput.files[0];
-    if (!file) {
-      fileNameDetail.textContent = "ninguno";
-      fileSizeDetail.textContent = "–";
-      if (fileDetail) fileDetail.style.display = "none";
-      return;
+      binFileInput.addEventListener("change", () => {
+        const file = binFileInput.files[0];
+        if (!file) {
+          fileNameDetail.textContent = "ninguno";
+          fileSizeDetail.textContent = "–";
+          if (fileDetail) fileDetail.style.display = "none";
+          return;
+        }
+        fileNameDetail.textContent = file.name;
+        const kb = file.size / 1024;
+        fileSizeDetail.textContent = kb.toFixed(1) + " KB";
+        if (fileDetail) fileDetail.style.display = "inline-block";
+      });
     }
-    fileNameDetail.textContent = file.name;
-    const kb = file.size / 1024;
-    fileSizeDetail.textContent = kb.toFixed(1) + " KB";
-    if (fileDetail) fileDetail.style.display = "inline-block";
-  });
-}
-
 
     const form = document.getElementById("patchForm");
     const resultDiv = document.getElementById("result");
@@ -622,112 +623,105 @@
     }
 
     form.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  logDiv.textContent = "";
-  resultDiv.textContent = "";
-  resultDiv.classList.remove("danger");
-  resultDiv.classList.add("muted");  // por si acaso
-  setBusy(true);
+      e.preventDefault();
+      logDiv.textContent = "";
+      resultDiv.textContent = "";
+      resultDiv.classList.remove("danger");
+      resultDiv.classList.add("muted");
+      setBusy(true);
 
-  const userId = document.getElementById("userId").value.trim() || "anon";
-  const binInput = document.getElementById("binFile");
-  const dtcInput = document.getElementById("dtcCodes")
-    ? document.getElementById("dtcCodes").value.trim()
-    : "";
-  const comment = document.getElementById("comment")
-    ? document.getElementById("comment").value.trim()
-    : "";
+      const userId = document.getElementById("userId").value.trim() || "anon";
+      const binInput = document.getElementById("binFile");
 
-  if (!binInput.files || binInput.files.length === 0) {
-    log("No se ha seleccionado archivo BIN.", true);
-    resultDiv.textContent = "Selecciona un archivo BIN antes de continuar.";
-    resultDiv.classList.add("danger");
-    setBusy(false);
-    return;
-  }
-
-  const binFile = binInput.files[0];
-
-  if (currentStep === "analyze") {
-    // PASO 1: analizar BIN
-    log(`Analizando BIN: ${binFile.name} (${binFile.size} bytes)`);
-    try {
-      const fd = new FormData();
-      fd.append("bin_file", binFile);
-
-      const resp = await fetch("/analyze_bin", {
-        method: "POST",
-        body: fd
-      });
-
-      if (!resp.ok) {
-        const text = await resp.text();
-        log(`Error HTTP ${resp.status}: ${text}`, true);
-        resultDiv.textContent = `Error al analizar el BIN (${resp.status}). Revisa el log.`;
+      if (!binInput.files || binInput.files.length === 0) {
+        log("No se ha seleccionado archivo BIN.", true);
+        resultDiv.textContent = "Selecciona un archivo BIN antes de continuar.";
         resultDiv.classList.add("danger");
         setBusy(false);
         return;
       }
 
-      const data = await resp.json();
-      lastAnalysis = data;
-      log("Análisis completado.");
+      const binFile = binInput.files[0];
 
-      // Rellenar panel de ECU detectada
-      ecuTypeEl.textContent = data.ecu_type || "No detectado";
-      ecuPartNumberEl.textContent = data.ecu_part_number || "No disponible";
-      manufacturerNumberEl.textContent = data.manufacturer_number || "No disponible";
+      if (currentStep === "analyze") {
+        // PASO 1: analizar BIN
+        log(`Analizando BIN: ${binFile.name} (${binFile.size} bytes)`);
+        try {
+          const fd = new FormData();
+          fd.append("bin_file", binFile);
 
-      // Opciones de parche
-      const options = Array.isArray(data.available_patches)
-        ? data.available_patches
-        : [];
+          const resp = await fetch("/analyze_bin", {
+            method: "POST",
+            body: fd
+          });
 
-      if (options.length === 0) {
-        patchOptionsEl.innerHTML = "<li>No se encontraron opciones de parche para este BIN.</li>";
-      } else {
-        patchOptionsEl.innerHTML = "";
-        options.forEach((opt, idx) => {
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <label>
-              <input type="radio" name="patchOption" value="${opt.id || "opt-" + idx}">
-              <strong>${opt.label || "Opción " + (idx + 1)}</strong>
-              ${opt.description ? " – " + opt.description : ""}
-            </label>
-          `;
-          patchOptionsEl.appendChild(li);
-        });
+          if (!resp.ok) {
+            const text = await resp.text();
+            log(`Error HTTP ${resp.status}: ${text}`, true);
+            resultDiv.textContent = `Error al analizar el BIN (${resp.status}). Revisa el log.`;
+            resultDiv.classList.add("danger");
+            setBusy(false);
+            return;
+          }
+
+          const data = await resp.json();
+          lastAnalysis = data;
+          log("Análisis completado.");
+
+          // Rellenar panel de ECU detectada
+          ecuTypeEl.textContent = data.ecu_type || "No detectado";
+          ecuPartNumberEl.textContent = data.ecu_part_number || "No disponible";
+          manufacturerNumberEl.textContent = data.manufacturer_number || "No disponible";
+
+          // Opciones de parche
+          const options = Array.isArray(data.available_patches)
+            ? data.available_patches
+            : [];
+
+          if (options.length === 0) {
+            patchOptionsEl.innerHTML = "<li>No se encontraron opciones de parche para este BIN.</li>";
+          } else {
+            patchOptionsEl.innerHTML = "";
+            options.forEach((opt, idx) => {
+              const li = document.createElement("li");
+              li.innerHTML = `
+                <label>
+                  <input type="radio" name="patchOption" value="${opt.id || "opt-" + idx}">
+                  <strong>${opt.label || "Opción " + (idx + 1)}</strong>
+                  ${opt.description ? " – " + opt.description : ""}
+                </label>
+              `;
+              patchOptionsEl.appendChild(li);
+            });
+          }
+
+          // Cambiamos el estado al paso 2
+          currentStep = "request";
+          submitBtn.textContent = "Solicitar parche";
+          resultDiv.textContent = "Revisa la información detectada y selecciona una opción de parche.";
+          resultDiv.classList.remove("danger");
+        } catch (err) {
+          log(`Excepción en análisis: ${err}`, true);
+          resultDiv.textContent = "Error inesperado al analizar el BIN. Revisa conexión o consola.";
+          resultDiv.classList.add("danger");
+        } finally {
+          setBusy(false);
+        }
+        return;
       }
 
-      // Cambiamos el estado al paso 2
-      currentStep = "request";
-      submitBtn.textContent = "Solicitar parche";
-      resultDiv.textContent = "Revisa la información detectada y selecciona una opción de parche.";
-      resultDiv.classList.remove("danger");
-    } catch (err) {
-      log(`Excepción en análisis: ${err}`, true);
-      resultDiv.textContent = "Error inesperado al analizar el BIN. Revisa conexión o consola.";
-      resultDiv.classList.add("danger");
-    } finally {
-      setBusy(false);
-    }
-    return;
-  }
+      if (currentStep === "request") {
+        // PASO 2: aquí debería ir REGISTRO + PAGO antes de generar el parche
+        log("Solicitar parche: aquí debería ir el flujo de registro/login + pago antes de generar el Bin.MOD.");
 
-  if (currentStep === "request") {
-    // PASO 2: aquí debería ir REGISTRO + PAGO antes de generar el parche
-    log("Solicitar parche: aquí debería ir el flujo de registro/login + pago antes de generar el Bin.MOD.");
+        // Placeholder: redirigir a una página de registro/pago
+        // Cambia esta URL cuando tengas tu pantalla real:
+        window.location.href = "/registrarse-o-pagar";
 
-    // Placeholder: redirigir a una página de registro/pago
-    // Cambia esta URL cuando tengas tu pantalla real:
-    window.location.href = "/registrarse-o-pagar";
-
-    setBusy(false);
-    return;
-  }
-});
-
+        setBusy(false);
+        return;
+      }
+    });
   </script>
 </body>
 </html>
