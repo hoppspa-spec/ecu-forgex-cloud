@@ -1,0 +1,1 @@
+export function getToken(){return localStorage.getItem('efx_token')} export function setToken(t){t?localStorage.setItem('efx_token',t):localStorage.removeItem('efx_token')}

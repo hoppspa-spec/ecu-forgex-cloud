@@ -1,0 +1,1 @@
+export function $(q,el=document){return el.querySelector(q)}; export function log(el,m){const d=document.createElement('div');d.textContent=m;el.appendChild(d)}; export function setBusy(b,s,on){if(b)b.disabled=!!on;if(s)s.textContent=on?'Procesando…':''}

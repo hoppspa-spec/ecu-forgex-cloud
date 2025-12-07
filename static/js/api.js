@@ -1,0 +1,1 @@
+export async function apiAnalyzeBin(){return {available_patches:[]}}
