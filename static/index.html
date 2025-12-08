@@ -191,14 +191,11 @@ $("#btnLogin").onclick = async ()=>{
   const fd = new FormData();
   fd.append("username", $("#login_email").value);
   fd.append("password", $("#login_pass").value);
-
   const r = await fetch("/auth/login",{method:"POST",body:fd});
   if(!r.ok){ alert("Credenciales inválidas"); return; }
-
   const d = await r.json();
   TOKEN = d.access_token;
   localStorage.setItem("EFX_TOKEN", TOKEN);   // ✔️ AHÍ MISMO
-
   $("#modalLogin").style.display="none";
   setAuthUi(true);
   log("Sesión iniciada.");
@@ -209,8 +206,14 @@ $("#btnRegister").onclick = async ()=>{
   const r = await fetch("/auth/register",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
   if(!r.ok){ const e=await r.text(); alert("No se pudo crear la cuenta\n"+e); return; }
   const fd = new FormData(); fd.append("username", payload.email); fd.append("password", payload.password);
-  const lr = await fetch("/auth/login",{method:"POST",body:fd});
-  if(lr.ok){ const d=await lr.json(); TOKEN=d.access_token; setAuthUi(true); $("#modalRegister").style.display="none"; log("Cuenta creada e iniciada."); }
+  if(lr.ok){
+  const d=await lr.json();
+  TOKEN=d.access_token;
+  localStorage.setItem("EFX_TOKEN", TOKEN);  // ✔️ AHÍ MISMO
+  setAuthUi(true);
+  $("#modalRegister").style.display="none";
+  log("Cuenta creada e iniciada.");
+}
   else { $("#modalRegister").style.display="none"; alert("Cuenta creada. Inicia sesión por favor."); }
 };
 
