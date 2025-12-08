@@ -2,40 +2,103 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8" />
-<title>ECU FORGE X — Mis Órdenes</title>
+<title>ECU FORGE X — Generar BIN.MOD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#111}
-  header{background:#0b1220;color:#fff;padding:14px 18px;font-size:22px;font-weight:bold}
-  .wrap{max-width:980px;margin:24px auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:20px}
-  table{width:100%;border-collapse:collapse}
-  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
-  .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#225}
-  button{padding:8px 12px;border-radius:8px;border:0;background:#0066ff;color:#fff;cursor:pointer}
+  body{margin:0;font-family:Arial,system-ui,Segoe UI;background:#f4f6fb;color:#111}
+  header{background:#0b1220;color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px}
+  header .grow{flex:1}
+  header .btn{background:#1e293b;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
+  header .btn.alt{background:#0ea5e9}
+  .container{display:grid;grid-template-columns:340px 1fr 320px;gap:18px;padding:18px}
+  .card{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px}
+  h3{margin:0 0 10px}
+  input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid #e5e7eb;margin-bottom:10px}
+  button{background:#0066ff;color:#fff;border:0;cursor:pointer}
   button:hover{background:#004bcc}
+  .muted{color:#64748b;font-size:13px}
+  .log{background:#000;color:#00ff72;font-family:ui-monospace,Menlo,Consolas;height:180px;border-radius:8px;padding:12px;overflow:auto}
+  .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#1f2937;font-size:12px}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px;font-size:14px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 </style>
 </head>
 <body>
-<header>ECU FORGE X — Mis Órdenes</header>
-<div class="wrap">
-  <div style="margin-bottom:14px">
-    <a href="/static/index.html"><button style="background:#777">Volver</button></a>
+
+<header>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
+  <div class="grow"></div>
+  <button class="btn" id="btnOpenLogin">Iniciar sesión</button>
+  <button class="btn alt" id="btnOpenRegister">Crear cuenta</button>
+  <button class="btn" id="btnLogout" style="display:none">Cerrar sesión</button>
+</header>
+
+<div class="container">
+  <!-- IZQUIERDA -->
+  <div class="card">
+    <h3>Información del Vehículo</h3>
+    <input id="marca" placeholder="Marca (ej: BMW)" />
+    <input id="modelo" placeholder="Modelo (ej: 320i)" />
+    <div class="row2">
+      <input id="anio" placeholder="Año (ej: 2018)" />
+      <input id="motor" placeholder="Motor (ej: B48 2.0T)" />
+    </div>
+    <input id="ecu_type" placeholder="Tipo ECU (ej: Bosch MG1)" />
+
+    <h3 style="margin-top:16px">Archivo BIN</h3>
+    <input id="binfile" type="file" />
+    <button id="btnAnalizar">Analizar BIN</button>
+    <div class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</div>
   </div>
-  <table id="tbl">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Archivo</th>
-        <th>Parche</th>
-        <th>Estado</th>
-        <th>Acciones</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+
+  <!-- CENTRO -->
+  <div class="card">
+    <div class="row2">
+      <div>
+        <h3>Parches Disponibles <span id="ecuBadge" class="badge" style="display:none"></span></h3>
+      </div>
+      <div>
+        <label class="muted">Tipo de Motor</label>
+        <select id="engineSelect">
+          <option value="auto">Auto (detectado)</option>
+          <option value="petrol">Petrol</option>
+          <option value="diesel">Diesel</option>
+        </select>
+      </div>
+    </div>
+
+    <select id="patchSelect" disabled>
+      <option value="">— Sube tu BIN para ver opciones —</option>
+    </select>
+    <button id="btnAplicar" disabled>Aplicar / Comprar</button>
+
+    <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
+      No hay parches disponibles para esta ECU. <br/>
+      Dentro de máximo <b>36 horas</b> podemos generar una solución personalizada.
+      <button id="btn36h" style="margin-top:8px;width:auto">Solicitar solución (36h)</button>
+    </div>
+
+    <h3 style="margin-top:16px">Resultado</h3>
+    <div id="resultado" class="muted">Aún no se ha generado ningún archivo.</div>
+
+    <h3 style="margin-top:16px">Log</h3>
+    <div id="log" class="log">Esperando acciones…</div>
+  </div>
+
+  <!-- DERECHA: FICHA ECU -->
+  <div class="card">
+    <h3>Ficha ECU</h3>
+    <div class="kv">
+      <div class="muted">ECU Type</div><div id="kv_ecu">—</div>
+      <div class="muted">ECU Part Number</div><div id="kv_pn">—</div>
+      <div class="muted">Software Number</div><div id="kv_sw">—</div>
+      <div class="muted">File size</div><div id="kv_size">—</div>
+      <div class="muted">CVN</div><div id="kv_cvn">—</div>
+    </div>
+  </div>
 </div>
 
-<!-- login minimal -->
+<!-- MODAL LOGIN -->
 <div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
   <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
     <h3>Iniciar sesión</h3>
@@ -45,50 +108,176 @@
   </div>
 </div>
 
-<script>
-let TOKEN=null;
-const $=(q,el=document)=>el.querySelector(q);
+<!-- MODAL REGISTRO -->
+<div id="modalRegister" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+    <h3>Crear cuenta</h3>
+    <input id="reg_name" placeholder="Nombre (opcional)" />
+    <input id="reg_email" placeholder="Email" />
+    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" />
+    <button id="btnRegister">Registrarme</button>
+  </div>
+</div>
 
-function openLogin(){ $("#modalLogin").style.display="flex"; }
-async function ensureAuth(){
-  if(TOKEN) return true;
-  openLogin();
-  return false;
-}
+<script>
+/* ======= estado ======= */
+let TOKEN=null, lastAnalysis=null, lastFile=null, lastCvn=null, engineDetected="auto";
+const $=(q,el=document)=>el.querySelector(q);
+const log=(m)=>{const b=$("#log");b.textContent+="\\n"+m;b.scrollTop=b.scrollHeight;};
+const setBadge=(t)=>{const b=$("#ecuBadge"); if(!t){b.style.display="none";b.textContent="";} else {b.style.display="inline-block"; b.textContent=t;}};
+
+/* ======= util: CRC32 (CVN demo) ======= */
+(function(){
+  const table = new Uint32Array(256).map((_,n)=>{
+    let c=n; for(let k=0;k<8;k++) c = (c&1)?(0xEDB88320^(c>>>1)):(c>>>1); return c>>>0;
+  });
+  window.crc32 = (buf)=>{
+    let c=0^(-1); for(let i=0;i<buf.length;i++) c=(c>>>8)^table[(c^buf[i])&0xFF]; return (c^(-1))>>>0;
+  };
+})();
+
+/* ======= sesión ======= */
+function setAuthUi(on){ $("#btnOpenLogin").style.display= on? "none":"inline-block";
+                         $("#btnOpenRegister").style.display= on? "none":"inline-block";
+                         $("#btnLogout").style.display= on? "inline-block":"none"; }
+$("#btnOpenLogin").onclick = ()=>$("#modalLogin").style.display="flex";
+$("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
+$("#btnLogout").onclick = ()=>{ TOKEN=null; setAuthUi(false); log("Sesión cerrada."); };
 
 $("#btnLogin").onclick = async ()=>{
-  const fd = new FormData();
-  fd.append("username", $("#login_email").value);
-  fd.append("password", $("#login_pass").value);
-  const r = await fetch("/auth/login",{ method:"POST", body: fd });
+  const fd = new FormData(); fd.append("username", $("#login_email").value); fd.append("password", $("#login_pass").value);
+  const r = await fetch("/auth/login",{method:"POST",body:fd});
   if(!r.ok){ alert("Credenciales inválidas"); return; }
-  const d = await r.json(); TOKEN=d.access_token; $("#modalLogin").style.display="none";
-  load();
+  const d = await r.json(); TOKEN=d.access_token; $("#modalLogin").style.display="none"; setAuthUi(true); log("Sesión iniciada.");
 };
 
-async function load(){
-  if(!(await ensureAuth())) return;
+$("#btnRegister").onclick = async ()=>{
+  const payload = { email: $("#reg_email").value, password: $("#reg_pass").value, full_name: $("#reg_name").value || null };
+  const r = await fetch("/auth/register",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok){ const e=await r.text(); alert("No se pudo crear la cuenta\\n"+e); return; }
+  // auto login
+  const fd = new FormData(); fd.append("username", payload.email); fd.append("password", payload.password);
+  const lr = await fetch("/auth/login",{method:"POST",body:fd});
+  if(lr.ok){ const d=await lr.json(); TOKEN=d.access_token; setAuthUi(true); $("#modalRegister").style.display="none"; log("Cuenta creada e iniciada."); }
+  else { $("#modalRegister").style.display="none"; alert("Cuenta creada. Inicia sesión por favor."); }
+};
 
-  const r = await fetch("/orders/mine",{ headers:{ "Authorization":"Bearer "+TOKEN }});
-  const tbody = $("#tbl tbody"); tbody.innerHTML="";
-  if(!r.ok){ tbody.innerHTML = `<tr><td colspan="5">Error cargando órdenes</td></tr>`; return; }
-  const j = await r.json();
-  const rows = (j.orders||[]).map(o=>{
-    const dBtn = o.download_ready
-      ? `<a href="/orders/${o.id}/download"><button style="background:#28a745">Descargar</button></a>`
-      : `<span class="tag">Pendiente</span>`;
-    return `<tr>
-      <td>#${o.id}</td>
-      <td>${o.original_filename || "—"}</td>
-      <td><span class="tag">${o.patch_option_id}</span></td>
-      <td>${o.status}</td>
-      <td>${dBtn}</td>
-    </tr>`;
-  }).join("") || `<tr><td colspan="5">Sin órdenes</td></tr>`;
-  tbody.innerHTML = rows;
+/* ======= analizar BIN ======= */
+$("#binfile").addEventListener("change", async (e)=>{
+  lastFile = e.target.files?.[0] || null;
+  if(lastFile){
+    // calcular CVN demo
+    const buf = new Uint8Array(await lastFile.arrayBuffer());
+    lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8,'0');
+    $("#kv_cvn").textContent = lastCvn;
+    $("#kv_size").textContent = new Intl.NumberFormat('es-CL').format(lastFile.size) + " bytes";
+  }
+});
+
+$("#btnAnalizar").onclick = async ()=>{
+  const f = $("#binfile").files[0];
+  if(!f){ alert("Selecciona un BIN"); return; }
+  const fd = new FormData(); fd.append("bin_file", f);
+  log("Subiendo y analizando BIN…");
+  const r = await fetch("/analyze_bin",{method:"POST",body:fd});
+  if(!r.ok){ log("Error analizando BIN"); return; }
+  const data = await r.json(); lastAnalysis = data;
+
+  // Ficha ECU
+  $("#kv_ecu").textContent = data.ecu_type || "—";
+  $("#kv_pn").textContent  = data.ecu_part_number || "—";
+  $("#kv_sw").textContent  = "—"; // (cuando el backend lo exponga, lo mostramos)
+  $("#kv_size").textContent = new Intl.NumberFormat('es-CL').format(data.bin_size||0) + " bytes";
+  setBadge(data.ecu_type || null);
+
+  // Detección motor (heurística)
+  if(/EDC|MD1|MJD|DCM/i.test(data.ecu_type||"")) engineDetected="diesel";
+  else if(/MED|MG1|ME/i.test(data.ecu_type||"")) engineDetected="petrol";
+  else engineDetected="auto";
+  $("#engineSelect").value = "auto";
+
+  fillPatches();
+  log("Análisis OK. ECU: "+(data.ecu_type||"—")+" PN: "+(data.ecu_part_number||"—"));
+};
+
+/* ======= parches y filtrado ======= */
+const PATCH_MAP = {
+  petrol: [
+    {id:"speed_limiter",label:"Speed Limiter"},
+    {id:"rpm_limit",label:"RPM Limit Increase"},
+    {id:"dtc_off",label:"DTC OFF (General)"},
+  ],
+  diesel: [
+    {id:"dpf_off",label:"DPF OFF"},
+    {id:"egr_off",label:"EGR OFF"},
+    {id:"dtc_off",label:"DTC OFF (General)"},
+  ],
+};
+
+function currentEngineMode(){
+  const sel = $("#engineSelect").value; 
+  if(sel!=="auto") return sel;
+  return engineDetected==="auto" ? (lastAnalysis?.available_patches?.length? "petrol":"diesel") : engineDetected;
 }
 
-load();
+function fillPatches(){
+  const sel = $("#patchSelect");
+  sel.innerHTML="";
+
+  let list = lastAnalysis?.available_patches || [];
+  const mode = currentEngineMode();
+
+  // si la API vino vacía, usamos catálogo local por modo
+  if(!list.length){
+    if(mode==="petrol") list = PATCH_MAP.petrol;
+    else if(mode==="diesel") list = PATCH_MAP.diesel;
+  }
+
+  if(list.length){
+    sel.disabled=false; $("#btnAplicar").disabled=false; $("#noPatchMsg").style.display="none";
+    sel.append(new Option("— Selecciona un parche —",""));
+    list.forEach(p=> sel.append(new Option(p.label, p.id)));
+  }else{
+    sel.disabled=true; $("#btnAplicar").disabled=true; $("#noPatchMsg").style.display="block";
+    sel.append(new Option("Sin parches disponibles",""));
+  }
+}
+
+$("#engineSelect").addEventListener("change", fillPatches);
+
+/* ======= acciones ======= */
+$("#btnAplicar").onclick = async ()=>{
+  const patch = $("#patchSelect").value;
+  if(!patch){ alert("Selecciona un parche"); return; }
+  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+
+  const r = await fetch("/orders",{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+    body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: patch })
+  });
+  if(!r.ok){ log("Error creando orden"); return; }
+  const d = await r.json();
+  log("Orden #"+d.id+" creada. Redirigiendo a checkout…");
+  location.href = "/static/checkout.html?order_id="+d.id;
+};
+
+$("#btn36h").onclick = async ()=>{
+  if(!lastAnalysis){ alert("Primero analiza un BIN"); return; }
+  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+
+  await fetch("/patch_requests",{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+    body: JSON.stringify({
+      marca: $("#marca").value, modelo: $("#modelo").value, anio: $("#anio").value, motor: $("#motor").value,
+      ecu_type: $("#ecu_type").value || lastAnalysis?.ecu_type,
+      analysis_id: lastAnalysis?.analysis_id, original_filename: lastAnalysis?.filename
+    })
+  });
+  log("Solicitud 36h enviada. Te contactaremos 👌");
+  alert("Solicitud enviada. Máximo 36h 👍");
+};
 </script>
 </body>
 </html>
