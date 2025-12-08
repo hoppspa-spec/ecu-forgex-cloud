@@ -5,141 +5,137 @@
 <title>ECU FORGE X — Checkout</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
-  body{margin:0;font-family:Arial,system-ui,Segoe UI;background:#f6f7fb;color:#111}
-  header{background:#0b1220;color:#fff;padding:14px 18px;display:flex;gap:10px;align-items:center}
+  :root{--bg:#f4f6fb;--card:#fff;--ink:#111;--muted:#64748b;--brand:#0b1220;--btn:#0066ff;--btnh:#004bcc;--stroke:#e5e7eb;}
+  *{box-sizing:border-box} body{margin:0;font-family:Arial,system-ui;background:var(--bg);color:var(--ink)}
+  header{background:var(--brand);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px}
   header .grow{flex:1}
-  header .btn{background:#1e293b;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
-  header .btn.alt{background:#0ea5e9}
-  .wrap{max-width:900px;margin:22px auto;background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:18px}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .card{border:1px solid #eee;border-radius:10px;padding:14px}
-  button{padding:12px 14px;border-radius:10px;border:0;background:#0066ff;color:#fff;cursor:pointer}
-  button:hover{background:#004bcc}
-  .muted{color:#64748b}
-  .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#1f2937}
-  .hidden{display:none}
+  header a{color:#cbd5e1;text-decoration:none} header a:hover{color:#fff}
+  .wrap{max-width:920px;margin:18px auto;padding:0 14px}
+  .card{background:var(--card);border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:18px}
+  .muted{color:var(--muted)} h2{margin:0 0 12px}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .col{flex:1 1 280px}
+  button{background:var(--btn);border:0;color:#fff;padding:10px 14px;border-radius:8px;cursor:pointer}
+  button:hover{background:var(--btnh)}
+  .badge{display:inline-block;background:#eef;padding:4px 8px;border-radius:999px;font-size:12px;color:#1f2937}
+  .kv{display:grid;grid-template-columns:160px 1fr;gap:6px}
+  .ok{color:#0a7a2f;font-weight:700}
+  .err{color:#b00020;font-weight:700}
+  .hint{font-size:13px;color:#64748b}
 </style>
 </head>
 <body>
+
 <header>
-  <div style="font-weight:700;font-size:20px">ECU FORGE X — Checkout</div>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
   <div class="grow"></div>
-  <button class="btn" id="btnOpenLogin">Iniciar sesión</button>
-  <button class="btn alt" id="btnOpenRegister">Crear cuenta</button>
-  <button class="btn" id="btnLogout" style="display:none">Cerrar sesión</button>
+  <a href="/static/index.html">Volver</a>
+  <a href="/static/usuarios.html" style="margin-left:12px">Mis órdenes</a>
 </header>
 
 <div class="wrap">
-  <div class="row">
-    <div class="card">
-      <h3>Resumen</h3>
-      <div id="resumen" class="muted">Cargando…</div>
-    </div>
-    <div class="card">
-      <h3>Pago</h3>
-      <p class="muted">Demo: al confirmar, generamos el archivo <b>.mod</b> y queda listo para descargar.</p>
-      <div>
-        <button id="btnPagar">Confirmar pago</button>
-        <a id="btnDescargar" class="hidden" download>
-          <button style="margin-left:8px;background:#28a745">Descargar archivo</button>
-        </a>
+  <div class="card">
+    <h2>Checkout</h2>
+    <div id="status" class="muted">Cargando orden…</div>
+    <div id="orderBox" style="margin-top:10px;display:none">
+      <div class="row">
+        <div class="col">
+          <h3>Detalle</h3>
+          <div class="kv" id="kv"></div>
+        </div>
+        <div class="col">
+          <h3>Acciones</h3>
+          <button id="btnPay">Confirmar pago (demo)</button>
+          <div id="payMsg" class="hint" style="margin-top:8px">Simula la aprobación del pago y genera el archivo MOD.</div>
+          <div id="doneBox" style="display:none;margin-top:12px">
+            <div class="ok">Pago confirmado ✓</div>
+            <div style="margin-top:6px"><a id="dlLink" href="#" download>Descargar MOD</a></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
-  <div style="margin-top:16px;display:flex;gap:10px">
-    <a href="/static/usuarios.html"><button style="background:#555">Ir a mis órdenes</button></a>
-    <a href="/static/index.html"><button style="background:#777">Volver</button></a>
-  </div>
 </div>
 
-<!-- MODAL LOGIN -->
-<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
-  <div style="background:#fff;padding:18px;border-radius:12px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+<!-- Modal Login -->
+<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
     <h3>Iniciar sesión</h3>
-    <input id="login_email" placeholder="Email" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px" />
-    <input id="login_pass" type="password" placeholder="Contraseña" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px" />
+    <input id="login_email" placeholder="Email" style="width:100%;padding:10px;border:1px solid var(--stroke);border-radius:8px;margin:6px 0"/>
+    <input id="login_pass" type="password" placeholder="Contraseña" style="width:100%;padding:10px;border:1px solid var(--stroke);border-radius:8px;margin:6px 0"/>
     <button id="btnLogin">Ingresar</button>
   </div>
 </div>
 
-<!-- MODAL REGISTRO -->
-<div id="modalRegister" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center">
-  <div style="background:#fff;padding:18px;border-radius:12px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
-    <h3>Crear cuenta</h3>
-    <input id="reg_name" placeholder="Nombre (opcional)" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px" />
-    <input id="reg_email" placeholder="Email" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px" />
-    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" style="width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px;margin-bottom:8px" />
-    <button id="btnRegister">Registrarme</button>
-  </div>
-</div>
-
 <script>
-let TOKEN=null, ORDER_ID=null, CURRENT=null;
 const $=(q,el=document)=>el.querySelector(q);
-const getParam=(k)=>new URLSearchParams(location.search).get(k);
+const qs = new URLSearchParams(location.search);
+const ORDER_ID = parseInt(qs.get("order_id")||"0",10);
+let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
+const statusEl = $("#status"), orderBox=$("#orderBox"), kv=$("#kv"), doneBox=$("#doneBox"), dlLink=$("#dlLink");
 
-function setAuthUi(on){ $("#btnOpenLogin").style.display=on?"none":"inline-block";
-                         $("#btnOpenRegister").style.display=on?"none":"inline-block";
-                         $("#btnLogout").style.display=on?"inline-block":"none"; }
-
-$("#btnOpenLogin").onclick = ()=>$("#modalLogin").style.display="flex";
-$("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
-$("#btnLogout").onclick = ()=>{ TOKEN=null; setAuthUi(false); };
-
+function ensureAuth(){
+  if(!TOKEN){ $("#modalLogin").style.display="flex"; return false; }
+  return true;
+}
 $("#btnLogin").onclick = async ()=>{
-  const fd=new FormData();
+  const fd = new FormData();
   fd.append("username", $("#login_email").value);
   fd.append("password", $("#login_pass").value);
-  const r=await fetch("/auth/login",{method:"POST",body:fd});
+  const r = await fetch("/auth/login",{method:"POST",body:fd});
   if(!r.ok){ alert("Credenciales inválidas"); return; }
-  TOKEN=(await r.json()).access_token; $("#modalLogin").style.display="none"; setAuthUi(true); load();
+  const d = await r.json(); TOKEN=d.access_token; localStorage.setItem("EFX_TOKEN", TOKEN);
+  $("#modalLogin").style.display="none";
+  init();
 };
 
-$("#btnRegister").onclick = async ()=>{
-  const payload={email:$("#reg_email").value,password:$("#reg_pass").value,full_name:$("#reg_name").value||null};
-  const r=await fetch("/auth/register",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!r.ok){ alert("No se pudo crear la cuenta"); return; }
-  // auto login
-  const fd=new FormData(); fd.append("username", payload.email); fd.append("password", payload.password);
-  const lr=await fetch("/auth/login",{method:"POST",body:fd});
-  if(lr.ok){ TOKEN=(await lr.json()).access_token; setAuthUi(true); $("#modalRegister").style.display="none"; load(); }
-  else { $("#modalRegister").style.display="none"; alert("Cuenta creada. Inicia sesión."); }
-};
-
-async function ensureAuth(){ if(TOKEN) return true; $("#modalLogin").style.display="flex"; return false; }
-
-async function load(){
-  ORDER_ID=parseInt(getParam("order_id")||"0",10);
-  if(!(await ensureAuth())) return;
-  const r=await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
-  if(!r.ok){ $("#resumen").textContent="Error cargando órdenes"; return; }
-  const j=await r.json();
-  CURRENT=(j.orders||[]).find(o=>o.id===ORDER_ID);
-  if(!CURRENT){ $("#resumen").textContent="Orden no encontrada"; return; }
-  $("#resumen").innerHTML = `
-    <div><b>Orden:</b> #${CURRENT.id}</div>
-    <div><b>Parche:</b> <span class="tag">${CURRENT.patch_option_id}</span></div>
-    <div><b>Estado:</b> ${CURRENT.status}</div>
-    <div><b>Archivo:</b> ${CURRENT.original_filename||'—'}</div>
-  `;
-  if(CURRENT.download_ready){
-    $("#btnDescargar").classList.remove("hidden");
-    $("#btnDescargar").href="/orders/"+CURRENT.id+"/download";
-  }
+async function loadMine(){
+  const r = await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
+  if(!r.ok) throw new Error("no-orders");
+  return r.json();
+}
+function renderKV(o){
+  kv.innerHTML = "";
+  const row = (k,v)=> kv.insertAdjacentHTML("beforeend", `<div class="muted">${k}</div><div>${v??"—"}</div>`);
+  row("ID orden", o.id);
+  row("Estado", `<span class="badge">${o.status}</span>`);
+  row("Parche", o.patch_option_id);
+  row("Archivo original", o.original_filename || "—");
+  row("Creada", o.created_at);
+  row("Descarga lista", o.download_ready ? "Sí" : "No");
 }
 
-$("#btnPagar").onclick = async ()=>{
-  if(!(await ensureAuth())) return;
-  const r=await fetch(`/orders/${ORDER_ID}/confirm_payment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN}});
-  if(!r.ok){ alert("No se pudo confirmar el pago"); return; }
-  const d=await r.json();
-  $("#btnDescargar").classList.remove("hidden");
-  $("#btnDescargar").href=d.download_url;
-  alert("Pago confirmado. Archivo generado 👌");
-  load();
-};
+async function confirmPay(){
+  if(!ensureAuth()) return;
+  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {method:"POST", headers:{Authorization:"Bearer "+TOKEN}});
+  if(!r.ok){ alert("Error confirmando pago"); return; }
+  const d = await r.json();
+  doneBox.style.display = "block";
+  dlLink.href = d.download_url; // /orders/{id}/download
+}
 
-load();
+$("#btnPay").onclick = confirmPay;
+
+async function init(){
+  if(!ORDER_ID){ statusEl.innerHTML = '<span class="err">Falta parámetro order_id</span>'; return; }
+  if(!ensureAuth()) return;
+  statusEl.textContent = "Cargando orden…";
+  try{
+    const mine = await loadMine();
+    const o = (mine.orders||[]).find(x=>x.id===ORDER_ID);
+    if(!o){ statusEl.innerHTML = '<span class="err">Orden no encontrada</span>'; return; }
+    renderKV(o);
+    orderBox.style.display = "block";
+    statusEl.textContent = "";
+    if(o.download_ready){
+      doneBox.style.display = "block";
+      dlLink.href = `/orders/${o.id}/download`;
+    }
+  }catch(e){
+    statusEl.innerHTML = '<span class="err">No se pudo cargar la orden</span>';
+  }
+}
+init();
 </script>
 </body>
 </html>
