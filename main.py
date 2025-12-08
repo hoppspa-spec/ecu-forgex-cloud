@@ -161,9 +161,7 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
 
     body = await bin_file.read()
     analysis_id = str(uuid.uuid4())
-    saved = (Path("""{0}""") / "uploads_bin").format(DATA_DIR).replace("\\","/")
-    Path(saved).mkdir(parents=True, exist_ok=True)
-    saved_path = Path(saved) / f"{analysis_id}_{filename}"
+    saved_path = BIN_DIR / f"{analysis_id}_{filename}"
     with open(saved_path, "wb") as f:
         f.write(body)
 
@@ -234,7 +232,7 @@ def my_orders(current_user: User = Depends(get_current_user)):
             original = None
             aid = o.get("analysis_id")
             if aid:
-                files = list((Path("""{0}""") / "uploads_bin").format(DATA_DIR).glob(f"{aid}_*"))
+                files = list(BIN_DIR.glob(f"{aid}_*"))
                 if files:
                     name = files[0].name
                     parts = name.split("_", 1)
@@ -258,17 +256,9 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
         raise HTTPException(404, "Orden no encontrada")
 
     aid = o.get("analysis_id")
-    files = list((Path("""{0}""") / "uploads_bin").format(DATA_DIR).glob(f"{aid}_*")) if aid else []
-    if not files:
-        raise HTTPException(404, "BIN original no encontrado")
-
-    src = files[0]
-    original = src.name.split("_", 1)[1] if "_" in src.name else src.name
-    stem, ext = os.path.splitext(original)
-    patch = o.get("patch_option_id", "patch")
-
-    out_path = (Path("""{0}""") / "orders_mod").format(DATA_DIR) / f"{stem}_{patch}.mod{ext or '.bin'}"
-    Path(out_path).parent.mkdir(parents=True, exist_ok=True)
+    files = list(BIN_DIR.glob(f"{aid}_*")) if aid else []
+    out_path = MOD_DIR / f"{stem}_{patch}.mod{ext or '.bin'}"
+    MOD_DIR.mkdir(parents=True, exist_ok=True)
     with open(src, "rb") as f_in, open(out_path, "wb") as f_out:
         shutil.copyfileobj(f_in, f_out)
 
