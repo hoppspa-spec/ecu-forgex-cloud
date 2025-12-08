@@ -1,1 +1,0 @@
-export async function loadPartials(){ document.body.insertAdjacentHTML('afterbegin','<div style=color:#fff;background:#0b1220;padding:8px>ECU FORGE X</div>') }
