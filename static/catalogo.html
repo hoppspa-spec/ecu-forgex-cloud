@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<title>ECU FORGE X — Catálogo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<style>
+  body{margin:0;font-family:Arial,system-ui;background:#f4f6fb;color:#111}
+  header{background:#0b1220;color:#fff;padding:14px 18px;display:flex;gap:10px;align-items:center}
+  header .grow{flex:1}
+  header a.btn{background:#1e293b;color:#fff;text-decoration:none;border-radius:8px;padding:8px 12px}
+  .wrap{max-width:1100px;margin:20px auto;padding:0 10px}
+  .filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+  select,input{padding:10px;border:1px solid #e5e7eb;border-radius:10px}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .card{background:#fff;border:1px solid #eee;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);padding:14px;display:flex;flex-direction:column}
+  .card h4{margin:6px 0}
+  .muted{color:#64748b;font-size:13px}
+  .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#1f2937;font-size:12px;margin-right:6px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:#0066ff;color:#fff;border:0;border-radius:10px;padding:10px 12px;cursor:pointer}
+  .btn.alt{background:#0ea5e9}
+  .empty{padding:30px;text-align:center;background:#fff;border-radius:12px;border:1px solid #eee}
+  @media(max-width:980px){ .grid{grid-template-columns:1fr 1fr} }
+  @media(max-width:640px){ .grid{grid-template-columns:1fr} .filters{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<header>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X — Catálogo</div>
+  <div class="grow"></div>
+  <a class="btn" href="/static/index.html">Subir BIN</a>
+  <a class="btn" href="/static/usuarios.html">Mis órdenes</a>
+</header>
+
+<div class="wrap">
+  <div class="filters">
+    <input id="f_brand" placeholder="Marca (ej: BMW, VAG, Toyota)" />
+    <select id="f_engine">
+      <option value="">Motor: cualquiera</option>
+      <option value="petrol">Petrol</option>
+      <option value="diesel">Diesel</option>
+    </select>
+    <input id="f_ecu" placeholder="Familia ECU (ej: MG1, MED17.5, EDC17CP)" />
+    <select id="f_type">
+      <option value="">Tipo: todos</option>
+      <option value="patch">Parches</option>
+      <option value="pack">Packs</option>
+    </select>
+  </div>
+
+  <div id="grid" class="grid"></div>
+  <div id="empty" class="empty" style="display:none">Sin resultados. Ajusta filtros.</div>
+</div>
+
+<script>
+const cache={};
+async function jget(url){ if(cache[url]) return cache[url]; const d=await fetch(url).then(r=>r.json()); cache[url]=d; return d; }
+
+async function loadAll(engine, ecuFam, brand){
+  // global
+  const global = await jget("/static/patches/global.json").catch(()=>({patches:[]}));
+  let patches = global.patches || [];
+
+  if(engine) patches = patches.filter(p => (p.engines||[]).includes(engine));
+  if(ecuFam){
+    const up = ecuFam.toUpperCase();
+    patches = patches.filter(p => (p.compatible_ecu||[]).some(f => up.includes(f.toUpperCase())));
+  }
+
+  // override por marca
+  if(brand){
+    const key = brand.toLowerCase().replace(/\s+/g,'_');
+    try {
+      const ov = await jget(`/static/patches/brands/${key}.json`);
+      const fams = ov?.ecus || {};
+      const famKey = ecuFam && Object.keys(fams).find(k => ecuFam.toUpperCase().includes(k.toUpperCase()));
+      if(famKey){
+        const rules = fams[famKey];
+        if(rules.exclude) patches = patches.filter(p => !rules.exclude.includes(p.id));
+        if(rules.include) patches = patches.filter(p => rules.include.includes(p.id));
+        if(rules.rename)  patches = patches.map(p => ({...p, label: (rules.rename[p.id]||p.label)}));
+      }
+    } catch {}
+  }
+
+  // packs
+  const packs = await jget("/static/patches/packs.json").catch(()=>({packs:[]}));
+  let packsList = packs.packs || [];
+  if(engine) packsList = packsList.filter(pk => pk.engine===engine);
+
+  return {patches, packs:packsList};
+}
+
+function renderCards(items, type){
+  const grid = document.getElementById("grid");
+  grid.innerHTML = items.map(x => {
+    if(type==="pack"){
+      return `<div class="card">
+        <div class="row"><span class="tag">PACK</span><span class="tag">${x.engine.toUpperCase()}</span></div>
+        <h4>${x.label}</h4>
+        <div class="muted">${x.desc||""}</div>
+        <div class="row" style="margin-top:8px">${(x.includes||[]).map(id=>`<span class="tag">${id}</span>`).join("")}</div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="gotoUpload()">Usar en mi BIN</button>
+          <span class="muted">${x.price?.USD ? `$${x.price.USD} USD`:""}</span>
+        </div>
+      </div>`;
+    }else{
+      return `<div class="card">
+        <div class="row"><span class="tag">PARCHE</span><span class="tag">${(x.category||'').toUpperCase()}</span></div>
+        <h4>${x.label}</h4>
+        <div class="muted">${x.desc||""}</div>
+        <div class="row" style="margin-top:8px">${(x.compatible_ecu||[]).slice(0,4).map(f=>`<span class="tag">${f}</span>`).join("")}</div>
+        <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+          <button class="btn" onclick="gotoUpload()">Usar en mi BIN</button>
+          <span class="muted">${x.price?.USD ? `$${x.price.USD} USD`:""}</span>
+        </div>
+      </div>`;
+    }
+  }).join("");
+  document.getElementById("empty").style.display = items.length ? "none":"block";
+}
+
+function gotoUpload(){ location.href="/static/index.html"; }
+
+async function refresh(){
+  const brand = document.getElementById("f_brand").value.trim();
+  const engine = document.getElementById("f_engine").value || "";
+  const ecu   = document.getElementById("f_ecu").value.trim();
+  const type  = document.getElementById("f_type").value || "";
+
+  const {patches, packs} = await loadAll(engine||null, ecu||null, brand||null);
+  let items = [];
+  if(!type || type==="patch") items = items.concat(patches.map(p=>({...p,__type:"patch"})));
+  if(!type || type==="pack")  items = items.concat(packs.map(p=>({...p,__type:"pack"})));
+  // orden simple
+  items.sort((a,b)=> (a.__type===b.__type? 0 : a.__type==="pack" ? -1 : 1));
+  renderCards(items, null);
+}
+
+["f_brand","f_engine","f_ecu","f_type"].forEach(id=>{
+  const el=document.getElementById(id);
+  el.addEventListener("input", refresh);
+  el.addEventListener("change", refresh);
+});
+
+refresh();
+</script>
+</body>
+</html>
