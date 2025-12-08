@@ -188,10 +188,20 @@ $("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
 $("#btnLogout").onclick = ()=>{ TOKEN=null; setAuthUi(false); log("Sesión cerrada."); };
 
 $("#btnLogin").onclick = async ()=>{
-  const fd = new FormData(); fd.append("username", $("#login_email").value); fd.append("password", $("#login_pass").value);
+  const fd = new FormData();
+  fd.append("username", $("#login_email").value);
+  fd.append("password", $("#login_pass").value);
+
   const r = await fetch("/auth/login",{method:"POST",body:fd});
   if(!r.ok){ alert("Credenciales inválidas"); return; }
-  const d = await r.json(); TOKEN=d.access_token; $("#modalLogin").style.display="none"; setAuthUi(true); log("Sesión iniciada.");
+
+  const d = await r.json();
+  TOKEN = d.access_token;
+  localStorage.setItem("EFX_TOKEN", TOKEN);   // ✔️ AHÍ MISMO
+
+  $("#modalLogin").style.display="none";
+  setAuthUi(true);
+  log("Sesión iniciada.");
 };
 
 $("#btnRegister").onclick = async ()=>{
