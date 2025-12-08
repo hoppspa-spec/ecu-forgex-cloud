@@ -1,1 +1,117 @@
-<!doctype html><meta charset='utf-8'><h1>Checkout</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>ECU FORGE X — Checkout</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#111}
+  header{background:#0b1220;color:#fff;padding:14px 18px;font-size:22px;font-weight:bold}
+  .wrap{max-width:880px;margin:24px auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:20px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .card{border:1px solid #eee;border-radius:8px;padding:14px}
+  button{padding:12px 14px;border-radius:8px;border:0;background:#0066ff;color:#fff;cursor:pointer}
+  button:hover{background:#004bcc}
+  .muted{color:#666}
+  .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#225}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>ECU FORGE X — Checkout</header>
+<div class="wrap">
+  <div class="row">
+    <div class="card">
+      <h3>Resumen</h3>
+      <div id="resumen" class="muted">Cargando…</div>
+    </div>
+    <div class="card">
+      <h3>Pago</h3>
+      <p class="muted">Demo: al confirmar, generamos el archivo <b>.mod</b> y quedará listo para descargar.</p>
+      <button id="btnPagar">Confirmar pago</button>
+      <a id="btnDescargar" class="hidden" download>
+        <button style="margin-left:8px;background:#28a745">Descargar archivo</button>
+      </a>
+    </div>
+  </div>
+  <div style="margin-top:16px">
+    <a href="/static/usuarios.html"><button style="background:#555">Ir a mis órdenes</button></a>
+    <a href="/static/index.html"><button style="margin-left:8px;background:#777">Volver</button></a>
+  </div>
+</div>
+
+<!-- login modal minimal -->
+<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+    <h3>Iniciar sesión</h3>
+    <input id="login_email" placeholder="Email" />
+    <input id="login_pass" type="password" placeholder="Contraseña" />
+    <button id="btnLogin">Ingresar</button>
+  </div>
+</div>
+
+<script>
+let TOKEN=null, ORDER_ID=null, CURRENT=null;
+
+const $=(q,el=document)=>el.querySelector(q);
+function getParam(k){ return new URLSearchParams(location.search).get(k); }
+
+function openLogin(){ $("#modalLogin").style.display="flex"; }
+async function ensureAuth(){
+  if(TOKEN) return true;
+  openLogin();
+  return false;
+}
+
+$("#btnLogin").onclick = async ()=>{
+  const fd = new FormData();
+  fd.append("username", $("#login_email").value);
+  fd.append("password", $("#login_pass").value);
+  const r = await fetch("/auth/login",{ method:"POST", body: fd });
+  if(!r.ok){ alert("Credenciales inválidas"); return; }
+  const d = await r.json(); TOKEN=d.access_token; $("#modalLogin").style.display="none";
+  load();
+};
+
+async function load(){
+  ORDER_ID = parseInt(getParam("order_id")||"0",10);
+  if(!(await ensureAuth())) return;
+
+  const r = await fetch("/orders/mine",{ headers:{ "Authorization":"Bearer "+TOKEN }});
+  if(!r.ok){ $("#resumen").textContent="Error cargando órdenes"; return; }
+  const j = await r.json();
+  CURRENT = (j.orders||[]).find(o=>o.id===ORDER_ID);
+
+  if(!CURRENT){ $("#resumen").textContent="Orden no encontrada"; return; }
+
+  $("#resumen").innerHTML = `
+    <div><b>Orden:</b> #${CURRENT.id}</div>
+    <div><b>Parche:</b> <span class="tag">${CURRENT.patch_option_id}</span></div>
+    <div><b>Estado:</b> ${CURRENT.status}</div>
+    <div><b>Archivo:</b> ${CURRENT.original_filename || '—'}</div>
+  `;
+
+  if(CURRENT.download_ready){
+    $("#btnDescargar").classList.remove("hidden");
+    $("#btnDescargar").href = "/orders/"+CURRENT.id+"/download";
+  }
+}
+
+$("#btnPagar").onclick = async ()=>{
+  if(!(await ensureAuth())) return;
+  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`,{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+TOKEN }
+  });
+  if(!r.ok){ alert("No se pudo confirmar el pago"); return; }
+  const d = await r.json();
+  $("#btnDescargar").classList.remove("hidden");
+  $("#btnDescargar").href = d.download_url;
+  alert("Pago confirmado. Archivo generado 👌");
+  load();
+};
+
+load();
+</script>
+</body>
+</html>
