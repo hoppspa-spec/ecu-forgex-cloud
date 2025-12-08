@@ -1,1 +1,94 @@
-<!doctype html><meta charset='utf-8'><h1>Usuarios</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>ECU FORGE X — Mis Órdenes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#f6f7fb;color:#111}
+  header{background:#0b1220;color:#fff;padding:14px 18px;font-size:22px;font-weight:bold}
+  .wrap{max-width:980px;margin:24px auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:20px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
+  .tag{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#225}
+  button{padding:8px 12px;border-radius:8px;border:0;background:#0066ff;color:#fff;cursor:pointer}
+  button:hover{background:#004bcc}
+</style>
+</head>
+<body>
+<header>ECU FORGE X — Mis Órdenes</header>
+<div class="wrap">
+  <div style="margin-bottom:14px">
+    <a href="/static/index.html"><button style="background:#777">Volver</button></a>
+  </div>
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Archivo</th>
+        <th>Parche</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- login minimal -->
+<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+    <h3>Iniciar sesión</h3>
+    <input id="login_email" placeholder="Email" />
+    <input id="login_pass" type="password" placeholder="Contraseña" />
+    <button id="btnLogin">Ingresar</button>
+  </div>
+</div>
+
+<script>
+let TOKEN=null;
+const $=(q,el=document)=>el.querySelector(q);
+
+function openLogin(){ $("#modalLogin").style.display="flex"; }
+async function ensureAuth(){
+  if(TOKEN) return true;
+  openLogin();
+  return false;
+}
+
+$("#btnLogin").onclick = async ()=>{
+  const fd = new FormData();
+  fd.append("username", $("#login_email").value);
+  fd.append("password", $("#login_pass").value);
+  const r = await fetch("/auth/login",{ method:"POST", body: fd });
+  if(!r.ok){ alert("Credenciales inválidas"); return; }
+  const d = await r.json(); TOKEN=d.access_token; $("#modalLogin").style.display="none";
+  load();
+};
+
+async function load(){
+  if(!(await ensureAuth())) return;
+
+  const r = await fetch("/orders/mine",{ headers:{ "Authorization":"Bearer "+TOKEN }});
+  const tbody = $("#tbl tbody"); tbody.innerHTML="";
+  if(!r.ok){ tbody.innerHTML = `<tr><td colspan="5">Error cargando órdenes</td></tr>`; return; }
+  const j = await r.json();
+  const rows = (j.orders||[]).map(o=>{
+    const dBtn = o.download_ready
+      ? `<a href="/orders/${o.id}/download"><button style="background:#28a745">Descargar</button></a>`
+      : `<span class="tag">Pendiente</span>`;
+    return `<tr>
+      <td>#${o.id}</td>
+      <td>${o.original_filename || "—"}</td>
+      <td><span class="tag">${o.patch_option_id}</span></td>
+      <td>${o.status}</td>
+      <td>${dBtn}</td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="5">Sin órdenes</td></tr>`;
+  tbody.innerHTML = rows;
+}
+
+load();
+</script>
+</body>
+</html>
