@@ -120,6 +120,43 @@
 </div>
 
 <script>
+  <script>
+// ===== Detección de familia ECU (PRO) =====
+function detectEcuFamily(ecuType, filename) {
+  const src = ((ecuType||"") + " " + (filename||"")).toUpperCase();
+
+  // Reglas por familia (amplíalas cuando quieras)
+  const rules = [
+    {key:"MG1CS",   re:/(MG1CS\d{0,3})/},                          // MG1CS003 etc.
+    {key:"MG1",     re:/\bMG1\b/},
+    {key:"MED17.5", re:/MED17\.5(\.\d+)?/},                        // MED17.5, MED17.5.21
+    {key:"MED17",   re:/\bMED17\b/},
+    {key:"MEVD",    re:/\bMEVD\b/},
+    {key:"ME7",     re:/\bME7(\.\d+)?\b/},
+    {key:"EDC17CP", re:/EDC17CP\d*/},                              // EDC17CP20 / 46...
+    {key:"EDC17C",  re:/EDC17C\d*/},                               // EDC17C46 etc.
+    {key:"EDC17",   re:/\bEDC17\b/},
+    {key:"EDC16",   re:/\bEDC16\b/},
+    {key:"MD1",     re:/\bMD1\b/},
+    {key:"DCM",     re:/\bDCM\d*\b/},
+    {key:"SID",     re:/\bSID\d{3}\b/},                            // SID208/211/305/310
+    {key:"DENSO",   re:/\bDENSO\b/},
+    {key:"DELHPI",  re:/\bDELPHI\b/},
+    {key:"KEFICO",  re:/\bKEFICO\b/}
+  ];
+
+  for (const r of rules) {
+    const m = src.match(r.re);
+    if (m) return (m[1] || r.key); // si capturó específico, devuélvelo
+  }
+  // fallback por keywords
+  if (/BOSCH/.test(src) && /MG1/.test(src)) return "MG1";
+  if (/BOSCH/.test(src) && /MED17/.test(src)) return "MED17";
+  if (/BOSCH/.test(src) && /EDC17/.test(src)) return "EDC17";
+  return null;
+}
+</script>
+
 /* ======= estado ======= */
 let TOKEN=null, lastAnalysis=null, lastFile=null, lastCvn=null, engineDetected="auto";
 const $=(q,el=document)=>el.querySelector(q);
