@@ -1,1 +1,77 @@
-{"petrol": [], "diesel": [], "bonus": []}
+{
+  "petrol": [
+    {
+      "id": "speed_limiter",
+      "label": "Speed Limiter OFF",
+      "desc": "Desactiva o incrementa el limitador de velocidad.",
+      "category": "performance",
+      "compatible_ecu": ["MED17", "MG1", "MEVD", "ME7"]
+    },
+    {
+      "id": "rpm_limit",
+      "label": "RPM Limit Increase",
+      "desc": "Permite elevar el límite de RPM seguro del motor.",
+      "category": "performance",
+      "compatible_ecu": ["MED17", "MG1"]
+    },
+    {
+      "id": "pop_bang",
+      "label": "Pop & Bang",
+      "desc": "Activa petardeos controlados en desaceleración.",
+      "category": "sound",
+      "compatible_ecu": ["MED17", "MG1"]
+    },
+    {
+      "id": "catalyst_eff_off",
+      "label": "Catalyst Efficiency OFF",
+      "desc": "Anula el monitoreo de eficiencia del catalizador.",
+      "category": "emissions",
+      "compatible_ecu": ["MED17", "MG1", "MEVD"]
+    },
+    {
+      "id": "dtc_off",
+      "label": "DTC OFF (General)",
+      "desc": "Desactiva códigos de falla específicos según lista.",
+      "category": "diagnostic",
+      "compatible_ecu": ["MED17", "MG1"]
+    }
+  ],
+
+  "diesel": [
+    {
+      "id": "dpf_off",
+      "label": "DPF OFF",
+      "desc": "Deshabilita regeneraciones y monitoreo del filtro DPF.",
+      "category": "emissions",
+      "compatible_ecu": ["EDC16", "EDC17", "MD1", "DCM"]
+    },
+    {
+      "id": "egr_off",
+      "label": "EGR OFF",
+      "desc": "Desactiva la válvula EGR y sus diagnósticos asociados.",
+      "category": "emissions",
+      "compatible_ecu": ["EDC16", "EDC17", "MD1"]
+    },
+    {
+      "id": "adblue_scr_off",
+      "label": "AdBlue / SCR OFF",
+      "desc": "Desactiva el sistema SCR y consumo de urea.",
+      "category": "emissions",
+      "compatible_ecu": ["EDC17", "MD1", "DCM"]
+    },
+    {
+      "id": "swirl_flaps_off",
+      "label": "Swirl Flaps OFF",
+      "desc": "Anula la operación y diagnósticos de las mariposas de admisión.",
+      "category": "performance",
+      "compatible_ecu": ["EDC16", "EDC17"]
+    },
+    {
+      "id": "dtc_off",
+      "label": "DTC OFF (General)",
+      "desc": "Desactiva códigos de falla específicos según lista.",
+      "category": "diagnostic",
+      "compatible_ecu": ["EDC16", "EDC17", "MD1"]
+    }
+  ]
+}
