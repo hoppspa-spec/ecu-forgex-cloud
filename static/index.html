@@ -1,266 +1,167 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8" />
-    <title>ECU FORGE X — Generar BIN.MOD</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            color: #111;
-        }
-        header {
-            background: #0b1220;
-            color: #fff;
-            padding: 15px;
-            font-size: 26px;
-            font-weight: bold;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 20px;
-            padding: 20px;
-        }
-
-        /* PANEL IZQUIERDO */
-        .panel {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
-        }
-        .panel h3 {
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 20px;
-        }
-        input, select {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 12px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #0066ff;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        button:hover {
-            background: #004bcc;
-        }
-
-        /* PANEL CENTRAL */
-        .panel-large {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0px 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .patch-button {
-            margin: 5px 0;
-            padding: 10px;
-            background: #222;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-        .patch-button:hover {
-            background: #000;
-        }
-
-        .log-box {
-            background: #000;
-            color: #00ff00;
-            padding: 15px;
-            border-radius: 6px;
-            font-family: monospace;
-            height: 200px;
-            overflow-y: auto;
-        }
-
-        /* MODAL */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            justify-content: center;
-            align-items: center;
-        }
-        .modal {
-            background: white;
-            padding: 25px;
-            width: 350px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-        .modal h3 {
-            margin-top: 0;
-        }
-    </style>
+<meta charset="UTF-8" />
+<title>ECU FORGE X — Generar BIN.MOD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#f4f4f4;color:#111}
+  header{background:#0b1220;color:#fff;padding:14px 18px;font-size:22px;font-weight:bold}
+  .container{display:grid;grid-template-columns:340px 1fr;gap:20px;padding:20px}
+  .panel,.panel-large{background:#fff;padding:18px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08)}
+  .panel h3,.panel-large h3{margin:0 0 12px}
+  input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid #ddd;margin:0 0 10px}
+  button{background:#0066ff;color:#fff;border:none;cursor:pointer}
+  button:hover{background:#004bcc}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .log{background:#000;color:#00ff72;font-family:monospace;height:180px;border-radius:8px;padding:12px;overflow:auto}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .muted{color:#666;font-size:13px}
+  .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef;color:#225}
+</style>
 </head>
-
 <body>
 
 <header>ECU FORGE X</header>
 
 <div class="container">
-
-    <!-- PANEL IZQUIERDO -->
-    <div class="panel">
-        <h3>Información del Vehículo</h3>
-
-        <input id="marca" placeholder="Ej: BMW" />
-        <input id="modelo" placeholder="Ej: 320i" />
-        <input id="anio" placeholder="Ej: 2018" />
-        <input id="motor" placeholder="Ej: B48 2.0T" />
-        <input id="ecu_type" placeholder="Ej: Bosch MG1" />
-
-        <label><b>Archivo BIN</b></label>
-        <input id="binfile" type="file" />
-
-        <button onclick="analizarBIN()">Analizar BIN</button>
+  <!-- IZQUIERDA -->
+  <div class="panel">
+    <h3>Información del Vehículo</h3>
+    <input id="marca" placeholder="Marca (ej: BMW)" />
+    <input id="modelo" placeholder="Modelo (ej: 320i)" />
+    <div class="row">
+      <input id="anio" placeholder="Año (ej: 2018)" />
+      <input id="motor" placeholder="Motor (ej: B48 2.0T)" />
     </div>
+    <input id="ecu_type" placeholder="Tipo ECU (ej: Bosch MG1)" />
 
-    <!-- PANEL CENTRAL -->
-    <div class="panel-large">
-        
-        <h3>Parches Disponibles</h3>
-        <div id="patches">Sube tu BIN para ver parches.</div>
+    <h3 style="margin-top:16px">Archivo BIN</h3>
+    <input id="binfile" type="file" />
+    <button id="btnAnalizar">Analizar BIN</button>
+    <div class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</div>
+  </div>
 
+  <!-- DERECHA -->
+  <div class="panel-large">
+    <div class="grid2">
+      <div>
+        <h3>Parches Disponibles <span id="ecuInfo" class="badge" style="display:none"></span></h3>
+        <select id="patchSelect" disabled>
+          <option value="">— Sube tu BIN para ver opciones —</option>
+        </select>
+        <button id="btnAplicar" disabled>Aplicar / Comprar</button>
+        <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
+          No hay parches disponibles para esta ECU. <br/>
+          Dentro de máximo <b>36 horas</b> podemos generar una solución personalizada.
+          <button id="btn36h" style="margin-top:8px">Solicitar solución (36h)</button>
+        </div>
+      </div>
+      <div>
         <h3>Resultado</h3>
-        <div id="resultado">Aún no se ha generado ningún archivo.</div>
-
-        <h3>Log</h3>
-        <div id="log" class="log-box">Esperando acciones...</div>
-
+        <div id="resultado" class="muted">Aún no se ha generado ningún archivo.</div>
+      </div>
     </div>
 
+    <h3 style="margin-top:16px">Log</h3>
+    <div id="log" class="log">Esperando acciones…</div>
+  </div>
 </div>
 
-<!-- MODAL LOGIN -->
-<div id="modalLogin" class="modal-overlay">
-    <div class="modal">
-        <h3>Iniciar Sesión</h3>
-        <input id="login_email" placeholder="Email" />
-        <input id="login_pass" type="password" placeholder="Contraseña" />
-        <button onclick="login()">Ingresar</button>
-        <button style="background:#555;margin-top:10px;" onclick="closeModal('modalLogin')">Cerrar</button>
-    </div>
-</div>
-
-<!-- MODAL 36H -->
-<div id="modal36" class="modal-overlay">
-    <div class="modal">
-        <h3>Solicitud enviada</h3>
-        <p>Dentro de máximo <b>36 horas</b> nuestro equipo generará una solución para tu archivo.</p>
-        <button onclick="closeModal('modal36')">OK</button>
-    </div>
+<!-- MODAL LOGIN sencillo -->
+<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:#fff;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.25)">
+    <h3>Iniciar sesión</h3>
+    <input id="login_email" placeholder="Email" />
+    <input id="login_pass" type="password" placeholder="Contraseña" />
+    <button id="btnLogin">Ingresar</button>
+    <button id="btnCloseLogin" style="background:#666;margin-top:8px">Cerrar</button>
+  </div>
 </div>
 
 <script>
-let TOKEN = null;
-let lastAnalysis = null;
+let TOKEN=null, lastAnalysis=null;
 
-function log(msg){
-    const box = document.getElementById("log");
-    box.innerHTML += "\\n" + msg;
-    box.scrollTop = box.scrollHeight;
-}
+const $ = (q,el=document)=>el.querySelector(q);
+const log = (m)=>{ const box=$("#log"); box.textContent += "\\n"+m; box.scrollTop=box.scrollHeight; };
 
-async function analizarBIN(){
-    const file = document.getElementById("binfile").files[0];
-    if(!file){ alert("Selecciona un archivo BIN"); return; }
+$("#btnAnalizar").onclick = async ()=>{
+  const file = $("#binfile").files[0];
+  if(!file){ alert("Selecciona un BIN"); return; }
+  const fd = new FormData(); fd.append("bin_file", file);
+  log("Subiendo y analizando BIN…");
+  const r = await fetch("/analyze_bin",{ method:"POST", body:fd });
+  if(!r.ok){ log("Error analizando BIN"); return; }
+  const data = await r.json();
+  lastAnalysis = data;
+  log("Análisis OK. ECU: "+data.ecu_type+" PN: "+data.ecu_part_number);
 
-    const fd = new FormData();
-    fd.append("bin_file", file);
+  // UI ecu info
+  const ecuInfo=$("#ecuInfo");
+  ecuInfo.style.display="inline-block";
+  ecuInfo.textContent = data.ecu_type || "ECU";
 
-    log("Analizando BIN...");
-    const r = await fetch("/analyze_bin", { method:"POST", body: fd });
+  // Llenar dropdown
+  const sel=$("#patchSelect");
+  sel.innerHTML="";
+  if((data.available_patches||[]).length){
+    sel.disabled=false; $("#btnAplicar").disabled=false;
+    $("#noPatchMsg").style.display="none";
+    sel.append(new Option("— Selecciona un parche —",""));
+    data.available_patches.forEach(p=>sel.append(new Option(p.label, p.id)));
+  }else{
+    sel.disabled=true; $("#btnAplicar").disabled=true;
+    $("#noPatchMsg").style.display="block";
+    sel.append(new Option("Sin parches disponibles",""));
+  }
+};
 
-    if(!r.ok){ log("Error analizando BIN"); return; }
+$("#btnAplicar").onclick = async ()=>{
+  const patch = $("#patchSelect").value;
+  if(!patch){ alert("Selecciona un parche"); return; }
+  if(!TOKEN){ openLogin(); return; }
 
-    const data = await r.json();
-    lastAnalysis = data;
-    log("BIN analizado correctamente.");
+  // Crear orden
+  const r = await fetch("/orders",{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+    body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: patch })
+  });
+  if(!r.ok){ log("Error creando orden"); return; }
+  const d = await r.json();
+  log("Orden creada #"+d.id+". Redirigiendo a checkout…");
+  location.href = "/static/checkout.html?order_id="+d.id;
+};
 
-    if(data.available_patches.length === 0){
-        document.getElementById("patches").innerHTML = `
-            <b>No hay parches disponibles para esta ECU.</b><br>
-            Dentro de máximo <b>36 horas</b> podemos generar una solución personalizada.<br><br>
-            <button onclick="solicitar36H()" style="background:#d00;">Solicitar solución (36h)</button>
-        `;
-    } else {
-        document.getElementById("patches").innerHTML =
-            data.available_patches.map(
-                p => `<button class="patch-button" onclick="comprar('${p.id}')">${p.label}</button>`
-            ).join("");
-    }
-}
+$("#btn36h").onclick = async ()=>{
+  if(!lastAnalysis){ alert("Primero analiza un BIN"); return; }
+  if(!TOKEN){ openLogin(); return; }
 
-function solicitar36H(){
-    if(!TOKEN){
-        openModal("modalLogin");
-        return;
-    }
-    fetch("/patch_requests", {
-        method:"POST",
-        headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-        body: JSON.stringify({
-            marca: marca.value, modelo: modelo.value, anio: anio.value,
-            motor: motor.value, ecu_type: ecu_type.value,
-            analysis_id: lastAnalysis?.analysis_id,
-            original_filename: lastAnalysis?.filename
-        })
-    });
-    openModal("modal36");
-}
+  await fetch("/patch_requests",{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+    body: JSON.stringify({
+      marca: $("#marca").value, modelo: $("#modelo").value, anio: $("#anio").value, motor: $("#motor").value,
+      ecu_type: $("#ecu_type").value,
+      analysis_id: lastAnalysis?.analysis_id, original_filename: lastAnalysis?.filename
+    })
+  });
+  log("Solicitud 36h enviada. Te contactaremos 👌");
+  alert("Solicitud enviada. Máximo 36h 👍");
+};
 
-function comprar(patch_id){
-    if(!TOKEN){
-        openModal("modalLogin");
-        return;
-    }
-    fetch("/orders", {
-        method:"POST",
-        headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-        body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: patch_id })
-    }).then(r => r.json()).then(d => {
-        window.location = "/static/checkout.html?order_id="+d.id;
-    });
-}
+function openLogin(){ $("#modalLogin").style.display="flex"; }
+function closeLogin(){ $("#modalLogin").style.display="none"; }
+$("#btnCloseLogin").onclick=closeLogin;
 
-function openModal(id){ document.getElementById(id).style.display="flex"; }
-function closeModal(id){ document.getElementById(id).style.display="none"; }
-
-async function login(){
-    const fd = new FormData();
-    fd.append("username", login_email.value);
-    fd.append("password", login_pass.value);
-
-    const r = await fetch("/auth/login", { method:"POST", body: fd });
-    if(!r.ok){ alert("Credenciales incorrectas"); return; }
-
-    const data = await r.json();
-    TOKEN = data.access_token;
-    closeModal("modalLogin");
-    log("Sesión iniciada.");
-}
+$("#btnLogin").onclick = async ()=>{
+  const fd = new FormData();
+  fd.append("username", $("#login_email").value);
+  fd.append("password", $("#login_pass").value);
+  const r = await fetch("/auth/login",{ method:"POST", body:fd });
+  if(!r.ok){ alert("Email o contraseña inválidos"); return; }
+  const d = await r.json(); TOKEN=d.access_token; closeLogin(); log("Sesión iniciada.");
+};
 </script>
-
 </body>
 </html>
