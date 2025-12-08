@@ -257,64 +257,131 @@ function currentEngineMode(){
   return engineDetected==="auto" ? (lastAnalysis?.available_patches?.length? "petrol":"diesel") : engineDetected;
 }
 
-function fillPatches(){
-  const sel = $("#patchSelect");
-  sel.innerHTML="";
+<script>
+// Carga json con caché simple en memoria
+const _jsonCache = {};
+async function loadJsonCached(url){
+  if(_jsonCache[url]) return _jsonCache[url];
+  const data = await fetch(url).then(r=>r.json());
+  _jsonCache[url] = data;
+  return data;
+}
 
-  let list = lastAnalysis?.available_patches || [];
-  const mode = currentEngineMode();
+async function loadPatchesCombined(engineMode, ecuFamily, brand){
+  // 1) base global
+  const global = await loadJsonCached("/static/patches/global.json").catch(()=>({patches:[]}));
+  let list = global.patches || [];
 
-  // si la API vino vacía, usamos catálogo local por modo
-  if(!list.length){
-    if(mode==="petrol") list = PATCH_MAP.petrol;
-    else if(mode==="diesel") list = PATCH_MAP.diesel;
+  // 2) aplica motor (petrol/diesel)
+  if (engineMode && engineMode !== "auto") {
+    list = list.filter(p => (p.engines||[]).includes(engineMode));
   }
 
-  if(list.length){
-    sel.disabled=false; $("#btnAplicar").disabled=false; $("#noPatchMsg").style.display="none";
+  // 3) filtra por familia ECU (si tenemos)
+  if (ecuFamily) {
+    const up = ecuFamily.toUpperCase();
+    list = list.filter(p => (p.compatible_ecu||[]).some(f => up.includes(f.toUpperCase())));
+  }
+
+  // 4) override por marca
+  if (brand) {
+    const brandKey = brand.toLowerCase().replace(/\s+/g,'_');
+    try {
+      const ov = await loadJsonCached(`/static/patches/brands/${brandKey}.json`);
+      if (ov?.ecus) {
+        const famKey = Object.keys(ov.ecus).find(k => ecuFamily && ecuFamily.toUpperCase().includes(k.toUpperCase()));
+        if (famKey) {
+          const rules = ov.ecus[famKey];
+          if (rules.exclude) list = list.filter(p => !rules.exclude.includes(p.id));
+          if (rules.include) list = list.filter(p => rules.include.includes(p.id));
+          if (rules.rename)  list = list.map(p => ({...p, label: rules.rename[p.id] || p.label}));
+        }
+      }
+    } catch {}
+  }
+
+  // 5) añade packs (opcional según motor)
+  let packs = [];
+  try {
+    const packData = await loadJsonCached("/static/patches/packs.json");
+    packs = (packData.packs||[]).filter(pk => !engineMode || engineMode==="auto" || pk.engine===engineMode);
+  } catch {}
+
+  return { patches: list, packs };
+}
+
+async function fillPatches(){
+  const sel = document.getElementById("patchSelect");
+  sel.innerHTML = "";
+  const mode = currentEngineMode(); // tu función existente
+  const ecuFam = detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename);
+  const brand = (document.getElementById("marca").value||"").trim();
+
+  const {patches, packs} = await loadPatchesCombined(mode, ecuFam, brand);
+
+  if (patches.length) {
+    sel.disabled = false; document.getElementById("btnAplicar").disabled = false;
+    document.getElementById("noPatchMsg").style.display = "none";
     sel.append(new Option("— Selecciona un parche —",""));
-    list.forEach(p=> sel.append(new Option(p.label, p.id)));
-  }else{
-    sel.disabled=true; $("#btnAplicar").disabled=true; $("#noPatchMsg").style.display="block";
+    patches.forEach(p => sel.append(new Option(`${p.label}`, p.id)));
+    // separador visual
+    if (packs.length) {
+      sel.append(new Option("──────────── PACKS ────────────",""));
+      packs.forEach(pk => sel.append(new Option(`🧩 ${pk.label}`, `pack:${pk.id}`)));
+    }
+  } else if (packs.length) {
+    sel.disabled = false; document.getElementById("btnAplicar").disabled = false;
+    document.getElementById("noPatchMsg").style.display = "none";
+    sel.append(new Option("— Selecciona un pack —",""));
+    packs.forEach(pk => sel.append(new Option(`🧩 ${pk.label}`, `pack:${pk.id}`)));
+  } else {
+    sel.disabled = true; document.getElementById("btnAplicar").disabled = true;
+    document.getElementById("noPatchMsg").style.display = "block";
     sel.append(new Option("Sin parches disponibles",""));
   }
 }
 
-$("#engineSelect").addEventListener("change", fillPatches);
+// Hook para comprar pack o parche
+// Reemplaza tu handler de "Aplicar/Comprar" por esta versión:
+document.getElementById("btnAplicar").onclick = async ()=>{
+  const sel = document.getElementById("patchSelect");
+  const value = sel.value;
+  if(!value){ alert("Selecciona una opción"); return; }
+  if(!TOKEN){ document.getElementById("modalLogin").style.display="flex"; return; }
 
-/* ======= acciones ======= */
-$("#btnAplicar").onclick = async ()=>{
-  const patch = $("#patchSelect").value;
-  if(!patch){ alert("Selecciona un parche"); return; }
-  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+  // Si es pack, abrimos un mini modal de elección (o lo procesamos directo).
+  if(value.startsWith("pack:")){
+    const packId = value.slice(5);
+    // Por simplicidad: creamos orden por cada patch del pack (secuencialmente).
+    // Alternativa: crear un endpoint /orders/pack (en el futuro).
+    const packData = await loadJsonCached("/static/patches/packs.json");
+    const pk = (packData.packs||[]).find(x=>x.id===packId);
+    if(!pk || !pk.includes || !pk.includes.length){ alert("Pack inválido"); return; }
 
-  const r = await fetch("/orders",{
+    // Creamos una orden por el PRIMER parche y llevamos al checkout.
+    const firstPatch = pk.includes[0];
+    const r = await fetch("/orders", {
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: firstPatch })
+    });
+    if(!r.ok){ alert("Error creando orden"); return; }
+    const d = await r.json();
+    location.href = "/static/checkout.html?order_id="+d.id;
+    return;
+  }
+
+  // Parche individual (flujo normal)
+  const r = await fetch("/orders", {
     method:"POST",
     headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-    body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: patch })
+    body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: value })
   });
-  if(!r.ok){ log("Error creando orden"); return; }
+  if(!r.ok){ alert("Error creando orden"); return; }
   const d = await r.json();
-  log("Orden #"+d.id+" creada. Redirigiendo a checkout…");
   location.href = "/static/checkout.html?order_id="+d.id;
 };
-
-$("#btn36h").onclick = async ()=>{
-  if(!lastAnalysis){ alert("Primero analiza un BIN"); return; }
-  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
-
-  await fetch("/patch_requests",{
-    method:"POST",
-    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-    body: JSON.stringify({
-      marca: $("#marca").value, modelo: $("#modelo").value, anio: $("#anio").value, motor: $("#motor").value,
-      ecu_type: $("#ecu_type").value || lastAnalysis?.ecu_type,
-      analysis_id: lastAnalysis?.analysis_id, original_filename: lastAnalysis?.filename
-    })
-  });
-  log("Solicitud 36h enviada. Te contactaremos 👌");
-  alert("Solicitud enviada. Máximo 36h 👍");
-};
 </script>
+
 </body>
 </html>
