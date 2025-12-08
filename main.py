@@ -303,14 +303,17 @@ class PatchRequestIn(BaseModel):
 
 @app.post("/patch_requests")
 def create_patch_request(req: PatchRequestIn, current_user: User = Depends(get_current_user)):
-    record = req.dict()
     import json
+
+    record = req.dict()
     record["id"] = "TCK-" + datetime.utcnow().strftime("%y%m%d") + "-" + uuid.uuid4().hex[:6].upper()
     record["user_id"] = record.get("user_id") or str(current_user.id)
     record["created_at"] = datetime.utcnow().isoformat() + "Z"
-    jsonl = (Path("""{0}""") / "requests").format(DATA_DIR) / "patch_requests.jsonl"
-    Path(jsonl).parent.mkdir(parents=True, exist_ok=True)
+
+    jsonl = REQ_DIR / "patch_requests.jsonl"
+    jsonl.parent.mkdir(parents=True, exist_ok=True)
+
     with open(jsonl, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "
-")
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
     return {"ok": True, "request_id": record["id"], "sla_hours": 36}
