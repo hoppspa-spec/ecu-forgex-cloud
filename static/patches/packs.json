@@ -1,0 +1,46 @@
+{
+  "version": "2025-12-07",
+  "packs": [
+    {
+      "id": "pack_stage1_petrol",
+      "label": "Stage 1 (Petrol)",
+      "desc": "Optimiza respuesta y límites seguros para motores gasolina.",
+      "engine": "petrol",
+      "includes": ["speed_limiter", "rpm_limit", "torque_limiters_opt"],
+      "price": {"USD": 149}
+    },
+    {
+      "id": "pack_stage1_diesel",
+      "label": "Stage 1 (Diesel)",
+      "desc": "Ajustes de par y límites para mejor empuje sin comprometer fiabilidad.",
+      "engine": "diesel",
+      "includes": ["speed_limiter", "torque_limiters_opt"],
+      "price": {"USD": 139}
+    },
+    {
+      "id": "pack_eco",
+      "label": "Eco Pack",
+      "desc": "Mejora consumo y suaviza entrega en uso urbano.",
+      "engine": "diesel",
+      "includes": ["torque_limiters_opt"],
+      "price": {"USD": 89}
+    },
+    {
+      "id": "pack_offroad_diesel",
+      "label": "OFF-ROAD Diesel",
+      "desc": "Uso fuera de vía: desactiva sistemas de emisiones y diagnósticos asociados.",
+      "engine": "diesel",
+      "includes": ["dpf_off", "egr_off", "adblue_scr_off", "dtc_off"],
+      "price": {"USD": 229},
+      "notes": "Solo uso fuera de vía. Ver normativa local."
+    },
+    {
+      "id": "pack_sound_petrol",
+      "label": "Sound Pack (Petrol)",
+      "desc": "Experiencia deportiva: pops & bangs y respuesta viva.",
+      "engine": "petrol",
+      "includes": ["pop_bang", "rpm_limit", "speed_limiter"],
+      "price": {"USD": 179}
+    }
+  ]
+}

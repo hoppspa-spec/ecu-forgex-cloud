@@ -1,0 +1,17 @@
+{
+  "brand": "PSA",
+  "ecus": {
+    "SID208": {
+      "include": ["speed_limiter","dpf_off","egr_off","adblue_scr_off","dtc_off"]
+    },
+    "SID807": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off"]
+    },
+    "ME7.4": {
+      "include": ["speed_limiter","rpm_limit","dtc_off"]
+    },
+    "MED17.4": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    }
+  }
+}

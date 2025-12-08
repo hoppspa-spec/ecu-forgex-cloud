@@ -1,0 +1,17 @@
+{
+  "brand": "Renault",
+  "ecus": {
+    "SID305": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off"]
+    },
+    "SID310": {
+      "include": ["speed_limiter","dpf_off","egr_off","adblue_scr_off","dtc_off"]
+    },
+    "EMS3120": {
+      "include": ["speed_limiter","rpm_limit","dtc_off"]
+    },
+    "EMS3150": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    }
+  }
+}

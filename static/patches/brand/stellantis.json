@@ -1,0 +1,17 @@
+{
+  "brand": "Stellantis",
+  "ecus": {
+    "MJD6": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off"]
+    },
+    "MJD8": {
+      "include": ["speed_limiter","dpf_off","egr_off","adblue_scr_off","dtc_off"]
+    },
+    "MED17.3": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    },
+    "MG1CS": {
+      "include": ["speed_limiter","rpm_limit","dtc_off"]
+    }
+  }
+}

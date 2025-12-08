@@ -1,0 +1,18 @@
+{
+  "brand": "Mercedes",
+  "ecus": {
+    "MED17": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    },
+    "ME9": {
+      "include": ["speed_limiter","rpm_limit","dtc_off"],
+      "exclude": ["pop_bang"]
+    },
+    "CRD3": {
+      "include": ["speed_limiter","dpf_off","egr_off","adblue_scr_off","dtc_off","swirl_flaps_off"]
+    },
+    "CRD2": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off"]
+    }
+  }
+}

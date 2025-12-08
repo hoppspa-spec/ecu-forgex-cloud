@@ -1,0 +1,14 @@
+{
+  "brand": "GM",
+  "ecus": {
+    "E78": {
+      "include": ["speed_limiter","rpm_limit","dtc_off"]
+    },
+    "E80": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    },
+    "DENSO_DIESEL": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off","adblue_scr_off"]
+    }
+  }
+}

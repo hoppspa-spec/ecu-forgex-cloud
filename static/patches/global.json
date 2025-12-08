@@ -1,0 +1,144 @@
+{
+  "version": "2025-12-07",
+  "categories": {
+    "performance": "Mejoras de rendimiento / respuesta",
+    "emissions": "Desactivación o ajustes de sistemas de emisiones (solo uso fuera de vía)",
+    "sound": "Sonido / experiencia",
+    "diagnostic": "Diagnóstico y compatibilidad"
+  },
+  "patches": [
+    {
+      "id": "speed_limiter",
+      "label": "Speed Limiter OFF",
+      "desc": "Desactiva o incrementa el limitador de velocidad.",
+      "category": "performance",
+      "engines": ["petrol","diesel"],
+      "compatible_ecu": ["MED17","MG1","MEVD","EDC17","MD1","DENSO","SIEMENS_SID","DELPHI","CONTINENTAL_DCM"],
+      "price": {"USD": 49},
+      "complexity": "low"
+    },
+    {
+      "id": "rpm_limit",
+      "label": "RPM Limit Increase",
+      "desc": "Permite elevar el corte de RPM dentro de márgenes seguros.",
+      "category": "performance",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1","MEVD","ME7"],
+      "price": {"USD": 69},
+      "complexity": "med"
+    },
+    {
+      "id": "torque_limiters_opt",
+      "label": "Torque Limiters Optimization",
+      "desc": "Optimiza limitadores de par (IQ, NM, aire/combustible).",
+      "category": "performance",
+      "engines": ["diesel","petrol"],
+      "compatible_ecu": ["EDC16","EDC17","MD1","DENSO","DELPHI","SID"],
+      "price": {"USD": 79},
+      "complexity": "high"
+    },
+    {
+      "id": "pop_bang",
+      "label": "Pop & Bang",
+      "desc": "Petardeos controlados en desaceleración (solo uso deportivo).",
+      "category": "sound",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1"],
+      "price": {"USD": 69},
+      "complexity": "med",
+      "notes": "Requiere escape en buen estado; no recomendado con catalizador original."
+    },
+    {
+      "id": "catalyst_eff_off",
+      "label": "Catalyst Efficiency OFF",
+      "desc": "Anula el monitoreo de eficiencia del catalizador.",
+      "category": "emissions",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1","MEVD"],
+      "price": {"USD": 59},
+      "complexity": "med"
+    },
+    {
+      "id": "o2_post_off",
+      "label": "O2 Post-cat OFF",
+      "desc": "Desactiva la sonda lambda posterior al catalizador.",
+      "category": "emissions",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1","MEVD"],
+      "price": {"USD": 49},
+      "complexity": "low"
+    },
+    {
+      "id": "evap_off",
+      "label": "EVAP OFF",
+      "desc": "Desactiva sistema de control de emisiones evaporativas.",
+      "category": "emissions",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1","MEVD"],
+      "price": {"USD": 39},
+      "complexity": "low"
+    },
+    {
+      "id": "dpf_off",
+      "label": "DPF OFF",
+      "desc": "Deshabilita regeneraciones y monitoreo del filtro DPF.",
+      "category": "emissions",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC16","EDC17","MD1","DENSO","DELPHI","DCM"],
+      "price": {"USD": 89},
+      "complexity": "high",
+      "notes": "Uso off-road. Puede requerir hardware reemplazo/downpipe."
+    },
+    {
+      "id": "egr_off",
+      "label": "EGR OFF",
+      "desc": "Desactiva la válvula EGR y diagnósticos asociados.",
+      "category": "emissions",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC16","EDC17","MD1","SID","DENSO","DELPHI"],
+      "price": {"USD": 69},
+      "complexity": "med"
+    },
+    {
+      "id": "adblue_scr_off",
+      "label": "AdBlue / SCR OFF",
+      "desc": "Desactiva el sistema SCR (urea) y sus monitores.",
+      "category": "emissions",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC17","MD1","DCM","SID"],
+      "price": {"USD": 99},
+      "complexity": "high"
+    },
+    {
+      "id": "swirl_flaps_off",
+      "label": "Swirl Flaps OFF",
+      "desc": "Anula mariposas de admisión (swirl) y DTCs relacionados.",
+      "category": "performance",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC16","EDC17","MD1"],
+      "price": {"USD": 59},
+      "complexity": "med"
+    },
+    {
+      "id": "lambda_off",
+      "label": "Closed-loop O2 OFF",
+      "desc": "Desactiva el lazo cerrado en gasolina para mapas puramente abiertos.",
+      "category": "performance",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17","MG1"],
+      "price": {"USD": 59},
+      "complexity": "high",
+      "conflicts": ["o2_post_off","catalyst_eff_off"]
+    },
+    {
+      "id": "dtc_off",
+      "label": "DTC OFF (Lista)",
+      "desc": "Desactiva códigos de falla específicos (se pasa lista de DTCs).",
+      "category": "diagnostic",
+      "engines": ["petrol","diesel"],
+      "compatible_ecu": ["MED17","MG1","MEVD","EDC16","EDC17","MD1","DENSO","SID","DCM","DELPHI"],
+      "price": {"USD": 39},
+      "complexity": "low"
+    }
+  ]
+}

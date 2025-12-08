@@ -1,0 +1,14 @@
+{
+  "brand": "Toyota",
+  "ecus": {
+    "DENSO_GEN1": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off"]
+    },
+    "DENSO_GEN2": {
+      "include": ["speed_limiter","dpf_off","egr_off","dtc_off","adblue_scr_off"]
+    },
+    "DENSO_MED17": {
+      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
+    }
+  }
+}
