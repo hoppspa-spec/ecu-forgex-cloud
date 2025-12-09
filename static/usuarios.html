@@ -1,1 +1,111 @@
-<!doctype html><meta charset='utf-8'><h1>Usuarios</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ECU FORGE X — Mis Órdenes</title>
+<style>
+  :root{
+    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
+    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
+  }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
+  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
+  header .grow{flex:1}
+  header a{color:#cbd5e1;text-decoration:none}
+  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .btn:hover{background:var(--btnh)}
+  .wrap{padding:18px}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
+  h2{margin:0 0 10px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border-bottom:1px solid var(--stroke);padding:8px;text-align:left;font-size:14px}
+  .muted{color:var(--muted)}
+</style>
+</head>
+<body class="dark">
+<header>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
+  <a href="/static/catalogo.html" style="margin-left:8px">Catálogo</a>
+  <div class="grow"></div>
+  <button class="btn" id="btnTheme">Tema</button>
+  <a href="/static/index.html" style="margin-left:12px">Subir BIN</a>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Mis órdenes</h2>
+    <div class="muted" style="margin-bottom:10px">Filtrar:</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn" id="flt_all">Todas</button>
+      <button class="btn" id="flt_pending">Pendientes de pago</button>
+      <button class="btn" id="flt_done">Completadas</button>
+    </div>
+
+    <div id="status" class="muted">Cargando…</div>
+    <div style="overflow:auto">
+      <table id="tbl" style="display:none">
+        <thead><tr>
+          <th>ID</th><th>Estado</th><th>Parche</th><th>Archivo</th><th>Fecha</th><th>Descarga</th><th>Acciones</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  const $=(q,el=document)=>el.querySelector(q);
+  const nf=new Intl.DateTimeFormat('es-CL',{dateStyle:'short',timeStyle:'short'});
+  let TOKEN=localStorage.getItem("EFX_TOKEN")||null;
+  let ORDERS_CACHE=[];
+
+  (function(){
+    const KEY='EFX_THEME'; const saved=localStorage.getItem(KEY)||'dark';
+    document.body.classList.toggle('dark',saved==='dark');
+    $("#btnTheme").onclick=()=>{const nd=!document.body.classList.contains('dark');document.body.classList.toggle('dark',nd);localStorage.setItem(KEY,nd?'dark':'light');};
+  })();
+
+  function row(o){
+    const payBtn = o.status==="pending_payment" ? `<a class="btn" href="/static/checkout.html?order_id=${o.id}">Ir a pagar</a>` : '';
+    const dl = o.download_ready ? `<a class="btn" href="/orders/${o.id}/download">Descargar</a>` : '—';
+    return `<tr>
+      <td>${o.id}</td>
+      <td>${o.status}</td>
+      <td>${o.patch_option_id||'—'}</td>
+      <td>${o.original_filename||'—'}</td>
+      <td>${o.created_at? nf.format(new Date(o.created_at)):'—'}</td>
+      <td>${dl}</td>
+      <td>${payBtn}</td>
+    </tr>`;
+  }
+
+  function applyFilter(kind){
+    const tb=$("#tbody"); tb.innerHTML="";
+    const list=ORDERS_CACHE.filter(o=>{
+      if(kind==="pending") return o.status==="pending_payment";
+      if(kind==="done") return o.status==="done";
+      return true;
+    });
+    list.forEach(o=>tb.insertAdjacentHTML("beforeend", row(o)));
+    $("#status").textContent = list.length ? "" : "Sin resultados.";
+  }
+
+  $("#flt_all").onclick = ()=>applyFilter("all");
+  $("#flt_pending").onclick = ()=>applyFilter("pending");
+  $("#flt_done").onclick = ()=>applyFilter("done");
+
+  async function init(){
+    if(!TOKEN){ $("#status").textContent="Inicia sesión en la página principal."; return; }
+    $("#status").textContent="Cargando…";
+    try{
+      const r=await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
+      if(!r.ok){ $("#status").textContent="No se pudieron cargar las órdenes"; return; }
+      const d=await r.json(); ORDERS_CACHE=d.orders||[];
+      $("#tbl").style.display=""; applyFilter("all");
+    }catch{ $("#status").textContent="Error cargando."; }
+  }
+  init();
+</script>
+</body>
+</html>
