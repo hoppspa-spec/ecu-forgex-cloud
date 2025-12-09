@@ -1,1 +1,324 @@
-<!doctype html><meta charset='utf-8'><h1>Sube BIN desde /static/index.html actualizado</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ECU FORGE X — Generar BIN.MOD</title>
+<style>
+  :root{
+    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
+    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
+  }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
+  header{background:var(--brand);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px}
+  header .grow{flex:1}
+  header a{color:#cbd5e1;text-decoration:none}
+  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .btn:hover{background:var(--btnh)}
+  .container{display:grid;grid-template-columns:340px 1fr 320px;gap:18px;padding:18px}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
+  h3{margin:0 0 10px}
+  input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--stroke);margin-bottom:10px;background:#0c1426;color:var(--ink)}
+  .muted{color:var(--muted);font-size:13px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .log{background:#000;color:#00ff72;font-family:ui-monospace,Menlo,Consolas;height:180px;border-radius:8px;padding:12px;overflow:auto}
+  .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#172036;color:#dbeafe;font-size:12px}
+  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px;font-size:14px}
+  .hr{height:1px;background:var(--stroke);margin:12px 0}
+</style>
+</head>
+<body class="dark">
+
+<header>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
+  <a href="/static/catalogo.html">Catálogo</a>
+  <div class="grow"></div>
+  <button class="btn" id="btnTheme">Tema</button>
+  <button class="btn" id="btnOpenLogin">Iniciar sesión</button>
+  <button class="btn" id="btnOpenRegister">Crear cuenta</button>
+  <button class="btn" id="btnLogout" style="display:none">Cerrar sesión</button>
+  <a class="btn" href="/static/usuarios.html" id="btnMyOrders" style="display:none">Mis órdenes</a>
+</header>
+
+<div class="container">
+  <!-- IZQUIERDA -->
+  <div class="card">
+    <h3>Información del Vehículo</h3>
+    <input id="marca" placeholder="Marca (ej: BMW)" />
+    <input id="modelo" placeholder="Modelo (ej: 320i)" />
+    <div class="row2">
+      <input id="anio" placeholder="Año (ej: 2018)" />
+      <input id="motor" placeholder="Motor (ej: B48 2.0T)" />
+    </div>
+    <input id="ecu_type" placeholder="Tipo ECU (ej: Bosch MG1)" />
+
+    <div class="hr"></div>
+    <h3>Archivo BIN</h3>
+    <input id="binfile" type="file" />
+    <button id="btnAnalizar" class="btn">Analizar BIN</button>
+    <div class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</div>
+  </div>
+
+  <!-- CENTRO -->
+  <div class="card">
+    <div class="row2" style="align-items:end">
+      <div>
+        <h3>Parches Disponibles <span id="ecuBadge" class="badge" style="display:none"></span></h3>
+      </div>
+      <div>
+        <div class="muted" style="margin-bottom:6px">Tipo de Motor</div>
+        <select id="engineSelect">
+          <option value="auto">Auto (detectado)</option>
+          <option value="petrol">Petrol</option>
+          <option value="diesel">Diesel</option>
+        </select>
+      </div>
+    </div>
+
+    <select id="patchSelect" disabled>
+      <option value="">— Sube tu BIN para ver opciones —</option>
+    </select>
+    <button id="btnAplicar" class="btn" disabled>Aplicar / Comprar</button>
+
+    <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
+      No hay parches disponibles para esta ECU. <br/>
+      Dentro de máximo <b>36 horas</b> podemos generar una solución personalizada.
+      <button id="btn36h" class="btn" style="margin-top:8px;width:auto">Solicitar solución (36h)</button>
+    </div>
+
+    <h3 style="margin-top:16px">Resultado</h3>
+    <div id="resultado" class="muted">Aún no se ha generado ningún archivo.</div>
+
+    <h3 style="margin-top:16px">Log</h3>
+    <div id="log" class="log">Esperando acciones…</div>
+  </div>
+
+  <!-- DERECHA: FICHA ECU -->
+  <div class="card">
+    <h3>Ficha ECU</h3>
+    <div class="kv">
+      <div class="muted">ECU Type</div><div id="kv_ecu">—</div>
+      <div class="muted">ECU Part Number</div><div id="kv_pn">—</div>
+      <div class="muted">Software Number</div><div id="kv_sw">—</div>
+      <div class="muted">File size</div><div id="kv_size">—</div>
+      <div class="muted">CVN</div><div id="kv_cvn">—</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL LOGIN -->
+<div id="modalLogin" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--stroke);padding:18px;border-radius:10px;width:340px;color:var(--ink)">
+    <h3>Iniciar sesión</h3>
+    <input id="login_email" placeholder="Email" />
+    <input id="login_pass" type="password" placeholder="Contraseña" />
+    <button id="btnLogin" class="btn">Ingresar</button>
+  </div>
+</div>
+
+<!-- MODAL REGISTRO -->
+<div id="modalRegister" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center">
+  <div style="background:var(--card);border:1px solid var(--stroke);padding:18px;border-radius:10px;width:340px;color:var(--ink)">
+    <h3>Crear cuenta</h3>
+    <input id="reg_name" placeholder="Nombre (opcional)" />
+    <input id="reg_email" placeholder="Email" />
+    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" />
+    <button id="btnRegister" class="btn">Registrarme</button>
+  </div>
+</div>
+
+<script>
+/* ===== util ===== */
+const $ = (q, el=document)=>el.querySelector(q);
+const log = (m)=>{ const b=$("#log"); b.textContent+="\n"+m; b.scrollTop=b.scrollHeight; };
+const nf = new Intl.NumberFormat('es-CL');
+let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
+let lastAnalysis=null, lastFile=null, lastCvn=null, engineDetected="auto";
+
+/* ===== tema ===== */
+(function(){
+  const KEY='EFX_THEME';
+  const saved = localStorage.getItem(KEY) || 'dark';
+  document.body.classList.toggle('dark', saved==='dark');
+  $("#btnTheme").onclick = ()=>{
+    const nd=!document.body.classList.contains('dark');
+    document.body.classList.toggle('dark', nd);
+    localStorage.setItem(KEY, nd?'dark':'light');
+  };
+})();
+
+/* ===== sesión UI ===== */
+function setAuthUi(on){
+  $("#btnOpenLogin").style.display = on? "none":"inline-block";
+  $("#btnOpenRegister").style.display = on? "none":"inline-block";
+  $("#btnLogout").style.display = on? "inline-block":"none";
+  $("#btnMyOrders").style.display = on? "inline-block":"none";
+}
+setAuthUi(!!TOKEN);
+$("#btnOpenLogin").onclick = ()=>$("#modalLogin").style.display="flex";
+$("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
+$("#btnLogout").onclick = ()=>{ TOKEN=null; localStorage.removeItem("EFX_TOKEN"); setAuthUi(false); log("Sesión cerrada."); };
+
+$("#btnLogin").onclick = async ()=>{
+  const fd = new FormData(); fd.append("username", $("#login_email").value); fd.append("password", $("#login_pass").value);
+  const r = await fetch("/auth/login",{method:"POST",body:fd});
+  if(!r.ok){ alert("Credenciales inválidas"); return; }
+  const d = await r.json(); TOKEN=d.access_token; localStorage.setItem("EFX_TOKEN", TOKEN);
+  $("#modalLogin").style.display="none"; setAuthUi(true); log("Sesión iniciada.");
+};
+$("#btnRegister").onclick = async ()=>{
+  const payload = { email: $("#reg_email").value, password: $("#reg_pass").value, full_name: $("#reg_name").value||null };
+  const r = await fetch("/auth/register",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(!r.ok){ alert("No se pudo crear la cuenta"); return; }
+  const fd = new FormData(); fd.append("username", payload.email); fd.append("password", payload.password);
+  const lr = await fetch("/auth/login",{method:"POST",body:fd});
+  if(lr.ok){ const d=await lr.json(); TOKEN=d.access_token; localStorage.setItem("EFX_TOKEN", TOKEN); setAuthUi(true); $("#modalRegister").style.display="none"; log("Cuenta creada e iniciada."); }
+};
+
+/* ===== CRC32 para CVN demo ===== */
+(function(){
+  const T=new Uint32Array(256).map((_,n)=>{let c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);return c>>>0;});
+  window.crc32=(buf)=>{let c=0^(-1);for(let i=0;i<buf.length;i++)c=(c>>>8)^T[(c^buf[i])&0xFF];return (c^(-1))>>>0;};
+})();
+
+/* ===== ECU family detect ===== */
+function detectEcuFamily(ecuType, filename){
+  const src=((ecuType||"")+" "+(filename||"")).toUpperCase();
+  const R=[
+    {k:"MG1CS", re:/(MG1CS\d{0,3})/}, {k:"MG1",re:/\bMG1\b/},
+    {k:"MED17.5",re:/MED17\.5(\.\d+)?/}, {k:"MED17",re:/\bMED17\b/},
+    {k:"MEVD",re:/\bMEVD\b/}, {k:"ME7",re:/\bME7(\.\d+)?\b/},
+    {k:"EDC17CP",re:/EDC17CP\d*/}, {k:"EDC17C",re:/EDC17C\d*/},
+    {k:"EDC17",re:/\bEDC17\b/}, {k:"EDC16",re:/\bEDC16\b/},
+    {k:"MD1",re:/\bMD1\b/}, {k:"DCM",re:/\bDCM\d*\b/}, {k:"SID",re:/\bSID\d{3}\b/}
+  ];
+  for(const r of R){const m=src.match(r.re); if(m) return (m[1]||r.k);}
+  if(/BOSCH/.test(src)&&/MG1/.test(src))return"MG1";
+  if(/BOSCH/.test(src)&&/MED17/.test(src))return"MED17";
+  if(/BOSCH/.test(src)&&/EDC17/.test(src))return"EDC17";
+  return null;
+}
+
+/* ===== parches JSON combinados (simple) ===== */
+const _jsonCache={};
+async function loadJsonCached(url){
+  if(_jsonCache[url]) return _jsonCache[url];
+  const d = await fetch(url).then(r=>r.json());
+  _jsonCache[url]=d; return d;
+}
+async function loadPatchesCombined(engineMode, ecuFamily, brand){
+  // base mínima embebida para correr sin archivos extra
+  let list = [
+    {id:"speed_limiter",label:"Speed Limiter", engines:["petrol"]},
+    {id:"rpm_limit",label:"RPM Limit Increase", engines:["petrol"]},
+    {id:"dtc_off",label:"DTC OFF (General)", engines:["petrol","diesel"]},
+    {id:"dpf_off",label:"DPF OFF", engines:["diesel"]},
+    {id:"egr_off",label:"EGR OFF", engines:["diesel"]},
+  ];
+  if(engineMode && engineMode!=="auto") list=list.filter(p=>p.engines.includes(engineMode));
+  if(ecuFamily){const up=ecuFamily.toUpperCase(); list=list.filter(p=>true); /* hook de family si quieres */ }
+  const packs=[{id:"stage1_base",label:"Pack Stage 1 (demo)",engine:engineMode||"auto",includes:["speed_limiter","rpm_limit"]}];
+  return {patches:list,packs};
+}
+
+/* ===== helpers ===== */
+function setBadge(t){const b=$("#ecuBadge"); if(!t){b.style.display="none";b.textContent="";} else {b.style.display="inline-block"; b.textContent=t;}}
+function currentEngineMode(){
+  const sel=$("#engineSelect").value;
+  if(sel!=="auto") return sel;
+  return engineDetected==="auto" ? "petrol" : engineDetected; // heurística mínima
+}
+
+/* ===== inputs ===== */
+$("#binfile").addEventListener("change", async (e)=>{
+  lastFile = e.target.files?.[0] || null;
+  if(lastFile){
+    const buf = new Uint8Array(await lastFile.arrayBuffer());
+    lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8,'0');
+    $("#kv_cvn").textContent=lastCvn;
+    $("#kv_size").textContent=nf.format(lastFile.size)+" bytes";
+  }
+});
+
+$("#btnAnalizar").onclick = async ()=>{
+  const f=$("#binfile").files[0];
+  if(!f){ alert("Selecciona un BIN"); return; }
+  const fd=new FormData(); fd.append("bin_file", f);
+  log("Subiendo y analizando BIN…");
+  const r=await fetch("/analyze_bin",{method:"POST",body:fd});
+  if(!r.ok){ log("Error analizando BIN"); return; }
+  const data=await r.json(); lastAnalysis=data;
+
+  $("#kv_ecu").textContent=data.ecu_type||"—";
+  $("#kv_pn").textContent=data.ecu_part_number||"—";
+  $("#kv_sw").textContent="—";
+  $("#kv_size").textContent=nf.format(data.bin_size||0)+" bytes";
+  setBadge(data.ecu_type||null);
+
+  if(/EDC|MD1|MJD|DCM/i.test(data.ecu_type||"")) engineDetected="diesel";
+  else if(/MED|MG1|ME/i.test(data.ecu_type||"")) engineDetected="petrol";
+  else engineDetected="auto";
+  $("#engineSelect").value="auto";
+
+  fillPatches();
+  log(`Análisis OK. ECU: ${data.ecu_type||"—"} PN: ${data.ecu_part_number||"—"}`);
+};
+
+async function fillPatches(){
+  const sel=$("#patchSelect"); sel.innerHTML="";
+  const mode=currentEngineMode();
+  const fam=detectEcuFamily(lastAnalysis?.ecu_type,lastAnalysis?.filename);
+  const brand=($("#marca").value||"").trim();
+  const {patches,packs}=await loadPatchesCombined(mode,fam,brand);
+
+  if(patches.length || packs.length){
+    sel.disabled=false; $("#btnAplicar").disabled=false; $("#noPatchMsg").style.display="none";
+    sel.append(new Option("— Selecciona una opción —",""));
+    patches.forEach(p=>sel.append(new Option(p.label, p.id)));
+    if(packs.length){
+      sel.append(new Option("──────── PACKS ────────",""));
+      packs.forEach(pk=>sel.append(new Option(`🧩 ${pk.label}`, `pack:${pk.id}`)));
+    }
+  }else{
+    sel.disabled=true; $("#btnAplicar").disabled=true; $("#noPatchMsg").style.display="block";
+    sel.append(new Option("Sin parches disponibles",""));
+  }
+}
+
+$("#btnAplicar").onclick = async ()=>{
+  const sel=$("#patchSelect"); const value=sel.value;
+  if(!value){ alert("Selecciona una opción"); return; }
+  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+
+  let patchId=value;
+  if(value.startsWith("pack:")){
+    // demo: usar primer parche del pack
+    patchId="speed_limiter";
+  }
+  const r=await fetch("/orders",{
+    method:"POST",
+    headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},
+    body:JSON.stringify({analysis_id:lastAnalysis.analysis_id, patch_option_id:patchId})
+  });
+  if(!r.ok){ alert("Error creando orden"); return; }
+  const d=await r.json();
+  location.href="/static/checkout.html?order_id="+d.id;
+};
+
+/* botón 36h */
+$("#btn36h").onclick = async ()=>{
+  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+  const payload={
+    marca:$("#marca").value,modelo:$("#modelo").value,anio:$("#anio").value,
+    motor:$("#motor").value,ecu_version:$("#ecu_type").value,ecu_type:lastAnalysis?.ecu_type,
+    ecu_part_number:lastAnalysis?.ecu_part_number,manufacturer_number:lastAnalysis?.manufacturer_number,
+    analysis_id:lastAnalysis?.analysis_id,original_filename:lastAnalysis?.filename
+  };
+  const r=await fetch("/patch_requests",{method:"POST",headers:{Authorization:"Bearer "+TOKEN,"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  if(!r.ok){ alert("No se pudo crear la solicitud"); return; }
+  alert("Solicitud creada. Te responderemos dentro de 36h.");
+};
+</script>
+
+</body>
+</html>
