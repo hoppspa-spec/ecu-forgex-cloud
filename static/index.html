@@ -406,6 +406,25 @@ $("#btnAplicar").onclick = async ()=>{
   const d = await r.json();
   location.href = "/static/checkout.html?order_id="+d.id;
 };
+  // ====== cerrar modales (botón, fondo, ESC)
+const closeModal = (id)=>{ const m=$(id); if(m) m.style.display="none"; };
+$("#closeLogin").onclick = ()=> closeModal("#modalLogin");
+$("#closeRegister").onclick = ()=> closeModal("#modalRegister");
+
+// click en fondo
+["modalLogin","modalRegister"].forEach(mid=>{
+  const m = document.getElementById(mid);
+  m.addEventListener("click",(e)=>{ if(e.target===m) m.style.display="none"; });
+});
+
+// ESC
+document.addEventListener("keydown",(e)=>{
+  if(e.key==="Escape"){
+    closeModal("#modalLogin");
+    closeModal("#modalRegister");
+  }
+});
+
 
 /* ================== Solicitud 36h ================== */
 $("#btn36h").onclick = async ()=>{
