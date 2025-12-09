@@ -132,6 +132,18 @@
 </div>
 
 <script>
+  const PRICE_MAP = {
+  // individuales
+  speed_limiter: 10,
+  rpm_limit: 12,
+  dtc_off: 8,
+  dpf_off: 25,
+  egr_off: 18,
+  // packs (prefijo "pack:")
+  "pack:stage1_base": 49,
+  "pack:popbangs_light": 29
+};
+
 /* ===== util ===== */
 const $ = (q, el=document)=>el.querySelector(q);
 const log = (m)=>{ const b=$("#log"); b.textContent+="\n"+m; b.scrollTop=b.scrollHeight; };
