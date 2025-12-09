@@ -1,1 +1,177 @@
-<!doctype html><meta charset='utf-8'><h1>Checkout</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ECU FORGE X — Checkout</title>
+<style>
+  :root{
+    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
+    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
+  }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
+  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
+  header .grow{flex:1}
+  header a{color:#cbd5e1;text-decoration:none}
+  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
+  .btn:hover{background:var(--btnh)}
+  .wrap{padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
+  h2,h3{margin:0 0 10px}
+  .muted{color:var(--muted)}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .ok{color:#22c55e}
+  table{width:100%;border-collapse:collapse}
+  th,td{border-bottom:1px solid var(--stroke);padding:8px;text-align:left;font-size:14px}
+  .hint{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body class="dark">
+
+<header>
+  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
+  <a href="/static/catalogo.html" style="margin-left:8px">Catálogo</a>
+  <div class="grow"></div>
+  <button class="btn" id="btnTheme">Tema</button>
+  <a href="/static/index.html" style="margin-left:12px">Subir BIN</a>
+  <a href="/static/usuarios.html" style="margin-left:12px">Mis órdenes</a>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Checkout</h2>
+    <div id="msgAuth" class="muted" style="display:none;margin-top:6px"></div>
+
+    <div class="row" style="margin-top:10px">
+      <div class="card" style="padding:12px">
+        <h3>Orden</h3>
+        <table>
+          <tbody>
+            <tr><th>ID</th><td id="tdOrder">—</td></tr>
+            <tr><th>Parche</th><td id="tdPatch">—</td></tr>
+            <tr><th>Estado</th><td id="tdStatus">Pendiente de pago</td></tr>
+            <tr><th>Monto</th><td id="tdAmount">$10.00</td></tr>
+          </tbody>
+        </table>
+        <div class="hint" style="margin-top:8px">* Demo: monto fijo. Luego lo leemos por parche/pack.</div>
+      </div>
+
+      <div class="card" style="padding:12px">
+        <h3>Acciones</h3>
+        <div id="paypal-buttons" style="margin:8px 0 12px"></div>
+        <button id="btnPay" class="btn" style="display:none">Confirmar pago (demo)</button>
+        <div id="payMsg" class="hint">Si PayPal no carga, usa el botón de demo.</div>
+
+        <div id="doneBox" style="display:none;margin-top:12px">
+          <div class="ok">Pago confirmado ✓</div>
+          <div style="margin-top:6px">
+            <a id="dlLink" class="btn" href="#" download>Descargar MOD</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>Notas</h3>
+      <div class="hint">
+        • Este entorno usa PayPal <b>Sandbox</b> (pruebas).<br/>
+        • Tras el pago, generamos el <b>.mod</b> con la receta (MVP) y habilitamos la descarga.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Ayuda</h3>
+    <ul class="hint">
+      <li>Si no ves el botón PayPal, revisa bloqueadores o usa el botón demo.</li>
+      <li>La descarga requiere sesión activa.</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+  const $=(q,el=document)=>el.querySelector(q);
+  const qs=(k)=>new URL(location.href).searchParams.get(k);
+  let TOKEN=localStorage.getItem("EFX_TOKEN")||null;
+
+  // tema
+  (function(){
+    const KEY='EFX_THEME';
+    const saved=localStorage.getItem(KEY)||'dark';
+    document.body.classList.toggle('dark', saved==='dark');
+    $("#btnTheme").onclick=()=>{const nd=!document.body.classList.contains('dark');document.body.classList.toggle('dark',nd);localStorage.setItem(KEY,nd?'dark':'light');};
+  })();
+
+  const ORDER_ID=parseInt(qs("order_id")||"0",10);
+  if(!ORDER_ID){ alert("Falta order_id en la URL"); }
+  $("#tdOrder").textContent=ORDER_ID||"—";
+
+  function ensureAuth(){
+    if(!TOKEN){ $("#msgAuth").style.display="block"; $("#msgAuth").textContent="Necesitas iniciar sesión para pagar y descargar."; return false; }
+    return true;
+  }
+
+  async function loadOrder(){
+    if(!ensureAuth()) return;
+    try{
+      const r=await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
+      if(!r.ok){ $("#tdStatus").textContent="No se pudo cargar la orden"; return; }
+      const d=await r.json();
+      const o=(d.orders||[]).find(x=>x.id===ORDER_ID);
+      if(!o){ $("#tdStatus").textContent="Orden no encontrada"; return; }
+      $("#tdPatch").textContent=o.patch_option_id||"—";
+      $("#tdStatus").textContent=o.status||"—";
+    }catch{ $("#tdStatus").textContent="Error de red"; }
+  }
+  loadOrder();
+
+  // demo fallback
+  $("#btnPay").onclick=async()=>{
+    if(!ensureAuth())return;
+    const rr=await fetch(`/orders/${ORDER_ID}/confirm_payment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN}});
+    if(!rr.ok){ alert("Error generando MOD"); return; }
+    const dd=await rr.json();
+    $("#doneBox").style.display="block";
+    $("#dlLink").href=dd.download_url;
+    $("#tdStatus").textContent="done";
+    $("#payMsg").textContent="Pago confirmado (demo)";
+  };
+</script>
+
+<!-- PayPal SDK -->
+<script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
+<script>
+(async function(){
+  const amountUSD=10.00;
+  try{
+    await paypal.Buttons({
+      style:{layout:'vertical',shape:'rect',label:'pay',color:'gold'},
+      createOrder:(data,actions)=>actions.order.create({
+        purchase_units:[{amount:{value:amountUSD.toFixed(2)},description:`ECU FORGE X — Order #${ORDER_ID}`}]
+      }),
+      onApprove:async (data,actions)=>{
+        try{
+          await actions.order.capture();
+          const rr=await fetch(`/orders/${ORDER_ID}/confirm_payment`,{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("EFX_TOKEN")||"")}});
+          if(!rr.ok){ alert("Error generando MOD"); return; }
+          const dd=await rr.json();
+          document.getElementById("doneBox").style.display="block";
+          document.getElementById("dlLink").href=dd.download_url;
+          document.getElementById("tdStatus").textContent="done";
+          document.getElementById("payMsg").textContent="Pago aprobado por PayPal";
+        }catch{ alert("No se pudo completar el flujo de pago/confirmación."); }
+      },
+      onError:(err)=>{
+        console.warn("PayPal error:",err);
+        document.getElementById("btnPay").style.display="inline-block";
+      }
+    }).render('#paypal-buttons');
+  }catch(e){
+    console.warn("PP SDK load error",e);
+    document.getElementById("btnPay").style.display="inline-block";
+  }
+})();
+</script>
+
+</body>
+</html>
