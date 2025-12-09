@@ -119,22 +119,30 @@
 
 <!-- MODAL LOGIN -->
 <div id="modalLogin" class="modal">
-  <div class="box">
-    <h3>Iniciar sesión</h3>
-    <input id="login_email" placeholder="Email"/>
-    <input id="login_pass" type="password" placeholder="Contraseña"/>
+  <div class="box" role="dialog" aria-modal="true">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <h3 style="margin:0">Iniciar sesión</h3>
+      <button id="closeLogin" class="btn sm" style="background:#1f2a44">✕</button>
+    </div>
+    <input id="login_email" placeholder="Email" autocomplete="username"/>
+    <input id="login_pass" type="password" placeholder="Contraseña" autocomplete="current-password"/>
     <button id="btnLogin" class="btn" style="width:100%">Ingresar</button>
+    <div id="login_err" class="hint" style="margin-top:8px;display:none;color:#ff7676">Credenciales inválidas.</div>
   </div>
 </div>
 
 <!-- MODAL REGISTRO -->
 <div id="modalRegister" class="modal">
-  <div class="box">
-    <h3>Crear cuenta</h3>
-    <input id="reg_name" placeholder="Nombre (opcional)"/>
-    <input id="reg_email" placeholder="Email"/>
-    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)"/>
+  <div class="box" role="dialog" aria-modal="true">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <h3 style="margin:0">Crear cuenta</h3>
+      <button id="closeRegister" class="btn sm" style="background:#1f2a44">✕</button>
+    </div>
+    <input id="reg_name" placeholder="Nombre (opcional)" autocomplete="name"/>
+    <input id="reg_email" placeholder="Email" autocomplete="email"/>
+    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" autocomplete="new-password"/>
     <button id="btnRegister" class="btn" style="width:100%">Registrarme</button>
+    <div id="reg_err" class="hint" style="margin-top:8px;display:none;color:#ff7676">No se pudo crear la cuenta.</div>
   </div>
 </div>
 
