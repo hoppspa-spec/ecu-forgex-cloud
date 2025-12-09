@@ -244,6 +244,22 @@ function currentEngineMode(){
   if(sel!=="auto") return sel;
   return engineDetected==="auto" ? "petrol" : engineDetected; // heurística mínima
 }
+  function setSelectedInFicha(value, label){
+  const patchEl = document.getElementById("kv_patch");
+  const priceEl = document.getElementById("kv_price");
+  if(!value){
+    patchEl.textContent = "—";
+    priceEl.textContent = "—";
+    return;
+  }
+  patchEl.textContent = label || value;
+
+  // precio por id (si es pack, usa el valor del pack)
+  const priceKey = value.startsWith("pack:") ? value : value;
+  const amount = PRICE_MAP[priceKey] ?? 10;
+  priceEl.textContent = `$${amount.toFixed(2)} USD`;
+}
+
 
 /* ===== inputs ===== */
 $("#binfile").addEventListener("change", async (e)=>{
