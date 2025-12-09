@@ -23,6 +23,19 @@
   .empty{padding:30px;text-align:center;background:#fff;border-radius:12px;border:1px solid #eee}
   @media(max-width:980px){ .grid{grid-template-columns:1fr 1fr} }
   @media(max-width:640px){ .grid{grid-template-columns:1fr} .filters{grid-template-columns:1fr 1fr} }
+  /* === THEME KIT (DARK) === */
+body.dark{
+  --bg:#0b0f19;
+  --card:#0f1629;
+  --ink:#e5e7eb;
+  --muted:#94a3b8;
+  --brand:#0b1220;
+  --btn:#2563eb;
+  --btnh:#1d4ed8;
+  --stroke:#1f2a44;
+}
+/* Asegúrate que tus estilos usen var(--bg), var(--card), var(--ink), etc. 
+   En tus archivos ya lo hacen, así que con esta sobreescritura basta. */
 </style>
 </head>
 <body>
@@ -149,3 +162,4 @@ refresh();
 </script>
 </body>
 </html>
+
