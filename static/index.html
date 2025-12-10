@@ -567,6 +567,159 @@ $("#btn36h").onclick = async ()=>{
   wire();
 })();
 </script>
+<script>
+(function(){
+  // === Ajusta IDs si hace falta ===
+  const IDS = {
+    patchSelect: 'patchSelect',
+    engineSelect:'engineSelect',
+    marcaInput:  'marca',
+    btnAplicar:  'btnAplicar',
+    ecuBadge:    'ecuBadge',
+    noPatchMsg:  'noPatchMsg'
+  };
+
+  const $ = (q,el=document)=>el.querySelector(q);
+  const log = (m)=>{ const b=$("#log"); if(b){ b.textContent+=(b.textContent?"\n":"")+m; b.scrollTop=b.scrollHeight; } };
+
+  // --- caché simple para JSON ---
+  const _json = {};
+  async function loadJson(url){
+    if(_json[url]) return _json[url];
+    const r = await fetch(url);
+    if(!r.ok) throw new Error(`GET ${url} → ${r.status}`);
+    const d = await r.json();
+    _json[url]=d; return d;
+  }
+
+  // --- detector de familia ECU (rápido) ---
+  function detectEcuFamily(ecuType, filename){
+    const s=((ecuType||"")+" "+(filename||"")).toUpperCase();
+    const rules=[
+      {re:/(MG1CS\d{0,3})/}, {re:/\bMG1\b/}, {re:/MED17\.5(\.\d+)?/}, {re:/\bMED17\b/},
+      {re:/\bMEVD\b/}, {re:/\bME7(\.\d+)?\b/}, {re:/EDC17CP\d*/}, {re:/EDC17C\d*/},
+      {re:/\bEDC17\b/}, {re:/\bEDC16\b/}, {re:/\bMD1\b/}, {re:/\bDCM\d*\b/}, {re:/\bSID\d{3}\b/}
+    ];
+    for(const r of rules){ const m=s.match(r.re); if(m) return m[1]||m[0]; }
+    if(/BOSCH/.test(s)&&/MG1/.test(s)) return "MG1";
+    if(/BOSCH/.test(s)&&/MED17/.test(s))return "MED17";
+    if(/BOSCH/.test(s)&&/EDC17/.test(s))return "EDC17";
+    return null;
+  }
+
+  // --- modo de motor actual (auto/petrol/diesel) ---
+  function currentEngineMode(){
+    const sel = $("#"+IDS.engineSelect);
+    if(!sel) return "auto";
+    if(sel.value!=="auto") return sel.value;
+    return window.engineDetected || "auto";
+  }
+
+  async function loadPatchesCombined(engineMode, ecuFamily, brand){
+    // 1) global
+    let list = [];
+    try{
+      const g = await loadJson("/static/patches/global.json");
+      list = g.patches || [];
+    }catch(e){ log("No se pudo cargar global.json"); }
+
+    // 2) por motor
+    if(engineMode && engineMode!=="auto"){
+      list = list.filter(p => (p.engines||[]).includes(engineMode));
+    }
+
+    // 3) por familia ecu
+    if(ecuFamily){
+      const up = ecuFamily.toUpperCase();
+      list = list.filter(p => (p.compatible_ecu||[]).some(f=> up.includes(String(f).toUpperCase())));
+    }
+
+    // 4) override por marca (opcional)
+    if(brand){
+      const key = brand.toLowerCase().replace(/\s+/g,'_');
+      try{
+        const ov = await loadJson(`/static/patches/brand/${key}.json`);
+        if(ov?.ecus){
+          const famKey = Object.keys(ov.ecus).find(k => ecuFamily && ecuFamily.toUpperCase().includes(k.toUpperCase()));
+          if(famKey){
+            const rules = ov.ecus[famKey];
+            if(rules.exclude) list = list.filter(p => !rules.exclude.includes(p.id));
+            if(rules.include) list = list.filter(p => rules.include.includes(p.id));
+            if(rules.rename)  list = list.map(p => ({...p, label: rules.rename[p.id] || p.label}));
+          }
+        }
+      }catch(_){}
+    }
+
+    // 5) packs
+    let packs = [];
+    try{
+      const pk = await loadJson("/static/patches/packs.json");
+      packs = (pk.packs||[]).filter(p => !engineMode || engineMode==="auto" || p.engine===engineMode);
+    }catch(_){}
+
+    return {patches:list, packs};
+  }
+
+  // --- Rellena el combo de parches ---
+  async function fillPatches(){
+    const sel  = $("#"+IDS.patchSelect);
+    const btn  = $("#"+IDS.btnAplicar);
+    const msg  = $("#"+IDS.noPatchMsg);
+    if(!sel||!btn){ log("Falta #patchSelect o #btnAplicar"); return; }
+
+    sel.innerHTML = ""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
+
+    const la = window.lastAnalysis;
+    if(!la){ sel.append(new Option("— Sube tu BIN para ver opciones —","")); return; }
+
+    const mode  = currentEngineMode();
+    const ecuF  = detectEcuFamily(la.ecu_type, la.filename);
+    const brand = ($("#"+IDS.marcaInput)?.value||"").trim();
+
+    try{
+      const {patches, packs} = await loadPatchesCombined(mode, ecuF, brand);
+      // si no hay global.json, usa las del backend (MVP)
+      const merged = (patches && patches.length) ? patches : (la.available_patches||[]);
+
+      if((merged && merged.length) || (packs && packs.length)){
+        sel.disabled=false; btn.disabled=false;
+        sel.append(new Option("— Selecciona un parche —",""));
+        (merged||[]).forEach(p => sel.append(new Option(p.label || p.id, p.id)));
+        if(packs && packs.length){
+          sel.append(new Option("──────────── PACKS ────────────",""));
+          packs.forEach(pk => sel.append(new Option(`🧩 ${pk.label}`, `pack:${pk.id}`)));
+        }
+      }else{
+        sel.append(new Option("Sin parches disponibles",""));
+        if(msg) msg.style.display="block";
+      }
+    }catch(e){
+      log("Error cargando parches: "+e.message);
+      // fallback duro: backend
+      const fallback = (window.lastAnalysis?.available_patches)||[];
+      if(fallback.length){
+        sel.disabled=false; btn.disabled=false;
+        sel.append(new Option("— Selecciona un parche —",""));
+        fallback.forEach(p => sel.append(new Option(p.label||p.id, p.id)));
+      }else{
+        sel.append(new Option("Sin parches disponibles",""));
+        if(msg) msg.style.display="block";
+      }
+    }
+  }
+
+  // Exponer para que el script del análisis lo llame
+  window.fillPatches = fillPatches;
+
+  // Rellenar cuando cambie tipo de motor
+  const engSel = $("#"+IDS.engineSelect);
+  if(engSel) engSel.addEventListener('change', ()=>fillPatches());
+
+  // Intento inicial (por si ya hay análisis en memoria)
+  document.addEventListener("DOMContentLoaded", ()=>fillPatches());
+})();
+</script>
 
 </body>
 </html>
