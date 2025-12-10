@@ -5,7 +5,12 @@ import os, uuid, shutil
 import json, base64, binascii, re
 import yaml  # pip install PyYAML
 
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent
+STATIC_DIR = ROOT_DIR / "static"
 PATCHES_DIR = STATIC_DIR / "patches"
+
 RECIPES_DIR = DATA_DIR / "recipes"
 RECIPES_DIR.mkdir(parents=True, exist_ok=True)
 
