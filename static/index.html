@@ -117,34 +117,39 @@
   </div>
 </div>
 
-<!-- MODAL LOGIN -->
-<div id="modalLogin" class="modal">
-  <div class="box" role="dialog" aria-modal="true">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <h3 style="margin:0">Iniciar sesión</h3>
-      <button id="closeLogin" class="btn sm" style="background:#1f2a44">✕</button>
+<!-- ===== Modales Auth (Login / Registro) ===== -->
+<div id="modalLogin" class="efx-modal" style="display:none">
+  <div class="efx-card">
+    <h3>Iniciar sesión</h3>
+    <input id="login_email" placeholder="Email" />
+    <input id="login_pass" type="password" placeholder="Contraseña" />
+    <div class="efx-row">
+      <button id="btnLogin">Ingresar</button>
+      <button class="efx-ghost" data-close="#modalLogin">Cerrar</button>
     </div>
-    <input id="login_email" placeholder="Email" autocomplete="username"/>
-    <input id="login_pass" type="password" placeholder="Contraseña" autocomplete="current-password"/>
-    <button id="btnLogin" class="btn" style="width:100%">Ingresar</button>
-    <div id="login_err" class="hint" style="margin-top:8px;display:none;color:#ff7676">Credenciales inválidas.</div>
   </div>
 </div>
 
-<!-- MODAL REGISTRO -->
-<div id="modalRegister" class="modal">
-  <div class="box" role="dialog" aria-modal="true">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-      <h3 style="margin:0">Crear cuenta</h3>
-      <button id="closeRegister" class="btn sm" style="background:#1f2a44">✕</button>
+<div id="modalRegister" class="efx-modal" style="display:none">
+  <div class="efx-card">
+    <h3>Crear cuenta</h3>
+    <input id="reg_name" placeholder="Nombre (opcional)" />
+    <input id="reg_email" placeholder="Email" />
+    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" />
+    <div class="efx-row">
+      <button id="btnRegister">Registrarme</button>
+      <button class="efx-ghost" data-close="#modalRegister">Cerrar</button>
     </div>
-    <input id="reg_name" placeholder="Nombre (opcional)" autocomplete="name"/>
-    <input id="reg_email" placeholder="Email" autocomplete="email"/>
-    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" autocomplete="new-password"/>
-    <button id="btnRegister" class="btn" style="width:100%">Registrarme</button>
-    <div id="reg_err" class="hint" style="margin-top:8px;display:none;color:#ff7676">No se pudo crear la cuenta.</div>
   </div>
 </div>
+
+<style>
+  .efx-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+  .efx-card{background:#111827;color:#e5e7eb;padding:18px;border-radius:10px;width:340px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+  .efx-card input{width:100%;padding:10px;border-radius:8px;border:1px solid #374151;margin:8px 0;background:#0b1220;color:#e5e7eb}
+  .efx-row{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+  .efx-ghost{background:transparent;border:1px solid #374151;color:#e5e7eb;border-radius:8px;padding:8px 12px;cursor:pointer}
+</style>
 
 <script>
 /* ================== THEME (oscuro por defecto) ================== */
