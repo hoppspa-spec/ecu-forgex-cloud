@@ -1,3 +1,18 @@
+from pathlib import Path
+
+# Ubicación absoluta real del proyecto
+ROOT_DIR = Path(__file__).resolve().parents[0]
+if (ROOT_DIR / "static").exists():
+    STATIC_DIR = ROOT_DIR / "static"
+else:
+    STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+
+PATCHES_DIR = STATIC_DIR / "patches"
+PATTERNS_DIR = STATIC_DIR / "patterns"
+
+PATCHES_DIR.mkdir(exist_ok=True, parents=True)
+PATTERNS_DIR.mkdir(exist_ok=True, parents=True)
+
 from __future__ import annotations
 
 import os, uuid, shutil
