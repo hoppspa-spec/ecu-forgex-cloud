@@ -473,5 +473,100 @@ $("#btn36h").onclick = async ()=>{
   const d = await r.json(); alert("Solicitud creada: "+d.request_id+" (SLA: "+d.sla_hours+"h)");
 };
 </script>
+<script>
+(function(){
+  // === Ajusta estos si tus IDs son distintos ===
+  const ID_INPUT = 'binfile';
+  const ID_BTN   = 'btnAnalizar';
+  // ============================================
+
+  const $ = (q, el=document)=>el.querySelector(q);
+  const log = (m)=>{
+    const b = $("#log"); 
+    if (!b) return console.log(m);
+    b.textContent += (b.textContent ? "\n" : "") + m;
+    b.scrollTop = b.scrollHeight;
+  };
+
+  function assertEl(id){
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`No encuentro #${id} en el DOM`);
+    return el;
+  }
+
+  async function analyze(){
+    try{
+      const fileInput = assertEl(ID_INPUT);
+      const btn       = assertEl(ID_BTN);
+      const f = fileInput.files && fileInput.files[0];
+      if(!f){ alert("Selecciona un BIN"); return; }
+
+      // Validación simple de extensión (igual que backend)
+      const okExt = /\.(bin|mpc|org|e2p|101)$/i.test(f.name || "");
+      if(!okExt){ alert("Formato no soportado. Usa .bin, .mpc, .org, .e2p, .101"); return; }
+
+      btn.disabled = true;
+      log("Subiendo y analizando BIN…");
+
+      const fd = new FormData();
+      // ¡Nombre exacto que espera el backend!
+      fd.append("bin_file", f);
+
+      const r = await fetch("/analyze_bin", { method:"POST", body: fd });
+      log(`Respuesta /analyze_bin: ${r.status}`);
+      if(!r.ok){
+        const t = await r.text().catch(()=>"(sin detalle)");
+        log("Error analizando BIN → " + t);
+        alert("No se pudo analizar el BIN.\nHTTP " + r.status);
+        return;
+      }
+
+      const data = await r.json();
+      // Guarda global si lo usas en otras funciones
+      window.lastAnalysis = data;
+
+      // Pinta ficha derecha (ajusta si tus IDs difieren)
+      $("#kv_ecu")  && ($("#kv_ecu").textContent  = data.ecu_type || "—");
+      $("#kv_pn")   && ($("#kv_pn").textContent   = data.ecu_part_number || "—");
+      $("#kv_sw")   && ($("#kv_sw").textContent   = "—");
+      $("#kv_size") && ($("#kv_size").textContent = new Intl.NumberFormat('es-CL').format(data.bin_size||0) + " bytes");
+
+      // Motor heurístico
+      let engine = "auto";
+      if(/EDC|MD1|MJD|DCM|SID/i.test(data.ecu_type||"")) engine = "diesel";
+      else if(/MED|MG1|MEVD|ME7/i.test(data.ecu_type||"")) engine = "petrol";
+      window.engineDetected = engine;
+      const engSel = $("#engineSelect");
+      if (engSel) engSel.value = "auto";
+
+      // Si tienes una función fillPatches, llámala:
+      if (typeof window.fillPatches === "function") {
+        await window.fillPatches();
+      }
+
+      log("Análisis OK. ECU: " + (data.ecu_type||"—") + "  PN: " + (data.ecu_part_number||"—"));
+    } catch(err){
+      console.error(err);
+      log("Excepción: " + (err && err.message ? err.message : err));
+      alert("Se produjo un error en el front. Revisa la consola.");
+    } finally {
+      const btn = document.getElementById(ID_BTN);
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  // cableado seguro (por si el script carga antes del DOM)
+  function wire(){
+    const btn = document.getElementById(ID_BTN);
+    if(btn && !btn.__wired){
+      btn.__wired = true;
+      btn.addEventListener("click", analyze);
+    }
+  }
+  document.addEventListener("DOMContentLoaded", wire);
+  wire();
+})();
+</script>
+
 </body>
 </html>
