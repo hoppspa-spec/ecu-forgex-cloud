@@ -1,6 +1,149 @@
 from __future__ import annotations
 
 import os, uuid, shutil
+# --- extra imports arriba si faltan ---
+import json, base64, binascii, re
+import yaml  # pip install PyYAML
+
+PATCHES_DIR = STATIC_DIR / "patches"
+RECIPES_DIR = DATA_DIR / "recipes"
+RECIPES_DIR.mkdir(parents=True, exist_ok=True)
+
+def _ensure_file(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        if path.suffix == ".json":
+            path.write_text("{}", encoding="utf-8")
+        else:
+            path.touch()
+
+def _load_json(path: Path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return default
+
+def _dump_json(path: Path, obj):
+    _ensure_file(path)
+    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+
+# ========== A) Guardar/actualizar entrada de catálogo y receta YAML ==========
+class SaveRecipeIn(BaseModel):
+    ecu_family: str
+    patch_id: str
+    label: str
+    engines: Optional[list[str]] = None       # ["petrol","diesel"]
+    compatible_ecu: Optional[list[str]] = None
+    price: Optional[int] = 49
+    save_catalog: bool = True
+    yaml_text: str
+
+@app.post("/admin/save_recipe")
+def admin_save_recipe(body: SaveRecipeIn, user: User = Depends(get_current_user)):
+    # 1) guardar receta
+    fam = (body.ecu_family or "GENERIC").strip()
+    rid = (body.patch_id or "patch").strip()
+    recipe_path = RECIPES_DIR / fam / f"{rid}.yml"
+    _ensure_file(recipe_path)
+    recipe_path.write_text(body.yaml_text, encoding="utf-8")
+
+    # 2) actualizar catálogo (global.json)
+    saved_in_catalog = False
+    if body.save_catalog:
+        gpath = PATCHES_DIR / "global.json"
+        _ensure_file(gpath)
+        data = _load_json(gpath, {"patches": []})
+        patches = data.get("patches", [])
+        # busca si existe
+        found = next((p for p in patches if p.get("id") == rid), None)
+        if found:
+            # actualiza
+            found["label"] = body.label
+            if body.engines:        found["engines"] = body.engines
+            if body.compatible_ecu: found["compatible_ecu"] = body.compatible_ecu
+            if body.price:          found["price"] = body.price
+        else:
+            patches.append({
+                "id": rid,
+                "label": body.label,
+                "engines": body.engines or [],
+                "compatible_ecu": body.compatible_ecu or [],
+                "price": body.price or 49
+            })
+        data["patches"] = patches
+        _dump_json(gpath, data)
+        saved_in_catalog = True
+
+    return {"ok": True, "recipe_path": str(recipe_path), "catalog_updated": saved_in_catalog}
+
+# ========== B) Diff → genera YAML de ops ==========
+# Sube dos binarios (original y modificado) y generamos ops (find/replace)
+from fastapi import Form
+
+@app.post("/admin/diff2patch")
+async def admin_diff2patch(
+    ecu_family: str = Form(...),
+    patch_id: str = Form(...),
+    save: bool = Form(False),
+    original_bin: UploadFile = File(...),
+    modified_bin: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    orig = await original_bin.read()
+    mod  = await modified_bin.read()
+    if len(orig) != len(mod):
+        raise HTTPException(400, "Los archivos deben tener el mismo tamaño para un diff simple (MVP).")
+
+    # detecta bloques contiguos con diferencias
+    ops = []
+    i = 0
+    while i < len(orig):
+        if orig[i] != mod[i]:
+            start = i
+            while i < len(orig) and orig[i] != mod[i]:
+                i += 1
+            end = i  # [start,end)
+            # construye strings hex "AA BB ..."
+            find_hex = " ".join(f"{b:02X}" for b in orig[start:end])
+            replace_hex = " ".join(f"{b:02X}" for b in mod[start:end])
+            ops.append({"find": find_hex, "replace": replace_hex})
+        else:
+            i += 1
+
+    recipe = {
+        "meta": {
+            "name": f"{patch_id} ({ecu_family})",
+            "author": user.full_name or user.email,
+            "version": 1,
+            "notes": "Generado automáticamente por diff2patch"
+        },
+        "ops": ops,
+        "checksum": {"type": "none"}
+    }
+    yaml_text = yaml.safe_dump(recipe, sort_keys=False, allow_unicode=True)
+
+    recipe_path = None
+    if save:
+        dst = RECIPES_DIR / ecu_family / f"{patch_id}.yml"
+        _ensure_file(dst)
+        dst.write_text(yaml_text, encoding="utf-8")
+        recipe_path = str(dst)
+
+    return {"ok": True, "ops_count": len(ops), "yaml": yaml_text, "saved_to": recipe_path}
+
+# ========== C) Guardar receta suelta (generada por editor HEX del front) ==========
+class SaveYamlIn(BaseModel):
+    ecu_family: str
+    patch_id: str
+    yaml_text: str
+
+@app.post("/admin/save_yaml")
+def admin_save_yaml(body: SaveYamlIn, user: User = Depends(get_current_user)):
+    path = RECIPES_DIR / body.ecu_family / f"{body.patch_id}.yml"
+    _ensure_file(path)
+    path.write_text(body.yaml_text, encoding="utf-8")
+    return {"ok": True, "path": str(path)}
+
 from typing import Optional, Dict
 from datetime import datetime, timedelta
 from pathlib import Path
