@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ECU FORGE X — Admin Patches</title>
+<style>
+  :root{ --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8; --stroke:#1f2a44; --btn:#2563eb; --btnh:#1d4ed8 }
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
+  header{background:#0b1220;padding:14px 18px;display:flex;gap:12px;align-items:center}
+  header .grow{flex:1}
+  a{color:#cbd5e1;text-decoration:none}
+  .wrap{padding:18px}
+  .tabs{display:flex;gap:8px;margin-bottom:12px}
+  .tab{padding:8px 12px;background:#101a33;border:1px solid var(--stroke);border-radius:8px;cursor:pointer}
+  .tab.active{background:#1a2240}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px;margin-bottom:12px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  input,select,textarea,button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--stroke);background:#0e1526;color:var(--ink)}
+  textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas}
+  .btn{background:var(--btn);border:0;cursor:pointer}
+  .btn:hover{background:var(--btnh)}
+  .muted{color:var(--muted);font-size:13px}
+  .hex{font-family:ui-monospace,Menlo,Consolas;white-space:pre;overflow:auto;max-height:380px;background:#0a0f1f;border:1px solid var(--stroke);border-radius:10px;padding:10px}
+  .row{display:flex;gap:8px;align-items:center}
+  .ok{color:#22c55e}
+  .err{color:#f87171}
+</style>
+</head>
+<body>
+<header>
+  <div style="font-weight:700">ECU FORGE X — Admin Patches</div>
+  <div class="grow"></div>
+  <a href="/static/index.html">← Volver</a>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-tab="gen">A) Generador</div>
+    <div class="tab" data-tab="hex">B) Editor HEX</div>
+    <div class="tab" data-tab="diff">C) Diff → Patch</div>
+  </div>
+
+  <!-- A) GENERADOR -->
+  <section id="tab-gen" class="card">
+    <h3>Generar catálogo + receta</h3>
+    <div class="grid2">
+      <div>
+        <label>ECU Family</label>
+        <input id="g_ecu" placeholder="MED17 / MG1 / EDC17 ...">
+      </div>
+      <div>
+        <label>Patch ID</label>
+        <input id="g_id" placeholder="speed_limiter">
+      </div>
+      <div>
+        <label>Label</label>
+        <input id="g_label" placeholder="Speed Limiter OFF">
+      </div>
+      <div>
+        <label>Price USD</label>
+        <input id="g_price" type="number" value="49">
+      </div>
+      <div>
+        <label>Engines</label>
+        <select id="g_engines" multiple>
+          <option value="petrol">petrol</option>
+          <option value="diesel">diesel</option>
+        </select>
+        <div class="muted">Ctrl/Cmd para multi selección</div>
+      </div>
+      <div>
+        <label>Compatible ECU (coma)</label>
+        <input id="g_compat" placeholder="MED17, MG1, EDC17">
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:10px">
+      <div>
+        <label>find (hex con espacios, admite ??)</label>
+        <textarea id="g_find" placeholder="12 34 ?? 56 78 9A"></textarea>
+      </div>
+      <div>
+        <label>replace (hex con espacios)</label>
+        <textarea id="g_repl" placeholder="12 34 00 56 78 9A"></textarea>
+      </div>
+    </div>
+
+    <div>
+      <label>Recipe YAML (auto)</label>
+      <textarea id="g_yaml"></textarea>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="g_make">Generar YAML</button>
+      <button class="btn" id="g_save">Guardar receta + catálogo</button>
+      <div id="g_msg" class="muted"></div>
+    </div>
+  </section>
+
+  <!-- B) HEX EDITOR (simple) -->
+  <section id="tab-hex" class="card" style="display:none">
+    <h3>Editor HEX (selecciona bytes → crea op)</h3>
+    <div class="grid2">
+      <div>
+        <label>Archivo BIN</label>
+        <input type="file" id="h_file">
+        <div id="h_hex" class="hex">Cargar BIN…</div>
+      </div>
+      <div>
+        <div class="grid2">
+          <div>
+            <label>ECU Family</label>
+            <input id="h_ecu" placeholder="MED17">
+          </div>
+          <div>
+            <label>Patch ID</label>
+            <input id="h_id" placeholder="speed_limiter">
+          </div>
+        </div>
+        <label>Operaciones YAML</label>
+        <textarea id="h_yaml" placeholder="# se generará aquí"></textarea>
+        <div class="row">
+          <button class="btn" id="h_addop">Añadir op (find/replace) desde selección</button>
+          <button class="btn" id="h_save">Guardar receta</button>
+        </div>
+        <div class="muted">Tip: selecciona con el mouse una secuencia (hex) en el cuadro y luego pega la nueva secuencia en el prompt que aparecerá.</div>
+        <div id="h_msg" class="muted"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- C) DIFF → PATCH -->
+  <section id="tab-diff" class="card" style="display:none">
+    <h3>Diff 2 BIN → Receta YAML</h3>
+    <div class="grid2">
+      <div>
+        <label>ECU Family</label>
+        <input id="d_ecu" placeholder="MED17 / MG1 / EDC17">
+      </div>
+      <div>
+        <label>Patch ID</label>
+        <input id="d_id" placeholder="rpm_limit">
+      </div>
+      <div>
+        <label>Original BIN</label>
+        <input type="file" id="d_orig">
+      </div>
+      <div>
+        <label>Modificado BIN</label>
+        <input type="file" id="d_mod">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:8px">
+      <button class="btn" id="d_run">Generar YAML</button>
+      <button class="btn" id="d_save">Generar + Guardar</button>
+    </div>
+
+    <div style="margin-top:8px">
+      <label>Resultado YAML</label>
+      <textarea id="d_yaml"></textarea>
+      <div id="d_msg" class="muted"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (q, el=document)=>el.querySelector(q);
+
+// Tabs
+document.querySelectorAll(".tab").forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll(".tab").forEach(a=>a.classList.remove("active"));
+    t.classList.add("active");
+    const id=t.dataset.tab;
+    ["gen","hex","diff"].forEach(k=> $("#tab-"+k).style.display = k===id ? "block":"none");
+  };
+});
+
+// Auth token
+let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
+if(!TOKEN){
+  alert("Debes iniciar sesión primero.");
+  location.href="/static/index.html";
+}
+
+// ---------- A) GENERADOR ----------
+function hexSanitize(s){ return (s||"").trim().replace(/[^0-9A-Fa-f?\s]/g,"").replace(/\s+/g," ").toUpperCase(); }
+
+$("#g_make").onclick=()=>{
+  const find = hexSanitize($("#g_find").value);
+  const repl = hexSanitize($("#g_repl").value);
+  const meta = {
+    name: ($("#g_label").value||"") + " (" + ($("#g_ecu").value||"GENERIC") + ")",
+    author: "admin",
+    version: 1,
+    notes: "Creado en Admin Generator"
+  };
+  const ops = (find && repl) ? [{find, replace:repl}] : [];
+  const doc = { meta, ops, checksum:{type:"none"} };
+  $("#g_yaml").value = jsyaml.dump(doc, {sortKeys:false});
+};
+
+$("#g_save").onclick=async()=>{
+  const engines = Array.from($("#g_engines").selectedOptions).map(o=>o.value);
+  const compat = ($("#g_compat").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const payload = {
+    ecu_family: $("#g_ecu").value.trim() || "GENERIC",
+    patch_id: $("#g_id").value.trim(),
+    label: $("#g_label").value.trim(),
+    engines, compatible_ecu: compat,
+    price: parseInt($("#g_price").value||"49",10),
+    save_catalog: true,
+    yaml_text: $("#g_yaml").value
+  };
+  const r = await fetch("/admin/save_recipe",{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(payload)});
+  const d = await r.json();
+  $("#g_msg").textContent = r.ok && d.ok ? "✅ Guardado: "+d.recipe_path+" (catálogo actualizado)" : "❌ Error: "+JSON.stringify(d);
+};
+
+// ---------- B) HEX EDITOR (simple) ----------
+let H_BYTES = null;
+$("#h_file").addEventListener("change", async e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const buf = new Uint8Array(await f.arrayBuffer());
+  H_BYTES = buf;
+  // hex view simple
+  let out = "";
+  for(let i=0;i<buf.length;i+=16){
+    const slice = buf.slice(i, i+16);
+    const hex = Array.from(slice).map(b=>b.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+    out += (i.toString(16).padStart(8,"0").toUpperCase()) + "  " + hex + "\n";
+  }
+  $("#h_hex").textContent = out || "Archivo vacío.";
+  $("#h_yaml").value = "meta:\n  name: "+($("#h_id").value||"patch")+" ("+($("#h_ecu").value||"GENERIC")+")\n  author: admin\n  version: 1\nops:\n  # añade ops con el botón\nchecksum:\n  type: none\n";
+});
+
+$("#h_addop").onclick=()=>{
+  const sel = window.getSelection();
+  const text = sel?.toString() || "";
+  const hex = hexSanitize(text);
+  if(!hex){ alert("Selecciona bytes del panel HEX a la izquierda."); return; }
+  const repl = prompt("Nueva secuencia HEX (misma longitud ideal, admite espacios):", hex);
+  if(repl===null) return;
+  const rhex = hexSanitize(repl);
+  const extra = `- find: "${hex}"\n  replace: "${rhex}"\n`;
+  $("#h_yaml").value = $("#h_yaml").value.replace(/(\nchecksum:[\s\S]*$)/m, "") + extra + "checksum:\n  type: none\n";
+};
+
+$("#h_save").onclick=async()=>{
+  const payload = {
+    ecu_family: $("#h_ecu").value.trim() || "GENERIC",
+    patch_id: $("#h_id").value.trim(),
+    yaml_text: $("#h_yaml").value
+  };
+  const r = await fetch("/admin/save_yaml",{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(payload)});
+  const d = await r.json();
+  $("#h_msg").textContent = r.ok && d.ok ? "✅ Guardada: "+d.path : "❌ Error: "+JSON.stringify(d);
+};
+
+// ---------- C) DIFF ----------
+async function runDiff(save){
+  const ecu = $("#d_ecu").value.trim() || "GENERIC";
+  const pid = $("#d_id").value.trim();
+  const f1 = $("#d_orig").files?.[0];
+  const f2 = $("#d_mod").files?.[0];
+  if(!pid || !f1 || !f2){ alert("Completa ECU/ID y selecciona ambos archivos."); return; }
+  const fd = new FormData();
+  fd.append("ecu_family", ecu);
+  fd.append("patch_id", pid);
+  fd.append("save", save ? "true":"false");
+  fd.append("original_bin", f1);
+  fd.append("modified_bin", f2);
+  const r = await fetch("/admin/diff2patch",{method:"POST",headers:{'Authorization':'Bearer '+TOKEN},body:fd});
+  const d = await r.json();
+  $("#d_yaml").value = d.yaml || "";
+  $("#d_msg").textContent = r.ok && d.ok ? `✅ ops: ${d.ops_count}` : "❌ Error: "+JSON.stringify(d);
+}
+$("#d_run").onclick = ()=>runDiff(false);
+$("#d_save").onclick = ()=>runDiff(true);
+</script>
+
+<!-- YAML lib (ligera) -->
+<script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+</body>
+</html>
