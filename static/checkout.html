@@ -84,7 +84,9 @@ async function fetchOrder(){
     // si ya está listo, muestra descarga
     if (o.status === "done" && o.mod_file_path){
       $("#btnDownload").style.display = "inline-block";
-      $("#btnDownload").href = `/orders/${o.id}/download`;
+      $("#btnDownload").a.href = `/orders/${o.id}/download?access_token=${encodeURIComponent(TOKEN)}`;
+      a.setAttribute("download", "");
+
     }
     return o;
   }catch(e){
