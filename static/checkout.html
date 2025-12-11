@@ -95,25 +95,32 @@ async function fetchOrder(){
 
 async function demoPay(){
   $("#msg").textContent = "Procesando pago demo…";
-  try{
-    const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
-      method:"POST",
-      headers: { "Authorization":"Bearer "+TOKEN }
-    });
-    if(!r.ok){
-      const t = await r.text();
-      $("#msg").textContent = "No se pudo confirmar el pago: "+t;
-      return;
-    }
-    const d = await r.json();
-    $("#msg").textContent = "Pago confirmado. MOD generado.";
-    $("#btnDownload").style.display = "inline-block";
-    $("#btnDownload").href = d.download_url;
-    await fetchOrder();
-  }catch(e){
-    $("#msg").textContent = "Error de red al confirmar.";
+
+  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+
+  if(!r.ok){
+    const t = await r.text();
+    $("#msg").textContent = "No se pudo confirmar el pago: " + t;
+    return;
   }
+
+  const d = await r.json();
+  $("#msg").textContent = "Pago confirmado. MOD generado.";
+
+  // ACTIVAR BOTÓN DESCARGA
+  const a = document.getElementById("btnDownload");
+  a.style.display = "inline-block";
+
+  // LINK DE DESCARGA con token incrustado
+  a.href = d.download_url + `?access_token=${encodeURIComponent(TOKEN)}`;
+  a.setAttribute("download", "");
+
+  await fetchOrder();
 }
+
 
 function wire(){
   if(needAuth()) return;
