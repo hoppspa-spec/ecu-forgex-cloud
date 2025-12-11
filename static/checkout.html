@@ -71,8 +71,11 @@ function needAuth(){
 async function fetchOrder(){
   const box = $("#orderBox");
   try{
-    const r = await fetch(`/orders/${ORDER_ID}`, { headers: { "Authorization":"Bearer "+TOKEN }});
+    const r = await fetch(`/orders/${ORDER_ID}`, {
+      headers: { "Authorization":"Bearer "+TOKEN }
+    });
     if(!r.ok){ box.textContent = "No se pudo cargar la orden."; return null; }
+
     const o = await r.json();
     box.innerHTML = `
       <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
@@ -81,22 +84,27 @@ async function fetchOrder(){
       <div class="row"><div class="muted">Archivo</div><div>${o.original_filename || "—"}</div></div>
       <div class="row"><div class="muted">Monto</div><div>$10.00 <span class="muted">(demo)</span></div></div>
     `;
+
     // si ya está listo, muestra descarga
+    const dl = document.getElementById("btnDownload");
     if (o.status === "done" && o.mod_file_path){
-  const a = document.getElementById("btnDownload");
-  a.style.display = "inline-block";
-  a.href = `/orders/${o.id}/download?access_token=${encodeURIComponent(TOKEN)}`;
-  a.setAttribute("download", "");
-}
-
-
+      dl.style.display = "inline-block";
+      dl.href = `/orders/${o.id}/download?access_token=${encodeURIComponent(TOKEN)}`;
+      dl.setAttribute("download", "");
+      dl.textContent = "⬇️ Descargar .MOD";
+    } else {
+      dl.style.display = "none";
+      dl.removeAttribute("href");
+      dl.removeAttribute("download");
     }
+
     return o;
   }catch(e){
     box.textContent = "Error de red.";
     return null;
   }
 }
+
 
 async function demoPay(){
   $("#msg").textContent = "Procesando pago demo…";
@@ -116,16 +124,17 @@ async function demoPay(){
   $("#msg").textContent = "Pago confirmado. MOD generado.";
 
   // ACTIVAR BOTÓN DESCARGA
-  const a = document.getElementById("btnDownload");
-  a.style.display = "inline-block";
+  const dl = document.getElementById("btnDownload");
+  dl.style.display = "inline-block";
+  dl.href = d.download_url + `?access_token=${encodeURIComponent(TOKEN)}`;
+  dl.setAttribute("download", "");
+  dl.textContent = "⬇️ Descargar .MOD";
 
-  // LINK DE DESCARGA con token incrustado
-  a.href = d.download_url + `?access_token=${encodeURIComponent(TOKEN)}`;
-  a.setAttribute("download", "");
-
+  // refrescar panel por si quieres ver el estado "done"
   await fetchOrder();
+  // (opcional) mini poll por latencias raras
+  setTimeout(fetchOrder, 600);
 }
-
 
 function wire(){
   if(needAuth()) return;
