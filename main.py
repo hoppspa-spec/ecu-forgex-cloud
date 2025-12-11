@@ -343,15 +343,38 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
     o["mod_file_path"] = str(out_path)
     return PaymentConfirmOut(download_url=f"/orders/{order_id}/download")
 
+from fastapi import Query
+from jose import JWTError, jwt
+
 @app.get("/orders/{order_id}/download")
-def download_mod(order_id: int, current_user: User = Depends(get_current_user)):
+def download_mod(
+    order_id: int,
+    access_token: str | None = Query(default=None, alias="access_token"),
+    auth_header_token: str | None = Depends(oauth2_scheme)  # si viene Authorization, también sirve
+):
+    # 1) Resolver usuario a partir de Authorization o del query ?access_token=
+    user_id: int | None = None
+    token = auth_header_token or access_token
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = int(payload.get("sub", "0"))
+        except JWTError:
+            raise HTTPException(401, "Token inválido")
+    else:
+        raise HTTPException(401, "Falta token")
+
+    # 2) Validar orden y propietario
     o = orders_db.get(order_id)
-    if not o or o["user_id"] != current_user.id:
+    if not o or o["user_id"] != user_id:
         raise HTTPException(404, "Orden no encontrada")
+
     path = o.get("mod_file_path")
     if not path or not Path(path).exists():
         raise HTTPException(404, "Archivo MOD no disponible")
+
     fp = Path(path)
+    # Forzar nombre de descarga
     return FileResponse(path=fp, filename=fp.name, media_type="application/octet-stream")
 
 # -------------------------------------------------------------------
