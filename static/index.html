@@ -1055,6 +1055,199 @@ document.getElementById("marca")?.addEventListener("input", ()=> fillPatches());
 document.getElementById("engineSelect")?.addEventListener("change", ()=> fillPatches());
 // recuerda llamar fillPatches() al final del flujo de /analyze_bin OK
 </script>
+<script>
+// ---- precio helper
+function toUSD(p){
+  if (p == null) return null;
+  if (typeof p === "number") return p;
+  if (typeof p === "object" && p.USD != null) return Number(p.USD);
+  return null;
+}
+function labelWithPrice(label, priceLike){
+  const usd = toUSD(priceLike);
+  return usd != null ? `${label} — $${usd}` : label;
+}
+
+// ---- cache JSON
+const _jsonCache = {};
+async function jget(url){
+  if(_jsonCache[url]) return _jsonCache[url];
+  const r = await fetch(url, {cache:"no-store"});
+  if(!r.ok) throw new Error("No se pudo cargar "+url);
+  const d = await r.json();
+  _jsonCache[url] = d;
+  return d;
+}
+
+// ---- util marca -> brand key
+function brandKeyFromInput(){
+  const raw = (document.getElementById("marca")?.value || "").trim();
+  if(!raw) return null;
+  return raw.toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+            .replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
+}
+
+// ---- detect ECU family (igual que antes)
+function detectEcuFamily(ecuType, filename){
+  const src = ((ecuType||"")+" "+(filename||"")).toUpperCase();
+  const tests = [
+    /MG1CS\d*/, /\bMG1\b/, /MED17\.5(\.\d+)?/, /\bMED17\b/, /\bMEVD\b/, /\bME7(\.\d+)?\b/,
+    /EDC17CP\d*/, /EDC17C\d*/, /\bEDC17\b/, /\bEDC16\b/, /\bMD1\b/, /\bDCM\d*\b/, /\bSID\d{3}\b/
+  ];
+  for(const re of tests){ const m = src.match(re); if(m) return m[0]; }
+  if(/BOSCH/.test(src) && /MG1/.test(src)) return "MG1";
+  if(/BOSCH/.test(src) && /MED17/.test(src)) return "MED17";
+  if(/BOSCH/.test(src) && /EDC17/.test(src)) return "EDC17";
+  return null;
+}
+
+// ---- engine mode actual
+function currentEngineMode(){
+  const sel = document.getElementById("engineSelect");
+  if(!sel) return "auto";
+  const v = sel.value;
+  if(v && v!=="auto") return v;
+  return (window.engineDetected && engineDetected!=="auto") ? engineDetected : "auto";
+}
+
+// ---- loader combinado (normaliza engines y saca price USD)
+async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
+  // 1) global
+  let list = [];
+  try{
+    const g = await jget("/static/patches/global.json");
+    list = (g.patches || []).map(p => ({
+      ...p,
+      engines: (p.engines || []).map(e => String(e).toLowerCase()),
+      _priceUSD: toUSD(p.price)
+    }));
+  }catch{}
+
+  // 2) motor
+  if(engineMode && engineMode!=="auto"){
+    const want = String(engineMode).toLowerCase();
+    list = list.filter(p => (p.engines||[]).includes(want));
+  }
+
+  // 3) familia ECU
+  if(ecuFamily){
+    const up = ecuFamily.toUpperCase();
+    list = list.filter(p => (p.compatible_ecu||[]).some(f => up.includes(String(f).toUpperCase())));
+  }
+
+  // 4) overrides por marca
+  if(brandKey){
+    try{
+      const ov = await jget(`/static/patches/brand/${brandKey}.json`);
+      if(ov?.ecus){
+        const famKey = Object.keys(ov.ecus).find(k => ecuFamily && ecuFamily.toUpperCase().includes(k.toUpperCase()));
+        if(famKey){
+          const rules = ov.ecus[famKey];
+          if(rules.exclude) list = list.filter(p => !rules.exclude.includes(p.id));
+          if(rules.include) list = list.filter(p =>  rules.include.includes(p.id));
+          if(rules.rename)  list = list.map(p => ({...p, label: rules.rename[p.id] || p.label}));
+          if(rules.price)   list = list.map(p => {
+            const override = rules.price[p.id];
+            return override!=null ? {...p, _priceUSD: toUSD(override)} : p;
+          });
+        }
+      }
+    }catch{}
+  }
+
+  // 5) packs
+  let packs = [];
+  try{
+    const pk = await jget("/static/patches/packs.json");
+    packs = (pk.packs||[]).map(x => ({...x, _priceUSD: toUSD(x.price)}))
+      .filter(x => !engineMode || engineMode==="auto" || !x.engine || x.engine===engineMode);
+  }catch{}
+
+  return { patches: list, packs };
+}
+
+// ---- pinta selector + actualiza ficha ECU
+async function fillPatches(){
+  const sel = document.getElementById("patchSelect");
+  const btn = document.getElementById("btnAplicar");
+  if(!sel || !btn) return;
+
+  sel.innerHTML = "";
+  const mode = currentEngineMode();
+  const ecuFam = detectEcuFamily(window.lastAnalysis?.ecu_type, window.lastAnalysis?.filename);
+  const brandKey = brandKeyFromInput();
+
+  const {patches, packs} = await loadPatchesCombined(mode, ecuFam, brandKey);
+
+  if(patches.length || packs.length){
+    sel.disabled = false; btn.disabled = false;
+    const msg = document.getElementById("noPatchMsg");
+    if(msg) msg.style.display = "none";
+    sel.append(new Option("— Selecciona una opción —",""));
+    patches.forEach(p => sel.append(new Option(labelWithPrice(p.label, p._priceUSD), p.id)));
+    if(packs.length){
+      sel.append(new Option("──────────── PACKS ────────────",""));
+      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk._priceUSD)}`, `pack:${pk.id}`)));
+    }
+  }else{
+    sel.disabled = true; btn.disabled = true;
+    sel.append(new Option("Sin parches disponibles",""));
+    const msg = document.getElementById("noPatchMsg");
+    if(msg) msg.style.display = "block";
+  }
+}
+
+// cuando cambia la selección, refleja Parche/Precio en la ficha
+(function wireFicha(){
+  const sel = document.getElementById("patchSelect");
+  if(!sel) return;
+  sel.addEventListener("change", ()=>{
+    const opt = sel.options[sel.selectedIndex];
+    const txt = opt?.text || "";
+    const priceMatch = txt.match(/\$([\d.,]+)/);
+    const label = txt.replace(/\s+—\s+\$[\d.,]+/,"");
+    document.getElementById("kv_parche") && (document.getElementById("kv_parche").textContent = label || "—");
+    document.getElementById("kv_precio") && (document.getElementById("kv_precio").textContent = priceMatch ? `$${priceMatch[1]}` : "—");
+  });
+})();
+
+// vuelve a cargar parches si cambia marca o motor
+document.getElementById("marca")?.addEventListener("input", ()=> fillPatches());
+document.getElementById("engineSelect")?.addEventListener("change", ()=> fillPatches());
+
+// ---- handler de Aplicar / Comprar
+document.getElementById("btnAplicar").onclick = async ()=>{
+  const sel = document.getElementById("patchSelect");
+  const value = sel.value;
+  if(!window.lastAnalysis){ alert("Primero analiza un BIN"); return; }
+  if(!value){ alert("Selecciona una opción"); return; }
+
+  // requiere login
+  if(!window.TOKEN){
+    const modal = document.getElementById("modalLogin");
+    if(modal){ modal.style.display="flex"; }
+    else { alert("Inicia sesión para continuar"); }
+    return;
+  }
+
+  const isPack = value.startsWith("pack:");
+  const patchOrPack = isPack ? value.slice(5) : value;
+
+  const r = await fetch("/orders",{
+    method:"POST",
+    headers:{ "Authorization":"Bearer "+window.TOKEN, "Content-Type":"application/json" },
+    body: JSON.stringify({ analysis_id: window.lastAnalysis.analysis_id, patch_option_id: patchOrPack })
+  });
+  if(!r.ok){
+    const t = await r.text();
+    alert("Error creando orden:\n"+t);
+    return;
+  }
+  const d = await r.json();
+  location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
+};
+</script>
 
 </body>
 </html>
