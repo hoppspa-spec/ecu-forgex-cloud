@@ -1,177 +1,130 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
+<meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ECU FORGE X — Checkout</title>
 <style>
-  :root{
-    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
-    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
-  }
+  :root{--bg:#0b0f19;--card:#0f1629;--ink:#e5e7eb;--muted:#94a3b8;--stroke:#1f2a44;--btn:#2563eb;--btnh:#1d4ed8;--ok:#22c55e;}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
-  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
+  header{background:#0b1220;color:#fff;padding:14px 18px;display:flex;gap:12px;align-items:center}
   header .grow{flex:1}
-  header a{color:#cbd5e1;text-decoration:none}
-  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
-  .btn:hover{background:var(--btnh)}
-  .wrap{padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+  a{color:#93c5fd;text-decoration:none}
+  .wrap{padding:18px;display:grid;gap:18px;grid-template-columns:1fr 320px}
   .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
-  h2,h3{margin:0 0 10px}
+  .row{display:grid;grid-template-columns:160px 1fr;gap:8px;margin:10px 0}
   .muted{color:var(--muted)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  .ok{color:#22c55e}
-  table{width:100%;border-collapse:collapse}
-  th,td{border-bottom:1px solid var(--stroke);padding:8px;text-align:left;font-size:14px}
-  .hint{font-size:13px;color:var(--muted)}
+  .btn{background:var(--btn);border:0;color:#fff;padding:12px 16px;border-radius:10px;cursor:pointer}
+  .btn:hover{background:var(--btnh)}
+  .btn.gray{background:#374151}
+  .btn.ok{background:var(--ok);color:#00150a}
+  .actions{display:flex;flex-direction:column;gap:12px}
+  .help li{margin:6px 0}
 </style>
 </head>
-<body class="dark">
-
+<body>
 <header>
-  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
-  <a href="/static/catalogo.html" style="margin-left:8px">Catálogo</a>
+  <strong>ECU FORGE X</strong>
   <div class="grow"></div>
-  <button class="btn" id="btnTheme">Tema</button>
-  <a href="/static/index.html" style="margin-left:12px">Subir BIN</a>
-  <a href="/static/usuarios.html" style="margin-left:12px">Mis órdenes</a>
+  <a href="/static/index.html">Subir BIN</a>
+  <a href="/static/usuarios.html">Mis órdenes</a>
 </header>
 
 <div class="wrap">
   <div class="card">
-    <h2>Checkout</h2>
-    <div id="msgAuth" class="muted" style="display:none;margin-top:6px"></div>
-
-    <div class="row" style="margin-top:10px">
-      <div class="card" style="padding:12px">
-        <h3>Orden</h3>
-        <table>
-          <tbody>
-            <tr><th>ID</th><td id="tdOrder">—</td></tr>
-            <tr><th>Parche</th><td id="tdPatch">—</td></tr>
-            <tr><th>Estado</th><td id="tdStatus">Pendiente de pago</td></tr>
-            <tr><th>Monto</th><td id="tdAmount">$10.00</td></tr>
-          </tbody>
-        </table>
-        <div class="hint" style="margin-top:8px">* Demo: monto fijo. Luego lo leemos por parche/pack.</div>
-      </div>
-
-      <div class="card" style="padding:12px">
-        <h3>Acciones</h3>
-        <div id="paypal-buttons" style="margin:8px 0 12px"></div>
-        <button id="btnPay" class="btn" style="display:none">Confirmar pago (demo)</button>
-        <div id="payMsg" class="hint">Si PayPal no carga, usa el botón de demo.</div>
-
-        <div id="doneBox" style="display:none;margin-top:12px">
-          <div class="ok">Pago confirmado ✓</div>
-          <div style="margin-top:6px">
-            <a id="dlLink" class="btn" href="#" download>Descargar MOD</a>
-          </div>
-        </div>
-      </div>
+    <h3>Checkout</h3>
+    <div id="orderBox" class="muted">Cargando orden…</div>
+    <div class="actions" style="margin-top:14px">
+      <button id="btnPaypal" class="btn">Pagar con PayPal</button>
+      <button id="btnCard" class="btn gray">Tarjeta de débito o crédito</button>
+      <button id="btnDemo" class="btn ok">💳 Pago DEMO (confirmar sin PayPal)</button>
+      <a id="btnDownload" class="btn" style="display:none" download>⬇️ Descargar .MOD</a>
     </div>
-
-    <div class="card" style="margin-top:12px">
-      <h3>Notas</h3>
-      <div class="hint">
-        • Este entorno usa PayPal <b>Sandbox</b> (pruebas).<br/>
-        • Tras el pago, generamos el <b>.mod</b> (MVP) y habilitamos la descarga.
-      </div>
-    </div>
+    <div id="msg" class="muted" style="margin-top:10px"></div>
   </div>
 
   <div class="card">
     <h3>Ayuda</h3>
-    <ul class="hint">
-      <li>Si no ves el botón PayPal, revisa bloqueadores o usa el botón demo.</li>
-      <li>La descarga requiere sesión activa.</li>
+    <ul class="help">
+      <li>Si PayPal no carga en tu navegador, usa <b>Pago DEMO</b>.</li>
+      <li>La descarga requiere sesión iniciada.</li>
     </ul>
   </div>
 </div>
 
 <script>
-  const $=(q,el=document)=>el.querySelector(q);
-  const qs=(k)=>new URL(location.href).searchParams.get(k);
-  let TOKEN=localStorage.getItem("EFX_TOKEN")||null;
+const $ = (q,el=document)=>el.querySelector(q);
+const params = new URLSearchParams(location.search);
+const ORDER_ID = Number(params.get("order_id") || "0");
+let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
 
-  // tema
-  (function(){
-    const KEY='EFX_THEME';
-    const saved=localStorage.getItem(KEY)||'dark';
-    document.body.classList.toggle('dark', saved==='dark');
-    $("#btnTheme").onclick=()=>{const nd=!document.body.classList.contains('dark');document.body.classList.toggle('dark',nd);localStorage.setItem(KEY,nd?'dark':'light');};
-  })();
-
-  const ORDER_ID=parseInt(qs("order_id")||"0",10);
-  if(!ORDER_ID){ alert("Falta order_id en la URL"); }
-  $("#tdOrder").textContent=ORDER_ID||"—";
-
-  function ensureAuth(){
-    if(!TOKEN){ $("#msgAuth").style.display="block"; $("#msgAuth").textContent="Necesitas iniciar sesión para pagar y descargar."; return false; }
+function needAuth(){
+  if(!TOKEN){
+    $("#msg").textContent = "Inicia sesión en la página principal para continuar.";
+    alert("Debes iniciar sesión para ver el checkout.");
+    location.href = "/static/index.html";
     return true;
   }
+  return false;
+}
 
-  async function loadOrder(){
-    if(!ensureAuth()) return;
-    try{
-      const r=await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
-      if(!r.ok){ $("#tdStatus").textContent="No se pudo cargar la orden"; return; }
-      const d=await r.json();
-      const o=(d.orders||[]).find(x=>x.id===ORDER_ID);
-      if(!o){ $("#tdStatus").textContent="Orden no encontrada"; return; }
-      $("#tdPatch").textContent=o.patch_option_id||"—";
-      $("#tdStatus").textContent=o.status||"—";
-    }catch{ $("#tdStatus").textContent="Error de red"; }
-  }
-  loadOrder();
-
-  // demo fallback
-  $("#btnPay").onclick=async()=>{
-    if(!ensureAuth())return;
-    const rr=await fetch(`/orders/${ORDER_ID}/confirm_payment`,{method:"POST",headers:{Authorization:"Bearer "+TOKEN}});
-    if(!rr.ok){ alert("Error generando MOD"); return; }
-    const dd=await rr.json();
-    $("#doneBox").style.display="block";
-    $("#dlLink").href=dd.download_url;
-    $("#tdStatus").textContent="done";
-    $("#payMsg").textContent="Pago confirmado (demo)";
-  };
-</script>
-
-<!-- PayPal SDK -->
-<script src="https://www.paypal.com/sdk/js?client-id=sb&currency=USD"></script>
-<script>
-(async function(){
-  const amountUSD=10.00;
+async function fetchOrder(){
+  const box = $("#orderBox");
   try{
-    await paypal.Buttons({
-      style:{layout:'vertical',shape:'rect',label:'pay',color:'gold'},
-      createOrder:(data,actions)=>actions.order.create({
-        purchase_units:[{amount:{value:amountUSD.toFixed(2)},description:`ECU FORGE X — Order #${ORDER_ID}`}]
-      }),
-      onApprove:async (data,actions)=>{
-        try{
-          await actions.order.capture();
-          const rr=await fetch(`/orders/${ORDER_ID}/confirm_payment`,{method:"POST",headers:{Authorization:"Bearer "+(localStorage.getItem("EFX_TOKEN")||"")}});
-          if(!rr.ok){ alert("Error generando MOD"); return; }
-          const dd=await rr.json();
-          document.getElementById("doneBox").style.display="block";
-          document.getElementById("dlLink").href=dd.download_url;
-          document.getElementById("tdStatus").textContent="done";
-          document.getElementById("payMsg").textContent="Pago aprobado por PayPal";
-        }catch{ alert("No se pudo completar el flujo de pago/confirmación."); }
-      },
-      onError:(err)=>{
-        console.warn("PayPal error:",err);
-        document.getElementById("btnPay").style.display="inline-block";
-      }
-    }).render('#paypal-buttons');
+    const r = await fetch(`/orders/${ORDER_ID}`, { headers: { "Authorization":"Bearer "+TOKEN }});
+    if(!r.ok){ box.textContent = "No se pudo cargar la orden."; return null; }
+    const o = await r.json();
+    box.innerHTML = `
+      <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
+      <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
+      <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
+      <div class="row"><div class="muted">Archivo</div><div>${o.original_filename || "—"}</div></div>
+      <div class="row"><div class="muted">Monto</div><div>$10.00 <span class="muted">(demo)</span></div></div>
+    `;
+    // si ya está listo, muestra descarga
+    if (o.status === "done" && o.mod_file_path){
+      $("#btnDownload").style.display = "inline-block";
+      $("#btnDownload").href = `/orders/${o.id}/download`;
+    }
+    return o;
   }catch(e){
-    console.warn("PP SDK load error",e);
-    document.getElementById("btnPay").style.display="inline-block";
+    box.textContent = "Error de red.";
+    return null;
   }
-})();
-</script>
+}
 
+async function demoPay(){
+  $("#msg").textContent = "Procesando pago demo…";
+  try{
+    const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
+      method:"POST",
+      headers: { "Authorization":"Bearer "+TOKEN }
+    });
+    if(!r.ok){
+      const t = await r.text();
+      $("#msg").textContent = "No se pudo confirmar el pago: "+t;
+      return;
+    }
+    const d = await r.json();
+    $("#msg").textContent = "Pago confirmado. MOD generado.";
+    $("#btnDownload").style.display = "inline-block";
+    $("#btnDownload").href = d.download_url;
+    await fetchOrder();
+  }catch(e){
+    $("#msg").textContent = "Error de red al confirmar.";
+  }
+}
+
+function wire(){
+  if(needAuth()) return;
+  if(!ORDER_ID){ alert("order_id faltante en la URL"); return; }
+  fetchOrder();
+  $("#btnDemo").onclick = demoPay;
+  // botones reales (colócale tu integración cuando la tengas):
+  $("#btnPaypal").onclick = ()=> alert("Integra PayPal aquí. Por ahora usa Pago DEMO.");
+  $("#btnCard").onclick   = ()=> alert("Integra tarjeta aquí. Por ahora usa Pago DEMO.");
+}
+document.addEventListener("DOMContentLoaded", wire);
+</script>
 </body>
 </html>
