@@ -287,25 +287,57 @@ def _apply_patch_or_copy(src: Path, dst: Path, patch_id: str):
     # fallback
     shutil.copyfile(src, dst)
 
+# --- NUEVO: leer una orden puntual (para checkout) ---
+@app.get("/orders/{order_id}")
+def get_order(order_id: int, current_user: User = Depends(get_current_user)):
+    o = orders_db.get(order_id)
+    if not o or o["user_id"] != current_user.id:
+        raise HTTPException(404, "Orden no encontrada")
+    # también devolvemos nombre original si existe
+    original = None
+    aid = o.get("analysis_id")
+    if aid:
+        files = list(BIN_DIR.glob(f"{aid}_*"))
+        if files:
+            name = files[0].name
+            original = name.split("_", 1)[1] if "_" in name else name
+    return {**o, "original_filename": original}
+
+
+# --- REEMPLAZA tu confirm_payment por este ---
 @app.post("/orders/{order_id}/confirm_payment", response_model=PaymentConfirmOut)
 def confirm_payment(order_id: int, current_user: User = Depends(get_current_user)):
     o = orders_db.get(order_id)
     if not o or o["user_id"] != current_user.id:
         raise HTTPException(404, "Orden no encontrada")
 
-    aid   = o.get("analysis_id")
-    patch = o.get("patch_option_id", "patch")
-    files = list(BIN_DIR.glob(f"{aid}_*")) if aid else []
-    if not files:
-        raise HTTPException(404, "BIN original no encontrado")
+    aid = o.get("analysis_id")
+    # localiza el BIN original subido para esta orden
+    src_file = None
+    if aid:
+        candidates = sorted(BIN_DIR.glob(f"{aid}_*"))
+        if candidates:
+            src_file = candidates[0]
 
-    src = files[0]
-    original_name = src.name.split("_", 1)[1] if "_" in src.name else src.name
-    stem, ext = os.path.splitext(original_name)
-    out_path = MOD_DIR / f"{stem}_{patch}.mod{ext or '.bin'}"
+    if not src_file or not src_file.exists():
+        raise HTTPException(400, "BIN original no disponible para esta orden")
+
+    patch = o.get("patch_option_id") or "patch"
+    # nombre legible basado en el archivo original + patch
+    orig_name = src_file.name                               # {analysis_id}_{original}
+    original = orig_name.split("_", 1)[1] if "_" in orig_name else orig_name
+    base, ext = os.path.splitext(original)
+    if not ext:
+        ext = ".bin"
+    out_name = f"{base}.{patch}.mod{ext}"
+    out_path = MOD_DIR / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    _apply_patch_or_copy(src, out_path, patch)
+    # MVP: copiamos el BIN y añadimos un tag al final (marca del parche aplicado)
+    with open(src_file, "rb") as f_in, open(out_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+        tag = f"\nEFX-MOD:{patch} {datetime.utcnow().isoformat()}Z\n".encode("ascii", "ignore")
+        f_out.write(tag)
 
     o["status"] = "done"
     o["mod_file_path"] = str(out_path)
