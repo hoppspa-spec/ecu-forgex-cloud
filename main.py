@@ -270,24 +270,17 @@ def my_orders(current_user: User = Depends(get_current_user)):
 # helper: aplicar parche con tools/patch_apply.py si existe
 def _apply_patch_or_copy(src: Path, dst: Path, patch_id: str):
     """
-    Si existe tools/patch_apply.py con función apply_patch(src, dst, patch_id), la usamos.
-    Si no, copiamos el archivo (MVP).
-    """
-    try:
-        import importlib.util
-        tool_path = ROOT_DIR / "tools" / "patch_apply.py"
-        if tool_path.exists():
-            spec = importlib.util.spec_from_file_location("patch_apply", str(tool_path))
-            mod  = importlib.util.module_from_spec(spec)  # type: ignore
-            assert spec and spec.loader
-            spec.loader.exec_module(mod)  # type: ignore
-            if hasattr(mod, "apply_patch"):
-                mod.apply_patch(str(src), str(dst), patch_id)
-                return
-    except Exception as e:
-        print("apply_patch error:", e)
-    # fallback
-    shutil.copyfile(src, dst)
+    # --- dentro de confirm_payment (reemplaza el bloque que copia + tag) ---
+# Generar salida: usa tools/patch_apply.py si existe
+try:
+    _apply_patch_or_copy(src_file, out_path, patch)  # <— llama a la herramienta real si está presente
+except Exception as e:
+    # fallback durísimo: copia intacta + marca (por si algo truena)
+    import shutil
+    with open(src_file, "rb") as f_in, open(out_path, "wb") as f_out:
+        shutil.copyfileobj(f_in, f_out)
+        tag = f"\nEFX-MOD:{patch} {datetime.utcnow().isoformat()}Z\n".encode("ascii", "ignore")
+        f_out.write(tag)
 
 # --- NUEVO: leer una orden puntual (para checkout) ---
 @app.get("/orders/{order_id}")
