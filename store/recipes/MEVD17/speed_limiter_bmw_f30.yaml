@@ -1,0 +1,21 @@
+meta:
+  id: speed_limiter_bmw_f30
+  name: Speed Limiter (BMW F30)
+  author: ECU FORGE
+  version: 1
+  patch_ids: ["speed_limiter"]
+
+selectors:
+  ascii_contains: ["BMW"]      # cuando el bin trae strings
+  size_between: [512000, 4194304]
+
+ops:
+  - value_find:
+      kind: u16
+      value: 500        # 250.0 km/h → 500 * 0.5
+      scale: 1          # ya está escalado como u16
+      replace_value: 660   # 330.0 km/h → 660 * 0.5
+      endian: be
+      tol: 2           # acepta 498..502
+      align: 2
+      expect: 1
