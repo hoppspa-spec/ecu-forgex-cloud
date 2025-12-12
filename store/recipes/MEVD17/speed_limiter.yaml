@@ -1,0 +1,13 @@
+meta:
+  name: Speed Limiter OFF (MEVD17.2.3)
+  author: ECU FORGE X
+  version: 1
+  notes: "Plantilla. Reemplaza con el patrón real de tu SW."
+
+ops:
+  # Ejemplo: limitador velocidad a 255 km/h (placeholder)
+  - find:    "00 00 70 43"     # 240.0f
+    replace: "00 00 7F 43"     # 255.0f
+
+checksum:
+  type: none

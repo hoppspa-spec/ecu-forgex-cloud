@@ -1,0 +1,17 @@
+meta:
+  name: SCR/AdBlue OFF (Bosch MD1CP002)
+  author: ECU FORGE X
+  version: 1
+  notes: "Plantilla. Desactiva dos rutas: control y DTC."
+
+ops:
+  # Control loop disable (placeholder)
+  - find: "7F 45 23 10"
+    replace: "00 00 00 00"
+
+  # DTC asociados (placeholder)
+  - find: "50 32 30 30"   # 'P200'... (solo demo)
+    replace: "50 33 39 39" # 'P399' o neutralización
+
+checksum:
+  type: none
