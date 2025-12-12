@@ -7,7 +7,7 @@ from typing import Optional, Dict, List
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Form
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException, Form, Query
 from fastapi.responses import RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -72,7 +72,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
-# esquema opcional para endpoints donde el header puede no venir
 oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 class User(Base):
@@ -289,20 +288,7 @@ def _apply_patch_or_copy(src: Path, dst: Path, patch_id: str):
     # fallback: copia 1:1
     shutil.copyfile(src, dst)
 
-    """
-    # --- dentro de confirm_payment (reemplaza el bloque que copia + tag) ---
-# Generar salida: usa tools/patch_apply.py si existe
-try:
-    _apply_patch_or_copy(src_file, out_path, patch)  # <— llama a la herramienta real si está presente
-except Exception as e:
-    # fallback durísimo: copia intacta + marca (por si algo truena)
-    import shutil
-    with open(src_file, "rb") as f_in, open(out_path, "wb") as f_out:
-        shutil.copyfileobj(f_in, f_out)
-        tag = f"\nEFX-MOD:{patch} {datetime.utcnow().isoformat()}Z\n".encode("ascii", "ignore")
-        f_out.write(tag)
-
-# --- NUEVO: leer una orden puntual (para checkout) ---
+# --- leer una orden puntual (para checkout) ---
 @app.get("/orders/{order_id}")
 def get_order(order_id: int, current_user: User = Depends(get_current_user)):
     o = orders_db.get(order_id)
@@ -346,7 +332,7 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
     out_path = MOD_DIR / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # ⬇️ NUEVO: intentar aplicar parche real; si falla, copia + tag
+    # aplicar parche real; si falla, copia + tag
     try:
         _apply_patch_or_copy(src_file, out_path, patch)
     except Exception as e:
@@ -359,11 +345,6 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
     o["status"] = "done"
     o["mod_file_path"] = str(out_path)
     return PaymentConfirmOut(download_url=f"/orders/{order_id}/download")
-
-
-from fastapi import Query
-from jose import JWTError, jwt
-from typing import Optional
 
 @app.get("/orders/{order_id}/download")
 def download_mod(
@@ -398,7 +379,8 @@ def download_mod(
         filename=fp.name,
         media_type="application/octet-stream"
     )
-    # -------------------------------------------------------------------
+
+# -------------------------------------------------------------------
 # Patch Requests (cuando no hay parche disponible) — SLA 24h
 # -------------------------------------------------------------------
 class PatchRequestIn(BaseModel):
@@ -447,7 +429,6 @@ def create_patch_request(body: PatchRequestIn, current_user: User = Depends(get_
     (REQ_DIR / f"{req_id}.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
 
     return PatchRequestOut(ok=True, request_id=req_id, sla_hours=24)
-
 
 # -------------------------------------------------------------------
 # Admin: catálogo y recetas
@@ -528,7 +509,7 @@ async def admin_diff2patch(
         raise HTTPException(400, "Ambos BIN deben tener el MISMO tamaño para este diff simple.")
 
     # detectar bloques contiguos de diferencia
-    ops = []
+    ops: List[Dict[str, str]] = []
     i = 0
     while i < len(orig):
         if orig[i] != mod[i]:
