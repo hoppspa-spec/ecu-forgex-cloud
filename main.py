@@ -318,29 +318,27 @@ def get_order(order_id: int, current_user: User = Depends(get_current_user)):
             original = name.split("_", 1)[1] if "_" in name else name
     return {**o, "original_filename": original}
 
-
-# --- REEMPLAZA tu confirm_payment por este ---
 @app.post("/orders/{order_id}/confirm_payment", response_model=PaymentConfirmOut)
 def confirm_payment(order_id: int, current_user: User = Depends(get_current_user)):
     o = orders_db.get(order_id)
     if not o or o["user_id"] != current_user.id:
         raise HTTPException(404, "Orden no encontrada")
 
+    # localizar el BIN original subido
     aid = o.get("analysis_id")
-    # localiza el BIN original subido para esta orden
     src_file = None
     if aid:
         candidates = sorted(BIN_DIR.glob(f"{aid}_*"))
         if candidates:
             src_file = candidates[0]
-
     if not src_file or not src_file.exists():
         raise HTTPException(400, "BIN original no disponible para esta orden")
 
     patch = o.get("patch_option_id") or "patch"
-    # nombre legible basado en el archivo original + patch
-    orig_name = src_file.name                               # {analysis_id}_{original}
-    original = orig_name.split("_", 1)[1] if "_" in orig_name else orig_name
+
+    # nombre de salida legible
+    orig_name = src_file.name  # {analysis_id}_{original}
+    original  = orig_name.split("_", 1)[1] if "_" in orig_name else orig_name
     base, ext = os.path.splitext(original)
     if not ext:
         ext = ".bin"
@@ -348,15 +346,20 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
     out_path = MOD_DIR / out_name
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # MVP: copiamos el BIN y añadimos un tag al final (marca del parche aplicado)
-    with open(src_file, "rb") as f_in, open(out_path, "wb") as f_out:
-        shutil.copyfileobj(f_in, f_out)
-        tag = f"\nEFX-MOD:{patch} {datetime.utcnow().isoformat()}Z\n".encode("ascii", "ignore")
-        f_out.write(tag)
+    # ⬇️ NUEVO: intentar aplicar parche real; si falla, copia + tag
+    try:
+        _apply_patch_or_copy(src_file, out_path, patch)
+    except Exception as e:
+        print("fallback copy+tag por error:", e)
+        with open(src_file, "rb") as f_in, open(out_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
+            tag = f"\nEFX-MOD:{patch} {datetime.utcnow().isoformat()}Z\n".encode("ascii", "ignore")
+            f_out.write(tag)
 
     o["status"] = "done"
     o["mod_file_path"] = str(out_path)
     return PaymentConfirmOut(download_url=f"/orders/{order_id}/download")
+
 
 from fastapi import Query
 from jose import JWTError, jwt
