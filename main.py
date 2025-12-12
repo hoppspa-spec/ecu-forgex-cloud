@@ -360,9 +360,7 @@ def confirm_payment(order_id: int, current_user: User = Depends(get_current_user
 
 from fastapi import Query
 from jose import JWTError, jwt
-
 from typing import Optional
-from fastapi import Query
 
 @app.get("/orders/{order_id}/download")
 def download_mod(
