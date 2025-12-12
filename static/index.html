@@ -427,6 +427,30 @@ $("#btn24h").onclick = async ()=>{
   const d = await r.json(); alert("Solicitud creada: "+d.request_id+" (SLA: "+d.sla_hours+"h)");
 };
 </script>
+<script>
+async function assertAuth() {
+  // Si no hay token → pedir login.
+  if (!TOKEN) {
+    $("#modalLogin").style.display = "flex";
+    return false;
+  }
+  // Verificar con el backend.
+  try {
+    const r = await fetch("/users/me", {
+      headers: { "Authorization": "Bearer " + TOKEN }
+    });
+    if (r.ok) return true;
+  } catch (_) {}
+  // Token inválido/expirado → limpiar y forzar login.
+  localStorage.removeItem("EFX_TOKEN");
+  TOKEN = null;
+  setAuthUi(false);
+  alert("Tu sesión expiró. Inicia sesión nuevamente.");
+  $("#modalLogin").style.display = "flex";
+  return false;
+}
+</script>
+
 
 </body>
 </html>
