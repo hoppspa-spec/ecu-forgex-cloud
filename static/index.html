@@ -89,10 +89,11 @@
     </select>
     <button id="btnAplicar" class="btn" disabled>Aplicar / Comprar</button>
 
+    <!-- MENSAJE 24h -->
     <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
-      No hay parches disponibles para esta ECU.<br/>
-      Dentro de máximo <b>36 horas</b> podemos generar una solución personalizada.
-      <button id="btn36h" class="btn sm" style="margin-top:8px;width:auto">Solicitar solución (36h)</button>
+      Por ahora no contamos con un parche para tu ECU.<br/>
+      Sube el BIN y te responderemos a la brevedad (máx. <b>24&nbsp;h</b>).
+      <button id="btn24h" class="btn sm" style="margin-top:8px;width:auto">Solicitar solución (24&nbsp;h)</button>
     </div>
 
     <h3 style="margin-top:16px">Resultado</h3>
@@ -389,7 +390,7 @@ $("#btnAnalizar").onclick = async ()=>{
 </script>
 
 <script>
-/* ===== Aplicar / Comprar + 36h ===== */
+/* ===== Aplicar / Comprar + 24h ===== */
 $("#btnAplicar").onclick = async ()=>{
   const sel = $("#patchSelect");
   const value = sel.value;
@@ -408,7 +409,8 @@ $("#btnAplicar").onclick = async ()=>{
   location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
 };
 
-$("#btn36h").onclick = async ()=>{
+// NUEVO botón de solicitud 24h
+$("#btn24h").onclick = async ()=>{
   if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
   const payload = {
     marca: $("#marca").value||null, modelo: $("#modelo").value||null, anio: $("#anio").value||null,
@@ -416,8 +418,12 @@ $("#btn36h").onclick = async ()=>{
     ecu_part_number: $("#kv_pn").textContent||null, manufacturer_number: null,
     analysis_id: lastAnalysis?.analysis_id || null, original_filename: lastAnalysis?.filename || null
   };
-  const r = await fetch("/patch_requests",{method:"POST",headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},body:JSON.stringify(payload)});
-  if(!r.ok){ alert("No se pudo crear la solicitud 36h"); return; }
+  const r = await fetch("/patch_requests",{
+    method:"POST",
+    headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if(!r.ok){ alert("No se pudo crear la solicitud 24h"); return; }
   const d = await r.json(); alert("Solicitud creada: "+d.request_id+" (SLA: "+d.sla_hours+"h)");
 };
 </script>
