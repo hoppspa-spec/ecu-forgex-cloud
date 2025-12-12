@@ -3,285 +3,329 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ECU FORGE X — Admin Patches</title>
+<title>ECU FORGE X — Admin de Recetas</title>
 <style>
-  :root{ --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8; --stroke:#1f2a44; --btn:#2563eb; --btnh:#1d4ed8 }
+  :root{
+    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8; --stroke:#1f2a44;
+    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
+  }
+  *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
-  header{background:#0b1220;padding:14px 18px;display:flex;gap:12px;align-items:center}
+  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
   header .grow{flex:1}
-  a{color:#cbd5e1;text-decoration:none}
-  .wrap{padding:18px}
-  .tabs{display:flex;gap:8px;margin-bottom:12px}
-  .tab{padding:8px 12px;background:#101a33;border:1px solid var(--stroke);border-radius:8px;cursor:pointer}
-  .tab.active{background:#1a2240}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px;margin-bottom:12px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  input,select,textarea,button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--stroke);background:#0e1526;color:var(--ink)}
-  textarea{min-height:160px;font-family:ui-monospace,Menlo,Consolas}
-  .btn{background:var(--btn);border:0;cursor:pointer}
+  a{color:#93c5fd;text-decoration:none}
+  .wrap{padding:18px;display:grid;gap:18px;grid-template-columns:1fr}
+  .tabs{display:flex;gap:8px}
+  .tab{padding:10px 12px;border:1px solid var(--stroke);border-bottom:none;border-radius:10px 10px 0 0;background:#0e1526;cursor:pointer}
+  .tab.active{background:var(--card)}
+  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
+  .grid{display:grid;gap:12px}
+  .g2{grid-template-columns:1fr 1fr}
+  label{font-size:13px;color:var(--muted)}
+  input,select,textarea{width:100%;padding:10px;border-radius:8px;border:1px solid var(--stroke);background:#0e1526;color:var(--ink)}
+  textarea{min-height:260px;font-family:ui-monospace,Consolas,Menlo}
+  .row{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+  .row3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
+  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
   .btn:hover{background:var(--btnh)}
+  .btn.ghost{background:transparent;border:1px solid var(--stroke)}
+  .btn.ok{background:var(--ok);color:#01240c}
+  .btn.warn{background:var(--warn);color:#231600}
+  .btn.err{background:var(--err)}
   .muted{color:var(--muted);font-size:13px}
-  .hex{font-family:ui-monospace,Menlo,Consolas;white-space:pre;overflow:auto;max-height:380px;background:#0a0f1f;border:1px solid var(--stroke);border-radius:10px;padding:10px}
-  .row{display:flex;gap:8px;align-items:center}
-  .ok{color:#22c55e}
-  .err{color:#f87171}
+  .log{background:#000;color:#00ff72;font-family:ui-monospace,Consolas,Menlo;min-height:140px;border-radius:8px;padding:12px;overflow:auto}
+  .hint{font-size:12px;color:var(--muted)}
+  .divider{height:1px;background:var(--stroke);margin:10px 0}
+  .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#182038;color:#dbe2ff;font-size:12px}
+  .hide{display:none}
+  .right{display:flex;gap:10px;justify-content:flex-end}
 </style>
 </head>
 <body>
 <header>
-  <div style="font-weight:700">ECU FORGE X — Admin Patches</div>
+  <strong>ECU FORGE X — Admin</strong>
+  <span class="badge">Recetas YAML</span>
   <div class="grow"></div>
   <a href="/static/index.html">← Volver</a>
 </header>
 
 <div class="wrap">
   <div class="tabs">
-    <div class="tab active" data-tab="gen">A) Generador</div>
-    <div class="tab" data-tab="hex">B) Editor HEX</div>
-    <div class="tab" data-tab="diff">C) Diff → Patch</div>
+    <button class="tab active" data-tab="recetas">Editor de recetas</button>
+    <button class="tab" data-tab="diff">Diff → YAML</button>
   </div>
 
-  <!-- A) GENERADOR -->
-  <section id="tab-gen" class="card">
-    <h3>Generar catálogo + receta</h3>
-    <div class="grid2">
+  <!-- ======= Editor de Recetas ======= -->
+  <section id="tab-recetas" class="card">
+    <div class="grid g2">
       <div>
-        <label>ECU Family</label>
-        <input id="g_ecu" placeholder="MED17 / MG1 / EDC17 ...">
+        <label>ECU Family (carpeta)</label>
+        <input id="ecu_family" placeholder="Ej: MED17, MG1, EDC17"/>
       </div>
       <div>
-        <label>Patch ID</label>
-        <input id="g_id" placeholder="speed_limiter">
-      </div>
-      <div>
-        <label>Label</label>
-        <input id="g_label" placeholder="Speed Limiter OFF">
-      </div>
-      <div>
-        <label>Price USD</label>
-        <input id="g_price" type="number" value="49">
-      </div>
-      <div>
-        <label>Engines</label>
-        <select id="g_engines" multiple>
-          <option value="petrol">petrol</option>
-          <option value="diesel">diesel</option>
-        </select>
-        <div class="muted">Ctrl/Cmd para multi selección</div>
-      </div>
-      <div>
-        <label>Compatible ECU (coma)</label>
-        <input id="g_compat" placeholder="MED17, MG1, EDC17">
+        <label>Patch ID (nombre archivo)</label>
+        <input id="patch_id" placeholder="Ej: speed_limiter, dpf_off"/>
       </div>
     </div>
 
-    <div class="grid2" style="margin-top:10px">
+    <div class="grid g2">
       <div>
-        <label>find (hex con espacios, admite ??)</label>
-        <textarea id="g_find" placeholder="12 34 ?? 56 78 9A"></textarea>
+        <label>Label (catálogo)</label>
+        <input id="label" placeholder="Ej: Speed Limiter OFF"/>
       </div>
       <div>
-        <label>replace (hex con espacios)</label>
-        <textarea id="g_repl" placeholder="12 34 00 56 78 9A"></textarea>
+        <label>Precio USD (opcional)</label>
+        <input id="price" type="number" min="0" step="1" placeholder="Ej: 49"/>
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <div>
+        <label>Engines (coma)</label>
+        <input id="engines" placeholder="petrol,diesel"/>
+      </div>
+      <div>
+        <label>Compatible ECU (coma)</label>
+        <input id="compat" placeholder="MED17,MG1,EDC17,MD1"/>
       </div>
     </div>
 
     <div>
-      <label>Recipe YAML (auto)</label>
-      <textarea id="g_yaml"></textarea>
+      <label class="muted"><input type="checkbox" id="save_catalog" checked/> Actualizar catálogo (static/patches/global.json)</label>
     </div>
 
-    <div class="row" style="margin-top:8px">
-      <button class="btn" id="g_make">Generar YAML</button>
-      <button class="btn" id="g_save">Guardar receta + catálogo</button>
-      <div id="g_msg" class="muted"></div>
+    <div>
+      <label>YAML de la receta</label>
+      <textarea id="yaml_text" spellcheck="false" placeholder="Pega/edita tu YAML aquí…"></textarea>
+      <div class="hint">Ruta destino: <code>storage/recipes/&lt;ECU Family&gt;/&lt;Patch ID&gt;.yml</code></div>
     </div>
-  </section>
 
-  <!-- B) HEX EDITOR (simple) -->
-  <section id="tab-hex" class="card" style="display:none">
-    <h3>Editor HEX (selecciona bytes → crea op)</h3>
-    <div class="grid2">
-      <div>
-        <label>Archivo BIN</label>
-        <input type="file" id="h_file">
-        <div id="h_hex" class="hex">Cargar BIN…</div>
-      </div>
-      <div>
-        <div class="grid2">
-          <div>
-            <label>ECU Family</label>
-            <input id="h_ecu" placeholder="MED17">
-          </div>
-          <div>
-            <label>Patch ID</label>
-            <input id="h_id" placeholder="speed_limiter">
-          </div>
-        </div>
-        <label>Operaciones YAML</label>
-        <textarea id="h_yaml" placeholder="# se generará aquí"></textarea>
-        <div class="row">
-          <button class="btn" id="h_addop">Añadir op (find/replace) desde selección</button>
-          <button class="btn" id="h_save">Guardar receta</button>
-        </div>
-        <div class="muted">Tip: selecciona con el mouse una secuencia (hex) en el cuadro y luego pega la nueva secuencia en el prompt que aparecerá.</div>
-        <div id="h_msg" class="muted"></div>
-      </div>
+    <div class="right">
+      <button class="btn ghost" id="btnPlantilla">Cargar plantilla</button>
+      <button class="btn warn" id="btnValidar">Validar YAML</button>
+      <button class="btn" id="btnGuardarYaml">Guardar sin catálogo</button>
+      <button class="btn ok" id="btnGuardar">Guardar receta + catálogo</button>
+    </div>
+
+    <div class="divider"></div>
+    <div>
+      <label>Log</label>
+      <div id="log1" class="log">Listo.</div>
     </div>
   </section>
 
-  <!-- C) DIFF → PATCH -->
-  <section id="tab-diff" class="card" style="display:none">
-    <h3>Diff 2 BIN → Receta YAML</h3>
-    <div class="grid2">
+  <!-- ======= Diff → YAML ======= -->
+  <section id="tab-diff" class="card hide">
+    <div class="grid g2">
       <div>
         <label>ECU Family</label>
-        <input id="d_ecu" placeholder="MED17 / MG1 / EDC17">
+        <input id="df_ecu_family" placeholder="Ej: MED17"/>
       </div>
       <div>
         <label>Patch ID</label>
-        <input id="d_id" placeholder="rpm_limit">
-      </div>
-      <div>
-        <label>Original BIN</label>
-        <input type="file" id="d_orig">
-      </div>
-      <div>
-        <label>Modificado BIN</label>
-        <input type="file" id="d_mod">
+        <input id="df_patch_id" placeholder="Ej: speed_limiter"/>
       </div>
     </div>
 
-    <div class="row" style="margin-top:8px">
-      <button class="btn" id="d_run">Generar YAML</button>
-      <button class="btn" id="d_save">Generar + Guardar</button>
+    <div class="grid g2">
+      <div>
+        <label>BIN original (stock)</label>
+        <input id="df_orig" type="file" />
+      </div>
+      <div>
+        <label>BIN modificado</label>
+        <input id="df_mod" type="file" />
+      </div>
     </div>
 
-    <div style="margin-top:8px">
-      <label>Resultado YAML</label>
-      <textarea id="d_yaml"></textarea>
-      <div id="d_msg" class="muted"></div>
+    <div>
+      <label class="muted"><input type="checkbox" id="df_save"/> Guardar receta automáticamente</label>
+    </div>
+
+    <div class="right">
+      <button class="btn" id="btnDiff">Generar YAML</button>
+    </div>
+
+    <div class="divider"></div>
+
+    <div>
+      <label>YAML generado</label>
+      <textarea id="df_yaml" spellcheck="false" placeholder="Aquí aparecerá la receta YAML generada…"></textarea>
+    </div>
+
+    <div class="divider"></div>
+    <div>
+      <label>Log</label>
+      <div id="log2" class="log">Esperando archivos…</div>
     </div>
   </section>
 </div>
 
 <script>
-const $ = (q, el=document)=>el.querySelector(q);
-
-// Tabs
-document.querySelectorAll(".tab").forEach(t=>{
-  t.onclick=()=>{
-    document.querySelectorAll(".tab").forEach(a=>a.classList.remove("active"));
-    t.classList.add("active");
-    const id=t.dataset.tab;
-    ["gen","hex","diff"].forEach(k=> $("#tab-"+k).style.display = k===id ? "block":"none");
-  };
-});
-
-// Auth token
+/* ===== Estado común ===== */
+const $ = (q,el=document)=>el.querySelector(q);
 let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
-if(!TOKEN){
-  alert("Debes iniciar sesión primero.");
-  location.href="/static/index.html";
+function needAuth(){
+  if(!TOKEN){ alert("Inicia sesión en /static/index.html para usar el admin."); location.href="/static/index.html"; return true; }
+  return false;
 }
+function log(el, msg){ const b=$(el); b.textContent += (b.textContent? "\n":"") + msg; b.scrollTop=b.scrollHeight; }
 
-// ---------- A) GENERADOR ----------
-function hexSanitize(s){ return (s||"").trim().replace(/[^0-9A-Fa-f?\s]/g,"").replace(/\s+/g," ").toUpperCase(); }
+/* ===== Tabs ===== */
+const tabs = document.querySelectorAll(".tab");
+tabs.forEach(t => t.addEventListener("click", ()=>{
+  tabs.forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const id = t.dataset.tab;
+  document.querySelectorAll("section[id^='tab-']").forEach(s => s.classList.add("hide"));
+  $("#tab-"+id).classList.remove("hide");
+}));
 
-$("#g_make").onclick=()=>{
-  const find = hexSanitize($("#g_find").value);
-  const repl = hexSanitize($("#g_repl").value);
-  const meta = {
-    name: ($("#g_label").value||"") + " (" + ($("#g_ecu").value||"GENERIC") + ")",
-    author: "admin",
-    version: 1,
-    notes: "Creado en Admin Generator"
-  };
-  const ops = (find && repl) ? [{find, replace:repl}] : [];
-  const doc = { meta, ops, checksum:{type:"none"} };
-  $("#g_yaml").value = jsyaml.dump(doc, {sortKeys:false});
+/* ===== Plantilla YAML ===== */
+const TEMPLATE = `meta:
+  name: <NAME> (<FAMILY>)
+  version: 1
+  author: <AUTHOR or TEAM>
+  notes: "Breve descripción del parche"
+
+ops:
+  # Puedes tener múltiples bloques find/replace
+  - find:    "00 00 00 64"
+    replace: "00 00 00 C8"
+    max_hits: 1
+
+  # Ejemplo con wildcard (?? ignora byte)
+  # - find:    "12 34 ?? 78 9A"
+  #   replace: "12 34 56 78 9A"
+  #   max_hits: 2
+
+checksum:
+  type: none
+  # si necesitas checksum específico, aquí defines el tipo y parámetros
+`;
+$("#btnPlantilla").onclick = ()=>{
+  $("#yaml_text").value = TEMPLATE;
 };
 
-$("#g_save").onclick=async()=>{
-  const engines = Array.from($("#g_engines").selectedOptions).map(o=>o.value);
-  const compat = ($("#g_compat").value||"").split(",").map(s=>s.trim()).filter(Boolean);
-  const payload = {
-    ecu_family: $("#g_ecu").value.trim() || "GENERIC",
-    patch_id: $("#g_id").value.trim(),
-    label: $("#g_label").value.trim(),
-    engines, compatible_ecu: compat,
-    price: parseInt($("#g_price").value||"49",10),
-    save_catalog: true,
-    yaml_text: $("#g_yaml").value
-  };
-  const r = await fetch("/admin/save_recipe",{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(payload)});
-  const d = await r.json();
-  $("#g_msg").textContent = r.ok && d.ok ? "✅ Guardado: "+d.recipe_path+" (catálogo actualizado)" : "❌ Error: "+JSON.stringify(d);
+/* ===== Validación simple YAML (sintaxis básica) =====
+   No traemos parser YAML aquí para mantenerlo 0-deps; validamos mínimo:
+   - no vacío
+   - contiene 'ops:' y 'meta:'
+*/
+$("#btnValidar").onclick = ()=>{
+  const y = ($("#yaml_text").value || "").trim();
+  const ok = y && /(^|\n)\s*ops\s*:/i.test(y) && /(^|\n)\s*meta\s*:/i.test(y);
+  if(ok){ alert("El YAML parece válido (validación básica). Prueba final guardando y aplicando."); }
+  else { alert("YAML incompleto: asegúrate de incluir 'meta:' y 'ops:'."); }
 };
 
-// ---------- B) HEX EDITOR (simple) ----------
-let H_BYTES = null;
-$("#h_file").addEventListener("change", async e=>{
-  const f = e.target.files?.[0]; if(!f) return;
-  const buf = new Uint8Array(await f.arrayBuffer());
-  H_BYTES = buf;
-  // hex view simple
-  let out = "";
-  for(let i=0;i<buf.length;i+=16){
-    const slice = buf.slice(i, i+16);
-    const hex = Array.from(slice).map(b=>b.toString(16).padStart(2,"0").toUpperCase()).join(" ");
-    out += (i.toString(16).padStart(8,"0").toUpperCase()) + "  " + hex + "\n";
+/* ===== Guardar receta + catálogo ===== */
+$("#btnGuardar").onclick = async ()=>{
+  if(needAuth()) return;
+  const ecu_family = $("#ecu_family").value.trim();
+  const patch_id   = $("#patch_id").value.trim();
+  const label      = $("#label").value.trim() || patch_id;
+  const engines    = ($("#engines").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const compat     = ($("#compat").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const price_raw  = $("#price").value.trim();
+  const price      = price_raw? Number(price_raw) : undefined;
+  const yaml_text  = $("#yaml_text").value;
+
+  if(!ecu_family || !patch_id || !yaml_text){ alert("Faltan campos: ECU Family, Patch ID y YAML son obligatorios."); return; }
+
+  const body = {
+    ecu_family, patch_id, label,
+    engines: engines.length? engines: null,
+    compatible_ecu: compat.length? compat: null,
+    price: price ?? null,
+    save_catalog: $("#save_catalog").checked,
+    yaml_text
+  };
+
+  $("#btnGuardar").disabled = true;
+  log("#log1", "→ POST /admin/save_recipe …");
+  try{
+    const r = await fetch("/admin/save_recipe",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    const t = await r.text();
+    if(!r.ok){ log("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
+    else { log("#log1","OK: "+t); alert("Receta guardada. (Si marcaste catálogo, global.json actualizado)"); }
+  }catch(e){
+    log("#log1","ERROR de red: "+e.message);
+  }finally{
+    $("#btnGuardar").disabled = false;
   }
-  $("#h_hex").textContent = out || "Archivo vacío.";
-  $("#h_yaml").value = "meta:\n  name: "+($("#h_id").value||"patch")+" ("+($("#h_ecu").value||"GENERIC")+")\n  author: admin\n  version: 1\nops:\n  # añade ops con el botón\nchecksum:\n  type: none\n";
-});
-
-$("#h_addop").onclick=()=>{
-  const sel = window.getSelection();
-  const text = sel?.toString() || "";
-  const hex = hexSanitize(text);
-  if(!hex){ alert("Selecciona bytes del panel HEX a la izquierda."); return; }
-  const repl = prompt("Nueva secuencia HEX (misma longitud ideal, admite espacios):", hex);
-  if(repl===null) return;
-  const rhex = hexSanitize(repl);
-  const extra = `- find: "${hex}"\n  replace: "${rhex}"\n`;
-  $("#h_yaml").value = $("#h_yaml").value.replace(/(\nchecksum:[\s\S]*$)/m, "") + extra + "checksum:\n  type: none\n";
 };
 
-$("#h_save").onclick=async()=>{
-  const payload = {
-    ecu_family: $("#h_ecu").value.trim() || "GENERIC",
-    patch_id: $("#h_id").value.trim(),
-    yaml_text: $("#h_yaml").value
-  };
-  const r = await fetch("/admin/save_yaml",{method:"POST",headers:{'Content-Type':'application/json','Authorization':'Bearer '+TOKEN},body:JSON.stringify(payload)});
-  const d = await r.json();
-  $("#h_msg").textContent = r.ok && d.ok ? "✅ Guardada: "+d.path : "❌ Error: "+JSON.stringify(d);
+/* ===== Guardar solo YAML (sin tocar catálogo) ===== */
+$("#btnGuardarYaml").onclick = async ()=>{
+  if(needAuth()) return;
+  const ecu_family = $("#ecu_family").value.trim();
+  const patch_id   = $("#patch_id").value.trim();
+  const yaml_text  = $("#yaml_text").value;
+  if(!ecu_family || !patch_id || !yaml_text){ alert("Faltan ECU Family, Patch ID y YAML."); return; }
+
+  $("#btnGuardarYaml").disabled = true;
+  log("#log1", "→ POST /admin/save_yaml …");
+  try{
+    const r = await fetch("/admin/save_yaml",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify({ ecu_family, patch_id, yaml_text })
+    });
+    const t = await r.text();
+    if(!r.ok){ log("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
+    else { log("#log1","OK: "+t); alert("YAML guardado."); }
+  }catch(e){
+    log("#log1","ERROR de red: "+e.message);
+  }finally{
+    $("#btnGuardarYaml").disabled = false;
+  }
 };
 
-// ---------- C) DIFF ----------
-async function runDiff(save){
-  const ecu = $("#d_ecu").value.trim() || "GENERIC";
-  const pid = $("#d_id").value.trim();
-  const f1 = $("#d_orig").files?.[0];
-  const f2 = $("#d_mod").files?.[0];
-  if(!pid || !f1 || !f2){ alert("Completa ECU/ID y selecciona ambos archivos."); return; }
+/* ===== Diff → YAML ===== */
+$("#btnDiff").onclick = async ()=>{
+  if(needAuth()) return;
+  const fam = $("#df_ecu_family").value.trim();
+  const pid = $("#df_patch_id").value.trim();
+  const f1  = $("#df_orig").files[0];
+  const f2  = $("#df_mod").files[0];
+  const save= $("#df_save").checked;
+
+  if(!fam || !pid || !f1 || !f2){ alert("Completa ECU Family, Patch ID y selecciona ambos BIN."); return; }
+
+  $("#btnDiff").disabled = true;
+  log("#log2", "→ POST /admin/diff2patch …");
+
   const fd = new FormData();
-  fd.append("ecu_family", ecu);
-  fd.append("patch_id", pid);
-  fd.append("save", save ? "true":"false");
+  fd.append("ecu_family", fam);
+  fd.append("patch_id",   pid);
+  fd.append("save",       String(save));
   fd.append("original_bin", f1);
   fd.append("modified_bin", f2);
-  const r = await fetch("/admin/diff2patch",{method:"POST",headers:{'Authorization':'Bearer '+TOKEN},body:fd});
-  const d = await r.json();
-  $("#d_yaml").value = d.yaml || "";
-  $("#d_msg").textContent = r.ok && d.ok ? `✅ ops: ${d.ops_count}` : "❌ Error: "+JSON.stringify(d);
-}
-$("#d_run").onclick = ()=>runDiff(false);
-$("#d_save").onclick = ()=>runDiff(true);
-</script>
 
-<!-- YAML lib (ligera) -->
-<script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+  try{
+    const r = await fetch("/admin/diff2patch",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN },
+      body: fd
+    });
+    const js = await r.json().catch(async()=>({raw: await r.text(), err: true}));
+    if(!r.ok){ log("#log2","ERROR: "+(js.raw||JSON.stringify(js))); alert("No se pudo generar: revisa que ambos BIN tengan el mismo tamaño."); }
+    else {
+      $("#df_yaml").value = js.yaml || "";
+      log("#log2", `OK. ops_count=${js.ops_count}. ${js.saved_to? "Guardado en: "+js.saved_to:"(no guardado, solo generado)"}`);
+      alert("YAML generado. Revísalo y, si quieres, ajústalo en el editor de recetas.");
+    }
+  }catch(e){
+    log("#log2","ERROR de red: "+e.message);
+  }finally{
+    $("#btnDiff").disabled = false;
+  }
+};
+</script>
 </body>
 </html>
