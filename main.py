@@ -384,6 +384,56 @@ def download_mod(
         filename=fp.name,
         media_type="application/octet-stream"
     )
+    # -------------------------------------------------------------------
+# Patch Requests (cuando no hay parche disponible) — SLA 24h
+# -------------------------------------------------------------------
+class PatchRequestIn(BaseModel):
+    marca: Optional[str] = None
+    modelo: Optional[str] = None
+    anio: Optional[str] = None
+    motor: Optional[str] = None
+    ecu_type: Optional[str] = None
+    ecu_part_number: Optional[str] = None
+    manufacturer_number: Optional[str] = None
+    analysis_id: Optional[str] = None
+    original_filename: Optional[str] = None
+
+class PatchRequestOut(BaseModel):
+    ok: bool
+    request_id: str
+    sla_hours: int = 24
+
+@app.post("/patch_requests", response_model=PatchRequestOut)
+def create_patch_request(body: PatchRequestIn, current_user: User = Depends(get_current_user)):
+    """
+    Guarda una solicitud cuando el usuario no encuentra parche compatible.
+    Resultado: archivo JSON en storage/requests/<id>.json y respuesta con SLA 24h.
+    """
+    req_id = str(uuid.uuid4())
+    record = {
+        "id": req_id,
+        "user_id": current_user.id,
+        "created_at": datetime.utcnow().isoformat() + "Z",
+        "sla_hours": 24,
+        "status": "open",
+        # payload
+        "marca": body.marca,
+        "modelo": body.modelo,
+        "anio": body.anio,
+        "motor": body.motor,
+        "ecu_type": body.ecu_type,
+        "ecu_part_number": body.ecu_part_number,
+        "manufacturer_number": body.manufacturer_number,
+        "analysis_id": body.analysis_id,
+        "original_filename": body.original_filename,
+    }
+
+    # Persistir como JSON (para revisarlo luego o integrarlo a un panel)
+    REQ_DIR.mkdir(parents=True, exist_ok=True)
+    (REQ_DIR / f"{req_id}.json").write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    return PatchRequestOut(ok=True, request_id=req_id, sla_hours=24)
+
 
 # -------------------------------------------------------------------
 # Admin: catálogo y recetas
