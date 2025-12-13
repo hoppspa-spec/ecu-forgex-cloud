@@ -393,8 +393,119 @@ $("#btnDiff").onclick = async ()=>{
   }
 };
 </script>
+<script>
+(() => {
+  const $ = (q, el=document) => el.querySelector(q);
+  const log = (m) => { const b=$("#logBox"); if(!b) return; b.textContent += (b.textContent ? "\n" : "") + m; b.scrollTop=b.scrollHeight; };
+  const setOut = (t) => { const o=$("#outYaml"); if(o) o.value = t || ""; };
+
+  // Lee archivo como ArrayBuffer (para validar tamaño) y como File (para subir)
+  async function readFileBuf(input) {
+    const f = input?.files?.[0];
+    if (!f) return { file:null, size:0, buf:null };
+    const buf = await f.arrayBuffer();
+    return { file:f, size:f.size, buf:new Uint8Array(buf) };
+  }
+
+  // Obtiene token guardado por el login del sitio
+  function getToken() {
+    return localStorage.getItem("EFX_TOKEN") || null;
+  }
+
+  async function genYaml() {
+    setOut(""); $("#logBox").textContent = "";
+    const token = getToken();
+    if (!token) { log("Error: no hay sesión. Inicia sesión arriba a la derecha."); return; }
+
+    const fam = $("#ecuFamily")?.value?.trim();
+    const pid = $("#patchId")?.value?.trim();
+    if (!fam || !pid) { log("Completa ECU Family y Patch ID."); return; }
+
+    log("Leyendo archivos…");
+    const st = await readFileBuf($("#binOrig"));
+    const md = await readFileBuf($("#binMod"));
+    if (!st.file || !md.file) { log("Selecciona BIN original y BIN modificado."); return; }
+
+    if (st.size !== md.size) {
+      log(`Error: tamaños distintos. stock=${st.size} bytes, mod=${md.size} bytes`);
+      log("El diff simple requiere EXACTAMENTE el mismo tamaño.");
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("ecu_family", fam);
+    fd.append("patch_id", pid);
+    fd.append("save", "false"); // guardamos aparte si el checkbox está marcado
+    fd.append("original_bin", st.file);
+    fd.append("modified_bin", md.file);
+
+    log("Enviando a /admin/diff2patch…");
+    let r;
+    try {
+      r = await fetch("/admin/diff2patch", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token },
+        body: fd
+      });
+    } catch (e) {
+      log("Error de red llamando a /admin/diff2patch: " + (e?.message || e));
+      return;
+    }
+
+    if (!r.ok) {
+      const t = await r.text().catch(()=>"(sin cuerpo)");
+      log(`Error /admin/diff2patch → HTTP ${r.status}`);
+      log(t);
+      return;
+    }
+
+    const d = await r.json();
+    setOut(d.yaml || "");
+    log(`OK. Ops encontradas: ${d.ops_count}.`);
+
+    // Guardado automático del YAML como receta
+    if ($("#autoSave")?.checked) {
+      log("Guardando receta en store/recipes…");
+      const body = JSON.stringify({ ecu_family: fam, patch_id: pid, yaml_text: d.yaml || "" });
+      const rr = await fetch("/admin/save_yaml", {
+        method: "POST",
+        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
+        body
+      });
+      if (!rr.ok) {
+        const tt = await rr.text().catch(()=>"(sin cuerpo)");
+        log(`Error /admin/save_yaml → HTTP ${rr.status}`);
+        log(tt);
+      } else {
+        const jd = await rr.json().catch(()=>({}));
+        log("Receta guardada: " + (jd.path || "(ruta no informada)"));
+      }
+    }
+  }
+
+  // Botón principal
+  const btn = document.querySelector('button#btnGenYaml') || document.querySelector('button[data-action="gen-yaml"]') || document.querySelector('button:contains("Generar YAML")');
+  if (btn) btn.onclick = genYaml;
+  // o, más robusto:
+  document.addEventListener("click", (e)=>{
+    if (e.target && e.target.matches("#btnGenYaml, [data-action='gen-yaml']")) genYaml();
+  });
+
+  // Ayuda visual: al cambiar archivos, imprime tamaños
+  ["#binOrig","#binMod"].forEach(sel=>{
+    const el = $(sel);
+    if (!el) return;
+    el.addEventListener("change", async ()=>{
+      const inf = await readFileBuf(el);
+      if (inf.file) log(`${sel} → ${inf.file.name} (${inf.size} bytes)`);
+    });
+  });
+})();
+</script>
+
 </body>
 </html>
+
 
 
 
