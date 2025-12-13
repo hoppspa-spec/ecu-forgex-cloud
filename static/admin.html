@@ -213,7 +213,39 @@ function elog(el, msg){
   box.textContent += (box.textContent? "\n":"") + msg;
   box.scrollTop = box.scrollHeight;
 }
+<script>
+/* ===== Exportar recetas (ZIP) ===== */
+document.getElementById("btnExport").addEventListener("click", async ()=>{
+  if(!TOKEN){
+    alert("Inicia sesión para descargar el backup."); 
+    return;
+  }
+  try{
+    // include_catalog=true para llevar global.json, packs.json y brand/*
+    const r = await fetch("/admin/export_recipes?include_catalog=true", {
+      headers: { "Authorization": "Bearer " + TOKEN }
+    });
+    if(!r.ok){
+      const t = await r.text(); 
+      alert("No se pudo generar el ZIP: " + t);
+      return;
+    }
+    const blob = await r.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href = url;
+    a.download = "efx_recipes_backup.zip";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }catch(e){
+    alert("Error de red descargando ZIP: " + (e?.message || e));
+  }
+});
+</script>
 
+  
 /* ===== Tabs ===== */
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -429,4 +461,5 @@ $("#btnGuardarYaml").onclick = async ()=>{
 </script>
 </body>
 </html>
+
 
