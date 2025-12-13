@@ -28,7 +28,6 @@
   .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#182038;color:#dbe2ff;font-size:12px}
   .kv{display:grid;grid-template-columns:140px 1fr;gap:6px;font-size:14px}
   .divider{height:1px;background:var(--stroke);margin:10px 0}
-  /* modales */
   .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:50}
   .modal>.box{background:#101a33;border:1px solid var(--stroke);padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:340px}
   .err{display:none;color:#f87171;margin:6px 0 0;font-size:13px}
@@ -53,35 +52,35 @@
   <div class="card">
     <h3>Información del Vehículo</h3>
 
-<label class="muted">Marca</label>
-<select id="selBrand">
-  <option value="">— Selecciona —</option>
-  <option value="custom">Personalizado…</option>
-</select>
+    <label class="muted">Marca</label>
+    <select id="selBrand">
+      <option value="">— Selecciona —</option>
+      <option value="custom">Personalizado…</option>
+    </select>
 
-<label class="muted">Modelo</label>
-<select id="selModel" disabled>
-  <option value="">— Selecciona —</option>
-</select>
-
-<div class="row2">
-  <div>
-    <label class="muted">Año</label>
-    <select id="selYear" disabled>
+    <label class="muted">Modelo</label>
+    <select id="selModel" disabled>
       <option value="">— Selecciona —</option>
     </select>
-  </div>
-  <div>
-    <label class="muted">Motorización</label>
-    <select id="selEngine" disabled>
-      <option value="">— Selecciona —</option>
-    </select>
-  </div>
-</div>
 
-<!-- Campos libres por si el cliente quiere escribir -->
-<input id="modelo" placeholder="Modelo libre (opcional)"/>
-<input id="motor"  placeholder="Motor libre (opcional, ej: TSI/HDI/N55)"/>
+    <div class="row2">
+      <div>
+        <label class="muted">Año</label>
+        <select id="selYear" disabled>
+          <option value="">— Selecciona —</option>
+        </select>
+      </div>
+      <div>
+        <label class="muted">Motorización</label>
+        <select id="selEngine" disabled>
+          <option value="">— Selecciona —</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Campos libres opcionales -->
+    <input id="modelo" placeholder="Modelo libre (opcional)"/>
+    <input id="motor"  placeholder="Motor libre (opcional, ej: TSI/HDI/N55)"/>
 
     <div class="divider"></div>
 
@@ -112,7 +111,6 @@
     </select>
     <button id="btnAplicar" class="btn" disabled>Aplicar / Comprar</button>
 
-    <!-- MENSAJE 24h -->
     <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
       Por ahora no contamos con un parche para tu ECU.<br/>
       Sube el BIN y te responderemos a la brevedad (máx. <b>24&nbsp;h</b>).
@@ -171,7 +169,7 @@
 </div>
 
 <script>
-/* ===== THEME (oscuro por defecto) ===== */
+/* ===== THEME ===== */
 (function(){
   const KEY='EFX_THEME';
   const saved = localStorage.getItem(KEY) || 'dark';
@@ -200,7 +198,6 @@ function setAuthUi(on){
 }
 setAuthUi(!!TOKEN);
 
-// abrir/cerrar modales
 $("#btnOpenLogin").onclick = ()=>$("#modalLogin").style.display="flex";
 $("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
 $("#btnLogout").onclick = ()=>{ TOKEN=null; localStorage.removeItem("EFX_TOKEN"); setAuthUi(false); log("Sesión cerrada."); };
@@ -213,7 +210,9 @@ document.querySelectorAll("[data-close]").forEach(btn=>{
 document.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ ["#modalLogin","#modalRegister"].forEach(id=>{const m=$(id); if(m) m.style.display="none";}); }});
 
 function showErr(id,msg){const el=$(id); if(!el) return; el.textContent=msg||""; el.style.display=msg?"block":"none";}
+</script>
 
+<script>
 /* ===== Login/Registro ===== */
 $("#btnLogin").onclick = async ()=>{
   showErr("#login_err","");
@@ -246,7 +245,7 @@ $("#btnRegister").onclick = async ()=>{
 </script>
 
 <script>
-/* ===== CRC32 (CVN demo) ===== */
+/* ===== CRC32 (CVN) ===== */
 (function(){
   const table = new Uint32Array(256).map((_,n)=>{let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); return c>>>0;});
   window.crc32 = (buf)=>{ let c=0^(-1); for(let i=0;i<buf.length;i++) c=(c>>>8)^table[(c^buf[i])&0xFF]; return (c^(-1))>>>0; };
@@ -254,7 +253,38 @@ $("#btnRegister").onclick = async ()=>{
 </script>
 
 <script>
-/* ===== Precio helpers ===== */
+/* ===== JSON helper con fallback ===== */
+const _jsonCache={};
+async function jget(url){
+  if(_jsonCache[url]) return _jsonCache[url];
+  try{
+    const r = await fetch(url,{cache:"no-store"});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    const d = await r.json(); _jsonCache[url]=d; return d;
+  }catch{
+    // Fallback mínimo embebido si no existe /static/data/vehicles.json
+    if(url.endsWith("/static/data/vehicles.json")){
+      const d = {
+        "brands":[
+          {"key":"bmw","label":"BMW","models":[
+            {"key":"320i","label":"320i","years":[2016,2017,2018,2019],"engines":["B48 2.0T","N20 2.0T"]},
+            {"key":"320d","label":"320d","years":[2013,2014,2015,2016,2017],"engines":["2.0D (N47/B47)"]}
+          ]},
+          {"key":"vw","label":"Volkswagen","models":[
+            {"key":"golf_gti","label":"Golf GTI","years":[2014,2015,2016,2017,2018,2019],"engines":["2.0 TSI"]},
+            {"key":"golf_tdi","label":"Golf TDI","years":[2010,2011,2012,2013,2014],"engines":["2.0 TDI"]}
+          ]}
+        ]
+      };
+      _jsonCache[url]=d; return d;
+    }
+    throw new Error("No se pudo cargar "+url);
+  }
+}
+</script>
+
+<script>
+/* ===== Precio & Ficha helpers ===== */
 function toUSD(p){ if(p==null) return null; if(typeof p==="number") return p; if(typeof p==="object" && p.USD!=null) return Number(p.USD); return null; }
 function labelWithPrice(label, priceLike){ const usd=toUSD(priceLike); return usd!=null ? `${label} — $${usd}` : label; }
 function reflectSelectionInFicha(txt){
@@ -267,7 +297,82 @@ function reflectSelectionInFicha(txt){
 </script>
 
 <script>
-/* ===== Detectores & carga de parches ===== */
+/* ===== Formulario: marcas → modelos → años → engine ===== */
+let VEH_DB = null;
+let picked = { brand:null, model:null, year:null, engine:null };
+
+async function loadVehicleData(){
+  try{
+    VEH_DB = await jget("/static/data/vehicles.json");
+    const selBrand = $("#selBrand");
+    selBrand.innerHTML = `<option value="">— Selecciona —</option><option value="custom">Personalizado…</option>`;
+    (VEH_DB.brands||[]).forEach(b=> selBrand.append(new Option(b.label, b.key)));
+  }catch(e){
+    console.warn("No se pudieron cargar marcas:", e.message);
+  }
+}
+document.addEventListener("DOMContentLoaded", loadVehicleData);
+
+$("#selBrand").addEventListener("change", ()=>{
+  picked.brand = $("#selBrand").value || null;
+  const selModel = $("#selModel"), selYear=$("#selYear"), selEngine=$("#selEngine");
+  selModel.innerHTML = `<option value="">— Selecciona —</option>`;
+  selYear.innerHTML  = `<option value="">— Selecciona —</option>`;
+  selEngine.innerHTML= `<option value="">— Selecciona —</option>`;
+  selModel.disabled = selYear.disabled = selEngine.disabled = true;
+
+  if(!picked.brand || picked.brand==="custom") return;
+  const B = (VEH_DB?.brands||[]).find(x=>x.key===picked.brand);
+  if(!B) return;
+
+  (B.models||[]).forEach(m => selModel.append(new Option(m.label, m.key)));
+  selModel.disabled = true;  // se habilita al elegir modelo (abajo)
+});
+
+$("#selModel").addEventListener("change", ()=>{
+  picked.model = $("#selModel").value || null;
+  const selYear=$("#selYear"), selEngine=$("#selEngine");
+  selYear.innerHTML  = `<option value="">— Selecciona —</option>`;
+  selEngine.innerHTML= `<option value="">— Selecciona —</option>`;
+  selYear.disabled = selEngine.disabled = true;
+
+  if(!picked.brand || !picked.model) return;
+  const B = (VEH_DB?.brands||[]).find(x=>x.key===picked.brand);
+  const M = B?.models?.find(m=>m.key===picked.model);
+  if(!M) return;
+
+  (M.years||[]).forEach(y => selYear.append(new Option(String(y), String(y))));
+  (M.engines||[]).forEach(e => selEngine.append(new Option(e, e)));
+
+  $("#selModel").disabled = false;
+  selYear.disabled = false;
+  selEngine.disabled = false;
+});
+
+$("#selYear").addEventListener("change", ()=>{ picked.year = $("#selYear").value || null; });
+
+$("#selEngine").addEventListener("change", ()=>{
+  picked.engine = $("#selEngine").value || null;
+  const lower = (picked.engine||"").toLowerCase();
+  if(/tdi|hdi|dci|cd i|cdi|mjet|mjtd|diesel|d4d|d-4d|bluehdi|md1|edc/i.test(lower)) {
+    $("#engineSelect").value = "diesel";
+  } else if(/tsi|tfsi|gdi|mpi|petrol|nafta|n\d{2}|b\d{2}|mg1|med|mevd|me7/i.test(lower)) {
+    $("#engineSelect").value = "petrol";
+  } else {
+    $("#engineSelect").value = "auto";
+  }
+  if (typeof fillPatches === "function") fillPatches();
+});
+
+function brandKeyFromDropdown(){
+  const v = $("#selBrand")?.value || "";
+  if (!v || v==="custom") return null;
+  return v; // coincide con patches/brand/<key>.json si usas overrides
+}
+</script>
+
+<script>
+/* ===== Catálogo / detecciones ===== */
 function detectEcuFamily(ecuType, filename){
   const src = ((ecuType||"") + " " + (filename||"")).toUpperCase();
   const tests = [/MG1CS\d*/, /\bMG1\b/, /MED17\.5(\.\d+)?/, /\bMED17\b/, /\bMEVD\b/, /\bME7(\.\d+)?\b/, /EDC17CP\d*/, /EDC17C\d*/, /\bEDC17\b/, /\bEDC16\b/, /\bMD1\b/, /\bDCM\d*\b/, /\bSID\d{3}\b/];
@@ -282,34 +387,22 @@ function currentEngineMode(){
   if(sel.value!=="auto") return sel.value;
   return engineDetected || "auto";
 }
-function brandKeyFromInput(){
-  const raw = ($("#marca")?.value || "").trim(); if(!raw) return null;
-  return raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s+/g,"_").replace(/[^a-z0-9_]/g,"");
-}
-
-// caché json
-const _jsonCache={};
-async function jget(url){ if(_jsonCache[url]) return _jsonCache[url]; const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error("No se pudo cargar "+url); const d=await r.json(); _jsonCache[url]=d; return d; }
 
 async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
-  // global
   let list=[];
   try{
     const g = await jget("/static/patches/global.json");
     list = (g.patches||[]).map(p=>({...p, engines:(p.engines||[]).map(e=>String(e).toLowerCase()) }));
   }catch{}
 
-  // motor
   if(engineMode && engineMode!=="auto"){
     const want = String(engineMode).toLowerCase();
     list = list.filter(p => (p.engines||[]).includes(want));
   }
-  // familia ECU
   if(ecuFamily){
     const up = ecuFamily.toUpperCase();
     list = list.filter(p => (p.compatible_ecu||[]).some(f => up.includes(String(f).toUpperCase())));
   }
-  // brand overrides (si existe)
   if(brandKey){
     try{
       const ov = await jget(`/static/patches/brand/${brandKey}.json`);
@@ -325,7 +418,6 @@ async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
       }
     }catch{}
   }
-  // packs
   let packs=[];
   try{
     const pk = await jget("/static/patches/packs.json");
@@ -340,7 +432,9 @@ async function fillPatches(){
   sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
 
   if(!lastAnalysis){ sel.append(new Option("— Sube tu BIN para ver opciones —","")); return; }
-  const mode=currentEngineMode(); const ecuFam=detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename); const brandKey=brandKeyFromInput();
+  const mode=currentEngineMode();
+  const ecuFam=detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename);
+  const brandKey=brandKeyFromDropdown();
 
   try{
     const {patches,packs} = await loadPatchesCombined(mode, ecuFam, brandKey);
@@ -360,20 +454,17 @@ async function fillPatches(){
   }
 }
 
-// cambia Ficha ECU al seleccionar
 $("#patchSelect").addEventListener("change", ()=>{
   const sel=$("#patchSelect"); const txt=sel.options[sel.selectedIndex]?.text||""; 
   if(/─{5,}/.test(txt)){ reflectSelectionInFicha(""); sel.value=""; return; }
   reflectSelectionInFicha(txt);
 });
 
-// refrescar por marca o tipo de motor
-$("#marca")?.addEventListener("input", fillPatches);
 $("#engineSelect")?.addEventListener("change", fillPatches);
 </script>
 
 <script>
-/* ===== BIN: change + analizar ===== */
+/* ===== BIN: change + analizar + auto-detección motor ===== */
 $("#binfile").addEventListener("change", async (e)=>{
   lastFile = e.target.files?.[0] || null;
   if(lastFile){
@@ -402,18 +493,25 @@ $("#btnAnalizar").onclick = async ()=>{
   $("#kv_size").textContent = new Intl.NumberFormat('es-CL').format(data.bin_size||0) + " bytes";
   setBadge(data.ecu_type || null);
 
+  // Auto: si ECU sugiere diesel/petrol, ajusta engineDetected
   if(/EDC|MD1|MJD|DCM|SID/i.test(data.ecu_type||"")) engineDetected="diesel";
   else if(/MED|MG1|MEVD|ME7/i.test(data.ecu_type||"")) engineDetected="petrol";
   else engineDetected="auto";
-  $("#engineSelect").value="auto";
 
+  // Si cliente eligió una motorización en dropdown, gana prioridad
+  const userEngine = ($("#selEngine")?.value || "") + " " + ($("#motor")?.value || "");
+  const lower = userEngine.toLowerCase();
+  if(/tdi|hdi|dci|cd i|cdi|mjet|mjtd|diesel|d4d|d-4d|bluehdi/i.test(lower)) engineDetected="diesel";
+  if(/tsi|tfsi|gdi|mpi|petrol|nafta|n\d{2}|b\d{2}|mg1|med|mevd|me7/i.test(lower)) engineDetected="petrol";
+
+  $("#engineSelect").value="auto";
   await fillPatches();
   log("Análisis OK. ECU: "+(data.ecu_type||"—")+"  PN: "+(data.ecu_part_number||"—"));
 };
 </script>
 
 <script>
-/* ===== Aplicar / Comprar + 24h ===== */
+/* ===== Órdenes + 24h ===== */
 $("#btnAplicar").onclick = async ()=>{
   const sel = $("#patchSelect");
   const value = sel.value;
@@ -432,15 +530,39 @@ $("#btnAplicar").onclick = async ()=>{
   location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
 };
 
-// NUEVO botón de solicitud 24h
 $("#btn24h").onclick = async ()=>{
   if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
+
+  const brandLabel = (()=>{ 
+    const b = $("#selBrand"); 
+    if(!b || !b.value || b.value==="custom") return null;
+    const opt = b.options[b.selectedIndex]; 
+    return opt ? opt.text : b.value; 
+  })();
+  const modelLabel = (()=>{ 
+    const m = $("#selModel"); 
+    if(m && m.value){ const opt=m.options[m.selectedIndex]; return opt?opt.text:m.value; }
+    const free = $("#modelo")?.value || null; return free; 
+  })();
+  const yearVal = $("#selYear")?.value || null;
+  const engineLbl = (()=>{ 
+    const e = $("#selEngine"); 
+    if(e && e.value){ const opt=e.options[e.selectedIndex]; return opt?opt.text:e.value; }
+    const free = $("#motor")?.value || null; return free; 
+  })();
+
   const payload = {
-    marca: $("#marca").value||null, modelo: $("#modelo").value||null, anio: $("#anio").value||null,
-    motor: $("#motor").value||null, ecu_type: $("#kv_ecu").textContent||null,
-    ecu_part_number: $("#kv_pn").textContent||null, manufacturer_number: null,
-    analysis_id: lastAnalysis?.analysis_id || null, original_filename: lastAnalysis?.filename || null
+    marca: brandLabel,
+    modelo: modelLabel,
+    anio: yearVal,
+    motor: engineLbl,
+    ecu_type: $("#kv_ecu").textContent||null,
+    ecu_part_number: $("#kv_pn").textContent||null,
+    manufacturer_number: null,
+    analysis_id: lastAnalysis?.analysis_id || null,
+    original_filename: lastAnalysis?.filename || null
   };
+
   const r = await fetch("/patch_requests",{
     method:"POST",
     headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
@@ -450,21 +572,14 @@ $("#btn24h").onclick = async ()=>{
   const d = await r.json(); alert("Solicitud creada: "+d.request_id+" (SLA: "+d.sla_hours+"h)");
 };
 </script>
+
 <script>
 async function assertAuth() {
-  // Si no hay token → pedir login.
-  if (!TOKEN) {
-    $("#modalLogin").style.display = "flex";
-    return false;
-  }
-  // Verificar con el backend.
+  if (!TOKEN) { $("#modalLogin").style.display = "flex"; return false; }
   try {
-    const r = await fetch("/users/me", {
-      headers: { "Authorization": "Bearer " + TOKEN }
-    });
+    const r = await fetch("/users/me", { headers: { "Authorization": "Bearer " + TOKEN } });
     if (r.ok) return true;
   } catch (_) {}
-  // Token inválido/expirado → limpiar y forzar login.
   localStorage.removeItem("EFX_TOKEN");
   TOKEN = null;
   setAuthUi(false);
@@ -473,7 +588,6 @@ async function assertAuth() {
   return false;
 }
 </script>
-
 
 </body>
 </html>
