@@ -39,69 +39,20 @@
   .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#182038;color:#dbe2ff;font-size:12px}
   .hide{display:none}
   .right{display:flex;gap:10px;justify-content:flex-end}
+
   /* ===============================
    BOTONES — HIGH CONTRAST MODE
    =============================== */
-
-.btn {
-  font-weight: 700;
-  letter-spacing: .3px;
-  border-radius: 10px;
-  padding: 12px 18px;
-  font-size: 15px;
-  border: none;
-  cursor: pointer;
-  transition: transform .05s ease, box-shadow .1s ease, filter .1s ease;
-}
-
-.btn:active {
-  transform: translateY(1px);
-}
-
-/* Azul principal (acción normal) */
-.btn.primary {
-  background: #2563eb; /* azul vivo */
-  color: #ffffff;
-  box-shadow: 0 0 0 1px #1e40af, 0 4px 12px rgba(37,99,235,.45);
-}
-
-.btn.primary:hover {
-  filter: brightness(1.15);
-}
-
-/* Verde éxito (guardar receta + catálogo) */
-.btn.success {
-  background: #16a34a;
-  color: #ffffff;
-  box-shadow: 0 0 0 1px #166534, 0 4px 12px rgba(22,163,74,.45);
-}
-
-.btn.success:hover {
-  filter: brightness(1.15);
-}
-
-/* Amarillo advertencia (validar) */
-.btn.warning {
-  background: #f59e0b;
-  color: #111827;
-  box-shadow: 0 0 0 1px #b45309, 0 4px 12px rgba(245,158,11,.45);
-}
-
-.btn.warning:hover {
-  filter: brightness(1.1);
-}
-
-/* Gris técnico (secundario) */
-.btn.secondary {
-  background: #334155;
-  color: #e5e7eb;
-  box-shadow: 0 0 0 1px #475569, 0 4px 10px rgba(0,0,0,.5);
-}
-
-.btn.secondary:hover {
-  filter: brightness(1.2);
-}
-
+  .btn { font-weight:700; letter-spacing:.3px; border-radius:10px; padding:12px 18px; font-size:15px; border:none; cursor:pointer; transition:transform .05s ease, box-shadow .1s ease, filter .1s ease; }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background:#2563eb; color:#fff; box-shadow:0 0 0 1px #1e40af, 0 4px 12px rgba(37,99,235,.45); }
+  .btn.primary:hover { filter: brightness(1.15); }
+  .btn.success { background:#16a34a; color:#fff; box-shadow:0 0 0 1px #166534, 0 4px 12px rgba(22,163,74,.45); }
+  .btn.success:hover { filter: brightness(1.15); }
+  .btn.warning { background:#f59e0b; color:#111827; box-shadow:0 0 0 1px #b45309, 0 4px 12px rgba(245,158,11,.45); }
+  .btn.warning:hover { filter: brightness(1.1); }
+  .btn.secondary { background:#334155; color:#e5e7eb; box-shadow:0 0 0 1px #475569, 0 4px 10px rgba(0,0,0,.5); }
+  .btn.secondary:hover { filter: brightness(1.2); }
 </style>
 </head>
 <body>
@@ -164,14 +115,17 @@
     </div>
 
     <div class="right">
-      <button class="btn">Cargar plantilla</button>
-<button class="btn secondary">Cargar plantilla</button>
-<button class="btn warning">Validar YAML</button>
-<button class="btn primary">Guardar sin catálogo</button>
-<button class="btn success">Guardar receta + catálogo</button>
-
-
+      <!-- Dos botones "Cargar plantilla" soportados -->
+      <button class="btn" id="btnPlantilla">Cargar plantilla</button>
+      <button class="btn secondary" id="btnPlantilla2">Cargar plantilla</button>
+      <button class="btn warning" id="btnValidar">Validar YAML</button>
+      <button class="btn primary" id="btnGuardarYaml">Guardar sin catálogo</button>
+      <button class="btn success" id="btnGuardar">Guardar receta + catálogo</button>
     </div>
+
+    <!-- inputs de archivo ocultos para ambos botones -->
+    <input type="file" id="tplFile1" class="tpl-input" accept=".yml,.yaml,.json,.txt" style="display:none"/>
+    <input type="file" id="tplFile2" class="tpl-input" accept=".yml,.yaml,.json,.txt" style="display:none"/>
 
     <div class="divider"></div>
     <div>
@@ -180,114 +134,32 @@
     </div>
   </section>
 
-  <script>
-(() => {
-  const $ = (q, el=document) => el.querySelector(q);
-  let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
+  <!-- (Opcional) si más adelante agregas el panel de Diff, usa id="tab-diff" -->
+  <section id="tab-diff" class="card hide">
+    <div class="muted">Módulo Diff → YAML aún no cargado en esta página.</div>
+  </section>
+</div>
 
-  const ui = {
-    fam: $("#diff_ecu_family") || $("#ecu_family") || document.querySelector('input[placeholder^="ECU Family"]'),
-    pid: $("#diff_patch_id")   || $("#patch_id")   || document.querySelector('input[placeholder^="Patch ID"]'),
-    f0:  $("#diff_bin_stock")  || document.querySelectorAll('input[type="file"]')[0],
-    f1:  $("#diff_bin_mod")    || document.querySelectorAll('input[type="file"]')[1],
-    autoSave: $("#diff_auto")  || document.querySelector('input[type="checkbox"]'),
-    btn: $("#diff_go")         || [...document.querySelectorAll("button")].find(b => /Generar YAML/i.test(b.textContent)),
-    out: $("#diff_yaml")       || document.querySelector("textarea"),
-    log: $("#diff_log")        || document.querySelector(".log")
-  };
-
-  const log = (m) => { if(!ui.log) return; ui.log.textContent += (ui.log.textContent ? "\n":"") + m; ui.log.scrollTop = ui.log.scrollHeight; };
-
-  function ensureToken() {
-    TOKEN = localStorage.getItem("EFX_TOKEN");
-    if (!TOKEN) { alert("Inicia sesión para usar Admin."); throw new Error("Sin token"); }
-  }
-
-  async function fileToArrayBuffer(file) {
-    return new Uint8Array(await file.arrayBuffer());
-  }
-
-  async function handleDiff() {
-    try {
-      ensureToken();
-
-      const fam = (ui.fam?.value || "").trim();
-      let patchId = (ui.pid?.value || "").trim();
-      const save = !!ui.autoSave?.checked;
-
-      if (!fam) return alert("ECU Family requerido (ej: MED17, EDC17).");
-      if (!patchId) return alert("Patch ID requerido (ej: dpf_off).");
-      // normalizar patch id
-      patchId = patchId.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
-
-      const file0 = ui.f0?.files?.[0];
-      const file1 = ui.f1?.files?.[0];
-      if (!file0 || !file1) return alert("Selecciona BIN stock y BIN mod.");
-
-      // chequeo de tamaños
-      const b0 = await fileToArrayBuffer(file0);
-      const b1 = await fileToArrayBuffer(file1);
-      log(`Stock size: ${b0.length} bytes | Mod size: ${b1.length} bytes`);
-      if (b0.length !== b1.length) {
-        alert("Los BIN deben tener el MISMO tamaño para este diff simple.");
-        return;
-      }
-      if (b0.length === 0) {
-        alert("Archivo vacío.");
-        return;
-      }
-
-      // armar FormData
-      const fd = new FormData();
-      fd.append("ecu_family", fam);
-      fd.append("patch_id", patchId);
-      fd.append("save", String(save));
-      fd.append("original_bin", file0, file0.name);
-      fd.append("modified_bin", file1, file1.name);
-
-      log("Subiendo a /admin/diff2patch …");
-      const r = await fetch("/admin/diff2patch", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + TOKEN },
-        body: fd
-      });
-
-      if (!r.ok) {
-        const t = await r.text().catch(()=>"");
-        log(`Error ${r.status}: ${t}`);
-        alert(`Error generando YAML:\nHTTP ${r.status}\n${t || "(sin detalle)"}`);
-        return;
-      }
-
-      const data = await r.json();
-      const yaml = data.yaml || "";
-      if (ui.out) ui.out.value = yaml;
-      log(`OK. Bloques diff: ${data.ops_count}. ${data.saved_to ? "Guardado en: "+data.saved_to : "No se guardó (autosave off)"}`);
-
-      // hint visual
-      if (data.saved_to) {
-        alert("Receta generada y guardada.\n" + data.saved_to);
-      } else {
-        alert("Receta generada. Revisa el área “YAML generado”.");
-      }
-    } catch (e) {
-      console.error(e);
-      log("Excepción: " + (e?.message || e));
-    }
-  }
-
-  if (ui.btn) ui.btn.onclick = handleDiff;
-})();
-</script>
-
-/* ===== Estado común ===== */
+<script>
+/* ===== Helpers / Estado común ===== */
 const $ = (q,el=document)=>el.querySelector(q);
 let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
+
 function needAuth(){
-  if(!TOKEN){ alert("Inicia sesión en /static/index.html para usar el admin."); location.href="/static/index.html"; return true; }
+  if(!TOKEN){
+    alert("Inicia sesión en /static/index.html para usar el admin.");
+    // opcional: redirigir
+    // location.href="/static/index.html";
+    return true;
+  }
   return false;
 }
-function log(el, msg){ const b=$(el); b.textContent += (b.textContent? "\n":"") + msg; b.scrollTop=b.scrollHeight; }
+function log(elSel, msg){
+  const b=$(elSel);
+  if(!b) return;
+  b.textContent += (b.textContent? "\n":"") + msg;
+  b.scrollTop = b.scrollHeight;
+}
 
 /* ===== Tabs ===== */
 const tabs = document.querySelectorAll(".tab");
@@ -296,10 +168,10 @@ tabs.forEach(t => t.addEventListener("click", ()=>{
   t.classList.add("active");
   const id = t.dataset.tab;
   document.querySelectorAll("section[id^='tab-']").forEach(s => s.classList.add("hide"));
-  $("#tab-"+id).classList.remove("hide");
+  $("#tab-"+id)?.classList.remove("hide");
 }));
 
-/* ===== Plantilla YAML ===== */
+/* ===== Plantilla YAML (botón rápido) ===== */
 const TEMPLATE = `meta:
   name: <NAME> (<FAMILY>)
   version: 1
@@ -321,19 +193,30 @@ checksum:
   type: none
   # si necesitas checksum específico, aquí defines el tipo y parámetros
 `;
-$("#btnPlantilla").onclick = ()=>{
-  $("#yaml_text").value = TEMPLATE;
-};
+$("#btnPlantilla").onclick = ()=>{ $("#yaml_text").value = TEMPLATE; };
 
-/* ===== Validación simple YAML (sintaxis básica) =====
-   No traemos parser YAML aquí para mantenerlo 0-deps; validamos mínimo:
-   - no vacío
-   - contiene 'ops:' y 'meta:'
-*/
+/* ===== Cargar plantilla desde archivo (ambos botones) ===== */
+function wireTemplateButton(btnId, fileId){
+  const btn = $(btnId);
+  const fin = $(fileId);
+  if(!btn || !fin) return;
+  btn.addEventListener("click", e => { e.preventDefault(); fin.click(); });
+  fin.addEventListener("change", async () => {
+    const f = fin.files?.[0];
+    if(!f) return;
+    const txt = await f.text().catch(()=> "");
+    $("#yaml_text").value = txt;
+  });
+}
+wireTemplateButton("#btnPlantilla2", "#tplFile2"); // segundo botón
+// (si quieres que el primero también abra archivo, descomenta)
+// wireTemplateButton("#btnPlantilla", "#tplFile1");
+
+/* ===== Validación simple YAML ===== */
 $("#btnValidar").onclick = ()=>{
   const y = ($("#yaml_text").value || "").trim();
   const ok = y && /(^|\n)\s*ops\s*:/i.test(y) && /(^|\n)\s*meta\s*:/i.test(y);
-  if(ok){ alert("El YAML parece válido (validación básica). Prueba final guardando y aplicando."); }
+  if(ok){ alert("El YAML parece válido (validación básica)."); }
   else { alert("YAML incompleto: asegúrate de incluir 'meta:' y 'ops:'."); }
 };
 
@@ -349,7 +232,10 @@ $("#btnGuardar").onclick = async ()=>{
   const price      = price_raw? Number(price_raw) : undefined;
   const yaml_text  = $("#yaml_text").value;
 
-  if(!ecu_family || !patch_id || !yaml_text){ alert("Faltan campos: ECU Family, Patch ID y YAML son obligatorios."); return; }
+  if(!ecu_family || !patch_id || !yaml_text){
+    alert("Faltan campos: ECU Family, Patch ID y YAML son obligatorios.");
+    return;
+  }
 
   const body = {
     ecu_family, patch_id, label,
@@ -372,19 +258,22 @@ $("#btnGuardar").onclick = async ()=>{
     if(!r.ok){ log("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
     else { log("#log1","OK: "+t); alert("Receta guardada. (Si marcaste catálogo, global.json actualizado)"); }
   }catch(e){
-    log("#log1","ERROR de red: "+e.message);
+    log("#log1","ERROR de red: "+(e?.message||e));
   }finally{
     $("#btnGuardar").disabled = false;
   }
 };
 
-/* ===== Guardar solo YAML (sin tocar catálogo) ===== */
+/* ===== Guardar solo YAML (sin catálogo) ===== */
 $("#btnGuardarYaml").onclick = async ()=>{
   if(needAuth()) return;
   const ecu_family = $("#ecu_family").value.trim();
   const patch_id   = $("#patch_id").value.trim();
   const yaml_text  = $("#yaml_text").value;
-  if(!ecu_family || !patch_id || !yaml_text){ alert("Faltan ECU Family, Patch ID y YAML."); return; }
+  if(!ecu_family || !patch_id || !yaml_text){
+    alert("Faltan ECU Family, Patch ID y YAML.");
+    return;
+  }
 
   $("#btnGuardarYaml").disabled = true;
   log("#log1", "→ POST /admin/save_yaml …");
@@ -398,422 +287,11 @@ $("#btnGuardarYaml").onclick = async ()=>{
     if(!r.ok){ log("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
     else { log("#log1","OK: "+t); alert("YAML guardado."); }
   }catch(e){
-    log("#log1","ERROR de red: "+e.message);
+    log("#log1","ERROR de red: "+(e?.message||e));
   }finally{
     $("#btnGuardarYaml").disabled = false;
   }
 };
-
-/* ===== Diff → YAML ===== */
-<script>
-(() => {
-  const $ = (q, el=document) => el.querySelector(q);
-  let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
-
-  const ui = {
-    fam: $("#diff_ecu_family") || $("#ecu_family") || document.querySelector('input[placeholder^="ECU Family"]'),
-    pid: $("#diff_patch_id")   || $("#patch_id")   || document.querySelector('input[placeholder^="Patch ID"]'),
-    f0:  $("#diff_bin_stock")  || document.querySelectorAll('input[type="file"]')[0],
-    f1:  $("#diff_bin_mod")    || document.querySelectorAll('input[type="file"]')[1],
-    autoSave: $("#diff_auto")  || document.querySelector('input[type="checkbox"]'),
-    btn: $("#diff_go")         || [...document.querySelectorAll("button")].find(b => /Generar YAML/i.test(b.textContent)),
-    out: $("#diff_yaml")       || document.querySelector("textarea"),
-    log: $("#diff_log")        || document.querySelector(".log")
-  };
-
-  const log = (m) => { if(!ui.log) return; ui.log.textContent += (ui.log.textContent ? "\n":"") + m; ui.log.scrollTop = ui.log.scrollHeight; };
-
-  function ensureToken() {
-    TOKEN = localStorage.getItem("EFX_TOKEN");
-    if (!TOKEN) { alert("Inicia sesión para usar Admin."); throw new Error("Sin token"); }
-  }
-
-  async function fileToArrayBuffer(file) {
-    return new Uint8Array(await file.arrayBuffer());
-  }
-
-  async function handleDiff() {
-    try {
-      ensureToken();
-
-      const fam = (ui.fam?.value || "").trim();
-      let patchId = (ui.pid?.value || "").trim();
-      const save = !!ui.autoSave?.checked;
-
-      if (!fam) return alert("ECU Family requerido (ej: MED17, EDC17).");
-      if (!patchId) return alert("Patch ID requerido (ej: dpf_off).");
-      // normalizar patch id
-      patchId = patchId.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
-
-      const file0 = ui.f0?.files?.[0];
-      const file1 = ui.f1?.files?.[0];
-      if (!file0 || !file1) return alert("Selecciona BIN stock y BIN mod.");
-
-      // chequeo de tamaños
-      const b0 = await fileToArrayBuffer(file0);
-      const b1 = await fileToArrayBuffer(file1);
-      log(`Stock size: ${b0.length} bytes | Mod size: ${b1.length} bytes`);
-      if (b0.length !== b1.length) {
-        alert("Los BIN deben tener el MISMO tamaño para este diff simple.");
-        return;
-      }
-      if (b0.length === 0) {
-        alert("Archivo vacío.");
-        return;
-      }
-
-      // armar FormData
-      const fd = new FormData();
-      fd.append("ecu_family", fam);
-      fd.append("patch_id", patchId);
-      fd.append("save", String(save));
-      fd.append("original_bin", file0, file0.name);
-      fd.append("modified_bin", file1, file1.name);
-
-      log("Subiendo a /admin/diff2patch …");
-      const r = await fetch("/admin/diff2patch", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + TOKEN },
-        body: fd
-      });
-
-      if (!r.ok) {
-        const t = await r.text().catch(()=>"");
-        log(`Error ${r.status}: ${t}`);
-        alert(`Error generando YAML:\nHTTP ${r.status}\n${t || "(sin detalle)"}`);
-        return;
-      }
-
-      const data = await r.json();
-      const yaml = data.yaml || "";
-      if (ui.out) ui.out.value = yaml;
-      log(`OK. Bloques diff: ${data.ops_count}. ${data.saved_to ? "Guardado en: "+data.saved_to : "No se guardó (autosave off)"}`);
-
-      // hint visual
-      if (data.saved_to) {
-        alert("Receta generada y guardada.\n" + data.saved_to);
-      } else {
-        alert("Receta generada. Revisa el área “YAML generado”.");
-      }
-    } catch (e) {
-      console.error(e);
-      log("Excepción: " + (e?.message || e));
-    }
-  }
-
-  if (ui.btn) ui.btn.onclick = handleDiff;
-})();
 </script>
-
-</script>
-
-<script>
-(() => {
-  const $ = (q, el=document) => el.querySelector(q);
-  const log = (m) => { const b=$("#logBox"); if(!b) return; b.textContent += (b.textContent ? "\n" : "") + m; b.scrollTop=b.scrollHeight; };
-  const setOut = (t) => { const o=$("#outYaml"); if(o) o.value = t || ""; };
-
-  // Lee archivo como ArrayBuffer (para validar tamaño) y como File (para subir)
-  async function readFileBuf(input) {
-    const f = input?.files?.[0];
-    if (!f) return { file:null, size:0, buf:null };
-    const buf = await f.arrayBuffer();
-    return { file:f, size:f.size, buf:new Uint8Array(buf) };
-  }
-
-  // Obtiene token guardado por el login del sitio
-  function getToken() {
-    return localStorage.getItem("EFX_TOKEN") || null;
-  }
-
-  async function genYaml() {
-    setOut(""); $("#logBox").textContent = "";
-    const token = getToken();
-    if (!token) { log("Error: no hay sesión. Inicia sesión arriba a la derecha."); return; }
-
-    const fam = $("#ecuFamily")?.value?.trim();
-    const pid = $("#patchId")?.value?.trim();
-    if (!fam || !pid) { log("Completa ECU Family y Patch ID."); return; }
-
-    log("Leyendo archivos…");
-    const st = await readFileBuf($("#binOrig"));
-    const md = await readFileBuf($("#binMod"));
-    if (!st.file || !md.file) { log("Selecciona BIN original y BIN modificado."); return; }
-
-    if (st.size !== md.size) {
-      log(`Error: tamaños distintos. stock=${st.size} bytes, mod=${md.size} bytes`);
-      log("El diff simple requiere EXACTAMENTE el mismo tamaño.");
-      return;
-    }
-
-    const fd = new FormData();
-    fd.append("ecu_family", fam);
-    fd.append("patch_id", pid);
-    fd.append("save", "false"); // guardamos aparte si el checkbox está marcado
-    fd.append("original_bin", st.file);
-    fd.append("modified_bin", md.file);
-
-    log("Enviando a /admin/diff2patch…");
-    let r;
-    try {
-      r = await fetch("/admin/diff2patch", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token },
-        body: fd
-      });
-    } catch (e) {
-      log("Error de red llamando a /admin/diff2patch: " + (e?.message || e));
-      return;
-    }
-
-    if (!r.ok) {
-      const t = await r.text().catch(()=>"(sin cuerpo)");
-      log(`Error /admin/diff2patch → HTTP ${r.status}`);
-      log(t);
-      return;
-    }
-
-    const d = await r.json();
-    setOut(d.yaml || "");
-    log(`OK. Ops encontradas: ${d.ops_count}.`);
-
-    // Guardado automático del YAML como receta
-    if ($("#autoSave")?.checked) {
-      log("Guardando receta en store/recipes…");
-      const body = JSON.stringify({ ecu_family: fam, patch_id: pid, yaml_text: d.yaml || "" });
-      const rr = await fetch("/admin/save_yaml", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + token, "Content-Type": "application/json" },
-        body
-      });
-      if (!rr.ok) {
-        const tt = await rr.text().catch(()=>"(sin cuerpo)");
-        log(`Error /admin/save_yaml → HTTP ${rr.status}`);
-        log(tt);
-      } else {
-        const jd = await rr.json().catch(()=>({}));
-        log("Receta guardada: " + (jd.path || "(ruta no informada)"));
-      }
-    }
-  }
-
-  // Botón principal
-  const btn = document.querySelector('button#btnGenYaml') || document.querySelector('button[data-action="gen-yaml"]') || document.querySelector('button:contains("Generar YAML")');
-  if (btn) btn.onclick = genYaml;
-  // o, más robusto:
-  document.addEventListener("click", (e)=>{
-    if (e.target && e.target.matches("#btnGenYaml, [data-action='gen-yaml']")) genYaml();
-  });
-
-  // Ayuda visual: al cambiar archivos, imprime tamaños
-  ["#binOrig","#binMod"].forEach(sel=>{
-    const el = $(sel);
-    if (!el) return;
-    el.addEventListener("change", async ()=>{
-      const inf = await readFileBuf(el);
-      if (inf.file) log(`${sel} → ${inf.file.name} (${inf.size} bytes)`);
-    });
-  });
-})();
-  <script>
-(() => {
-  const $ = (q, el=document) => el.querySelector(q);
-
-  // 1) Token: aceptar varias claves posibles
-  const TOKEN_KEYS = ["EFX_TOKEN", "ecu_forx_token", "ecu_forx_jwt"];
-  function readToken() {
-    for (const k of TOKEN_KEYS) {
-      const v = localStorage.getItem(k);
-      if (v) return v;
-    }
-    return null;
-  }
-  let TOKEN = readToken();
-
-  // 2) UI selectors robustos
-  const ui = {
-    fam: $("#diff_ecu_family") || $("#ecu_family") || document.querySelector('input[placeholder^="ECU Family"]'),
-    pid: $("#diff_patch_id")   || $("#patch_id")   || document.querySelector('input[placeholder^="Patch ID"]'),
-    f0:  $("#diff_bin_stock")  || document.querySelectorAll('input[type="file"]')[0],
-    f1:  $("#diff_bin_mod")    || document.querySelectorAll('input[type="file"]')[1],
-    autoSave: $("#diff_auto")  || document.querySelector('input[type="checkbox"]'),
-    // Botón: “Validar” o “Generar YAML”
-    btn: $("#diff_go") ||
-         [...document.querySelectorAll("button")].find(b => /(Validar|Generar YAML|Generate YAML)/i.test(b.textContent || "")),
-    out: $("#diff_yaml")       || document.querySelector("textarea"),
-    log: $("#diff_log")        || document.querySelector(".log")
-  };
-
-  const log = (m) => {
-    if (!ui.log) return;
-    ui.log.textContent += (ui.log.textContent ? "\n" : "") + m;
-    ui.log.scrollTop = ui.log.scrollHeight;
-  };
-
-  function ensureToken() {
-    TOKEN = readToken();
-    if (!TOKEN) {
-      alert("Inicia sesión para usar Admin (token no encontrado).");
-      throw new Error("Sin token en localStorage (EFX_TOKEN / ecu_forx_token / ecu_forx_jwt)");
-    }
-  }
-
-  async function fileToArrayBuffer(file) {
-    return new Uint8Array(await file.arrayBuffer());
-  }
-
-  // Validar family: debe contener MEVD17 / EDC17 / MD1 / MG1 (con o sin sufijos)
-  function normalizeAndCheckFamily(raw) {
-    const fam = (raw || "").trim().toUpperCase();
-    const ok = /(MEVD?17|EDC17|MD1|MG1)/.test(fam); // MEVD17 o MED17 variantes; EDC17; MD1; MG1
-    return { fam, ok };
-  }
-
-  let working = false;
-
-  async function handleDiff(ev) {
-    try {
-      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
-      if (working) return;
-      working = true;
-      if (ui.btn) ui.btn.disabled = true;
-
-      ensureToken();
-
-      const famRaw = ui.fam?.value;
-      const { fam, ok } = normalizeAndCheckFamily(famRaw);
-      let patchId = (ui.pid?.value || "").trim();
-      const save = !!ui.autoSave?.checked;
-
-      if (!fam) { alert("ECU Family requerido (ej: MEVD17, EDC17, MD1, MG1)."); return; }
-      if (!ok)  { alert("ECU Family debe contener MEVD17 / EDC17 / MD1 / MG1 (p. ej. EDC17CP45)."); return; }
-      if (!patchId) return alert("Patch ID requerido (ej: dpf_off).");
-
-      // normalizar patch id
-      patchId = patchId.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
-
-      const file0 = ui.f0?.files?.[0];
-      const file1 = ui.f1?.files?.[0];
-      if (!file0 || !file1) { alert("Selecciona BIN stock y BIN mod."); return; }
-
-      const b0 = await fileToArrayBuffer(file0);
-      const b1 = await fileToArrayBuffer(file1);
-      log(`Stock size: ${b0.length} bytes | Mod size: ${b1.length} bytes`);
-      if (b0.length !== b1.length) { alert("Los BIN deben tener el MISMO tamaño."); return; }
-      if (b0.length === 0) { alert("Archivo vacío."); return; }
-
-      const fd = new FormData();
-      fd.append("ecu_family", fam);
-      fd.append("patch_id", patchId);
-      fd.append("save", String(save));
-      fd.append("original_bin", file0, file0.name);
-      fd.append("modified_bin", file1, file1.name);
-
-      log("POST /admin/diff2patch …");
-      const r = await fetch("/admin/diff2patch", {
-        method: "POST",
-        headers: { "Authorization": "Bearer " + TOKEN },
-        body: fd
-      });
-
-      const text = await r.text().catch(()=> "");
-      if (!r.ok) {
-        log(`HTTP ${r.status}: ${text || "(sin detalle)"}`);
-        alert(`Error generando YAML:\nHTTP ${r.status}\n${text || "(sin detalle)"}`);
-        return;
-      }
-
-      let data = {};
-      try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
-      const yaml = data.yaml || "";
-      if (ui.out) ui.out.value = yaml;
-
-      log(`OK. Bloques diff: ${data.ops_count ?? "?"}. ${data.saved_to ? "Guardado en: "+data.saved_to : "No se guardó (autosave off)"}`);
-      alert(data.saved_to ? `Receta generada y guardada:\n${data.saved_to}`
-                           : "Receta generada. Revisa el área “YAML generado”.");
-    } catch (e) {
-      console.error(e);
-      log("Excepción: " + (e?.message || e));
-      alert("Excepción en el cliente: " + (e?.message || e));
-    } finally {
-      working = false;
-      if (ui.btn) ui.btn.disabled = false;
-    }
-  }
-
-  // Enlazar botón de forma segura
-  if (ui?.btn) {
-    ui.btn.addEventListener("click", handleDiff);
-  } else {
-    console.warn("No se encontró botón. Enganchando submit global…");
-    document.addEventListener("submit", (e) => {
-      if ((e.target && e.target.matches("form"))) handleDiff(e);
-    });
-  }
-})();
-  <script>
-document.addEventListener("DOMContentLoaded", () => {
-  const getYamlBox = () => document.querySelector("#diff_yaml") || document.querySelector("textarea");
-
-  // Repara botones duplicados "Cargar plantilla"
-  const tplBtns = [...document.querySelectorAll("button")].filter(b => /Cargar plantilla/i.test(b.textContent || ""));
-  tplBtns.forEach((btn, i) => {
-    // Asegurar input file único junto al botón
-    let fileInput = btn.nextElementSibling;
-    const isUsable = el => el && el.tagName === "INPUT" && el.type === "file" && el.classList.contains("tpl-input");
-    if (!isUsable(fileInput)) {
-      fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = ".yml,.yaml,.json,.txt";
-      fileInput.className = "tpl-input";
-      fileInput.style.display = "none";
-      btn.insertAdjacentElement("afterend", fileInput);
-    }
-
-    // Enlazar click -> abrir file picker
-    btn.addEventListener("click", (e) => { e.preventDefault(); fileInput.click(); });
-
-    // Cargar contenido al textarea
-    fileInput.addEventListener("change", async () => {
-      const f = fileInput.files?.[0];
-      if (!f) return;
-      const text = await f.text().catch(() => "");
-      const ta = getYamlBox();
-      if (ta) ta.value = text;
-    });
-  });
-
-  // (Opcional) Deshabilitar duplicados exactos (mismo texto y misma posición)
-  if (tplBtns.length > 1) {
-    // Dejar activo el último visible y desactivar los demás
-    for (let i = 0; i < tplBtns.length - 1; i++) {
-      tplBtns[i].setAttribute("disabled", "true");
-      tplBtns[i].style.opacity = 0.6;
-      tplBtns[i].title = "Deshabilitado por duplicado";
-    }
-  }
-
-  // Evitar IDs duplicados que rompan selectores
-  const seen = new Set();
-  [...document.querySelectorAll("[id]")].forEach(el => {
-    if (seen.has(el.id)) { el.removeAttribute("id"); }
-    else { seen.add(el.id); }
-  });
-});
-</script>
-
-</script>
-
-</script>
-
 </body>
 </html>
-
-
-
-
-
-
-
-
-
