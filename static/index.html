@@ -52,13 +52,36 @@
   <!-- IZQUIERDA -->
   <div class="card">
     <h3>Información del Vehículo</h3>
-    <input id="marca" placeholder="Marca (ej: BMW)"/>
-    <input id="modelo" placeholder="Modelo (ej: 320i)"/>
-    <div class="row2">
-      <input id="anio" placeholder="Año (ej: 2018)"/>
-      <input id="motor" placeholder="Motor (ej: B48 2.0T)"/>
-    </div>
-    <input id="ecu_type" placeholder="Tipo ECU (ej: Bosch MG1)"/>
+
+<label class="muted">Marca</label>
+<select id="selBrand">
+  <option value="">— Selecciona —</option>
+  <option value="custom">Personalizado…</option>
+</select>
+
+<label class="muted">Modelo</label>
+<select id="selModel" disabled>
+  <option value="">— Selecciona —</option>
+</select>
+
+<div class="row2">
+  <div>
+    <label class="muted">Año</label>
+    <select id="selYear" disabled>
+      <option value="">— Selecciona —</option>
+    </select>
+  </div>
+  <div>
+    <label class="muted">Motorización</label>
+    <select id="selEngine" disabled>
+      <option value="">— Selecciona —</option>
+    </select>
+  </div>
+</div>
+
+<!-- Campos libres por si el cliente quiere escribir -->
+<input id="modelo" placeholder="Modelo libre (opcional)"/>
+<input id="motor"  placeholder="Motor libre (opcional, ej: TSI/HDI/N55)"/>
 
     <div class="divider"></div>
 
