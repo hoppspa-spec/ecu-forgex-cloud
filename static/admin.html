@@ -751,12 +751,64 @@ $("#btnGuardarYaml").onclick = async ()=>{
     });
   }
 })();
+  <script>
+document.addEventListener("DOMContentLoaded", () => {
+  const getYamlBox = () => document.querySelector("#diff_yaml") || document.querySelector("textarea");
+
+  // Repara botones duplicados "Cargar plantilla"
+  const tplBtns = [...document.querySelectorAll("button")].filter(b => /Cargar plantilla/i.test(b.textContent || ""));
+  tplBtns.forEach((btn, i) => {
+    // Asegurar input file único junto al botón
+    let fileInput = btn.nextElementSibling;
+    const isUsable = el => el && el.tagName === "INPUT" && el.type === "file" && el.classList.contains("tpl-input");
+    if (!isUsable(fileInput)) {
+      fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".yml,.yaml,.json,.txt";
+      fileInput.className = "tpl-input";
+      fileInput.style.display = "none";
+      btn.insertAdjacentElement("afterend", fileInput);
+    }
+
+    // Enlazar click -> abrir file picker
+    btn.addEventListener("click", (e) => { e.preventDefault(); fileInput.click(); });
+
+    // Cargar contenido al textarea
+    fileInput.addEventListener("change", async () => {
+      const f = fileInput.files?.[0];
+      if (!f) return;
+      const text = await f.text().catch(() => "");
+      const ta = getYamlBox();
+      if (ta) ta.value = text;
+    });
+  });
+
+  // (Opcional) Deshabilitar duplicados exactos (mismo texto y misma posición)
+  if (tplBtns.length > 1) {
+    // Dejar activo el último visible y desactivar los demás
+    for (let i = 0; i < tplBtns.length - 1; i++) {
+      tplBtns[i].setAttribute("disabled", "true");
+      tplBtns[i].style.opacity = 0.6;
+      tplBtns[i].title = "Deshabilitado por duplicado";
+    }
+  }
+
+  // Evitar IDs duplicados que rompan selectores
+  const seen = new Set();
+  [...document.querySelectorAll("[id]")].forEach(el => {
+    if (seen.has(el.id)) { el.removeAttribute("id"); }
+    else { seen.add(el.id); }
+  });
+});
+</script>
+
 </script>
 
 </script>
 
 </body>
 </html>
+
 
 
 
