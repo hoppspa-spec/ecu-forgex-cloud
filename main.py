@@ -20,6 +20,7 @@ from passlib.context import CryptContext
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from sqlalchemy.exc import IntegrityError
+from tools.setup_storage import autoinit as efx_autoinit
 
 # -------------------------------------------------------------------
 # Paths
@@ -132,6 +133,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 @app.on_event("startup")
 def on_startup():
     Base.metadata.create_all(bind=engine)
+    # Auto-init de carpetas/archivos base (persistentes si DATA_DIR apunta a un Disk)
+    efx_autoinit(DATA_DIR, STATIC_DIR)
 
 @app.post("/auth/register", response_model=UserOut)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
