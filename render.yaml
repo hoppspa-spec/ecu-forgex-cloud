@@ -1,10 +1,13 @@
 services:
- - type: web
-   name: ecu-forgex-cloud
-   env: python
-   buildCommand: pip install -r requirements.txt
-   startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
-   disks:
-    - name: storage
-      mountPath: /storage
-      sizeGB: 5
+  - name: ecu-forgex-cloud
+    type: web
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATA_DIR
+        value: /storage         # <-- apunta al Disco
+    disk:
+      name: efx-data
+      mountPath: /storage       # <-- se monta aquí
+      sizeGB: 1                 # ajusta según necesites
