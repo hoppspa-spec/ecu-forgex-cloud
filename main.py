@@ -557,3 +557,76 @@ def admin_save_yaml(body: SaveYamlIn, user: User = Depends(get_current_user)):
     _ensure_file(path)
     path.write_text(body.yaml_text, encoding="utf-8")
     return {"ok": True, "path": str(path)}
+
+# -------------------------------------------------------------------
+# Export / Import de recetas (migración)
+# -------------------------------------------------------------------
+def _zip_recipes(tmp_path: Path, include_catalog: bool = True) -> Path:
+    """
+    Crea un ZIP temporal con:
+      - /recipes/**.yml
+      - (opcional) static/patches: global.json, packs.json, brand/*
+    Devuelve la ruta al ZIP.
+    """
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(tmp_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+      # Recetas
+      if RECIPES_DIR.exists():
+        for p in RECIPES_DIR.rglob("*.yml"):
+            arc = Path("recipes") / p.relative_to(RECIPES_DIR)
+            zf.write(p, arcname=str(arc))
+
+      # Catálogo (opcional)
+      if include_catalog:
+        base = STATIC_DIR / "patches"
+        if base.exists():
+          for p in base.rglob("*"):
+            if p.is_file():
+              rel = p.relative_to(STATIC_DIR)  # p.ej. patches/global.json
+              zf.write(p, arcname=str(rel))
+    return tmp_path
+
+@app.get("/admin/export_recipes")
+def admin_export_recipes(
+    include_catalog: bool = True,
+    user: User = Depends(get_current_user),
+):
+    """
+    Exporta recetas .yml y (opcional) catálogo a un ZIP descargable.
+    """
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    fname = f"efx_recipes_{ts}.zip"
+    tmpf = Path(tempfile.gettempdir()) / fname
+    _zip_recipes(tmpf, include_catalog=include_catalog)
+    return FileResponse(str(tmpf), media_type="application/zip", filename=fname)
+
+# (Opcional) Importar recetas desde un ZIP
+from fastapi import UploadFile
+@app.post("/admin/import_recipes")
+async def admin_import_recipes(zip_file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    """
+    Importa un ZIP con estructura:
+      - recipes/<FAMILY>/<PATCH>.yml
+      - (opcional) patches/...
+    Sobrescribe archivos existentes.
+    """
+    body = await zip_file.read()
+    with zipfile.ZipFile(io.BytesIO(body)) as zf:
+      for name in zf.namelist():
+        # Normalizamos rutas y evitamos path traversal
+        pn = Path(name)
+        parts = pn.parts
+        if not parts:
+          continue
+        if parts[0] == "recipes":
+          dest = RECIPES_DIR.joinpath(*parts[1:])
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          with zf.open(name) as src, open(dest, "wb") as out:
+            out.write(src.read())
+        elif parts[0] == "patches":
+          dest = STATIC_DIR.joinpath(*parts)
+          dest.parent.mkdir(parents=True, exist_ok=True)
+          with zf.open(name) as src, open(dest, "wb") as out:
+            out.write(src.read())
+    return {"ok": True, "imported": True}
+
