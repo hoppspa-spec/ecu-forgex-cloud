@@ -662,6 +662,174 @@ document.getElementById('btnCopyYaml')?.addEventListener('click', async ()=>{
   catch{ const ta=document.createElement('textarea'); ta.value=box.textContent||''; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('YAML copiado.'); }
 });
 </script>
+  <script>
+/* ===== Helpers visuales de log + delay ===== */
+function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+function logAction(text, color="lime", delay=0){
+  setTimeout(() => {
+    const box = document.getElementById("log");
+    if(!box) return;
+    const line = document.createElement("div");
+    line.style.color = color;
+    line.textContent = text;
+    box.appendChild(line);
+    box.scrollTop = box.scrollHeight;
+  }, delay);
+}
+
+/* ===== Fallback de ECU (patrones + selección manual) ===== */
+async function tryPatternDetect(fb){
+  try{
+    const patt = await (await fetch("/static/data/ecu_patterns.json",{cache:"no-store"})).json();
+    const pn = fb?.ecu_part_number || fb?.part_number || "";
+    const sw = fb?.software_number || "";
+    const hit = patt.find(e => e.patterns.some(p => p.pn===pn || p.sw===sw));
+    return hit?.ecu_family || null;
+  }catch{ return null; }
+}
+
+async function askManualEcu(){
+  try{
+    const families = await (await fetch("/static/data/ecu_families.json",{cache:"no-store"})).json();
+    const val = prompt("No se detectó la ECU automáticamente.\nIngresa o selecciona la familia ECU (ej: EDC17C81, MED17, MG1):", families[0] || "");
+    return (val||"").trim().toUpperCase() || null;
+  }catch{
+    const val = prompt("No se detectó la ECU automáticamente.\nIngresa manualmente la familia ECU:", "");
+    return (val||"").trim().toUpperCase() || null;
+  }
+}
+
+/* ===== Actualiza Ficha ECU (oculta valores vacíos) ===== */
+function setFicha(id, val){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = (val && val!=="null") ? val : "—";
+}
+
+/* ===== Rellena parches filtrando por ECU y motor detectado ===== */
+async function fillPatchesForEcu(ecuFamily){
+  const sel = document.getElementById("patchSelect");
+  const btn = document.getElementById("btnAplicar");
+  const msg = document.getElementById("noPatchMsg");
+  sel.innerHTML = ""; sel.disabled = true; btn.disabled = true; if(msg) msg.style.display = "none";
+
+  try{
+    const { patches=[], packs=[] } = await (await fetch("/static/patches/global.json",{cache:"no-store"})).json();
+
+    // Motor (auto / forzado)
+    const engineMode = (()=>{
+      const sel = document.getElementById("engineSelect");
+      if(!sel) return "auto";
+      return sel.value !== "auto" ? sel.value : (engineDetected || "auto");
+    })();
+
+    // Filtro por ECU y motor
+    const filtered = patches
+      .filter(p => !ecuFamily || (p.compatible_ecu||[]).some(f => (ecuFamily||"").toUpperCase().includes(String(f).toUpperCase())))
+      .filter(p => engineMode==="auto" || (p.engines||[]).map(e=>String(e).toLowerCase()).includes(engineMode));
+
+    if(filtered.length===0 && packs.length===0){
+      sel.append(new Option("Sin parches disponibles",""));
+      if(msg) msg.style.display = "block";
+      return;
+    }
+
+    sel.disabled=false; btn.disabled=false;
+    sel.append(new Option("— Selecciona una opción —",""));
+    filtered.forEach(p => {
+      const usd = typeof p.price==="object" && p.price?.USD!=null ? p.price.USD : (typeof p.price==="number" ? p.price : null);
+      const label = usd!=null ? `${p.label} — $${usd}` : p.label;
+      sel.append(new Option(label, p.id));
+    });
+
+    if(packs.length){
+      sel.append(new Option("──────────── PACKS ────────────",""));
+      packs.forEach(pk=>{
+        const usd = typeof pk.price==="object" && pk.price?.USD!=null ? pk.price.USD : (typeof pk.price==="number" ? pk.price : null);
+        const label = usd!=null ? `🧩 ${pk.label} — $${usd}` : `🧩 ${pk.label}`;
+        sel.append(new Option(label, `pack:${pk.id}`));
+      });
+    }
+  }catch(e){
+    logAction("Error cargando parches: "+e.message,"red");
+    sel.append(new Option("Error cargando parches",""));
+  }
+}
+
+/* ===== Analizar BIN con “espera 5s” antes de mostrar resultado ===== */
+document.getElementById("btnAnalizar").onclick = async ()=>{
+  const f = document.getElementById("binfile").files[0];
+  if(!f){ alert("Selecciona un BIN"); return; }
+  if(!/\.(bin|mpc|org|e2p|101)$/i.test(f.name||"")){
+    alert("Formato no soportado. Usa .bin, .mpc, .org, .e2p, .101"); return;
+  }
+
+  // CVN & size de inmediato
+  const buf = new Uint8Array(await f.arrayBuffer());
+  lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8,'0');
+  document.getElementById("kv_cvn").textContent  = lastCvn;
+  document.getElementById("kv_size").textContent = new Intl.NumberFormat('es-CL').format(f.size) + " bytes";
+
+  // Log paso a paso
+  logAction("Subiendo y analizando BIN…","deepskyblue");   // inmediato
+
+  const fd = new FormData(); fd.append("bin_file", f);
+  let r, data=null;
+  try{
+    r = await fetch("/analyze_bin",{method:"POST",body:fd});
+  }catch(e){
+    logAction("Error de red en /analyze_bin","red", 5000);
+    alert("No se pudo analizar el BIN (red)."); return;
+  }
+
+  // Espera intencional de 5s para UX (“estamos trabajando…”)
+  await sleep(5000);
+  logAction(`Respuesta /analyze_bin: ${r.status}`, r.ok ? "gold" : "red");
+
+  if(!r.ok){
+    const t = await r.text().catch(()=>"(sin detalle)");
+    logAction("Error analizando BIN → "+t,"red");
+    alert("No se pudo analizar el BIN.\nHTTP "+r.status); return;
+  }
+
+  data = await r.json();
+  lastAnalysis = data;
+
+  // ECU detectada, por patrón, o manual
+  let ecu = data.ecu_type || null;
+  if(!ecu){
+    ecu = await tryPatternDetect(data);
+    if(ecu) logAction(`ECU reconocida por patrón: ${ecu}`,"violet");
+  }
+  if(!ecu){
+    ecu = await askManualEcu();
+    if(ecu) logAction(`ECU seleccionada manualmente: ${ecu}`,"violet");
+  }
+
+  // Ficha ECU
+  setBadge(ecu || null);
+  setFicha("kv_ecu", ecu || "—");
+  setFicha("kv_pn",  data.ecu_part_number || "—");
+  setFicha("kv_sw",  data.software_number || "—");
+  setFicha("kv_size", new Intl.NumberFormat('es-CL').format(data.bin_size||f.size||0) + " bytes");
+
+  // Detección de tipo de motor (para filtrar parches)
+  if(/EDC|MD1|MJD|DCM|SID/i.test(ecu||"")) engineDetected="diesel";
+  else if(/MED|MG1|MEVD|ME7/i.test(ecu||"")) engineDetected="petrol";
+  else engineDetected="auto";
+  (document.getElementById("engineSelect")||{}).value = "auto";
+
+  // Guardamos la ecu detectada para otras funciones
+  lastAnalysis.ecu_type = ecu || lastAnalysis.ecu_type;
+
+  // Log final del análisis
+  logAction(`Análisis OK. ECU: ${ecu || "Desconocida"}  PN: ${data.ecu_part_number || "—"}`, "white");
+
+  // Filtrar parches ahora que ya tenemos ECU
+  await fillPatchesForEcu(ecu);
+};
+</script>
+
 
 <script>
 /* ===== Aplicar / Comprar + 24h ===== */
