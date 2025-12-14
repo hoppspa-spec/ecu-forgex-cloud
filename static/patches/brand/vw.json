@@ -1,0 +1,17 @@
+{
+  "ecus": {
+    "EDC17": {
+      "include": ["dpf_off", "dtc_off"],
+      "rename": {
+        "dpf_off": "DPF OFF (VW)",
+        "dtc_off": "DTC OFF (Genérico VW)"
+      },
+      "price": {
+        "dpf_off": 59
+      }
+    },
+    "MED17": {
+      "exclude": ["egr_off"]
+    }
+  }
+}
