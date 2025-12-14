@@ -5,13 +5,17 @@ guards:
   family: EDC17C81
   min_size: 2000000
 ops:
-  - patch:
-      find_hex:   "01 00 00 00 48 65"   # ejemplo
-      replace_hex:"00 00 00 00 48 65"
-      count: 1
+  # Ejemplo: persistir el SW en la cabecera si lo necesitas (offset que diste)
   - write:
       at: 0x0010001A
-      hex: "10 53 57 30 35 32 36 33 34 31 36"  # "10SW05263416"
+      hex: "31 30 53 57 30 35 32 36 33 34 31 36"   # "10SW05263416" ASCII
+
+  # (EJEMPLO) parche: reemplazo de patrón; ajusta con tus bytes reales
+  # - patch:
+  #     find_hex:    "01 00 00 00 AA BB CC DD"
+  #     replace_hex: "00 00 00 00 AA BB CC DD"
+  #     count: 1
+
 post:
   - checksum:
       type: crc32
