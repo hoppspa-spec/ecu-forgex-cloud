@@ -911,23 +911,25 @@ function setOptions(sel, items, placeholder){
   sel.disabled = !items.length;
 }
 
+<script>
+// Sustituye tu loadVehiclesDb() por esta versión
 async function loadVehiclesDb(){
-  if(VEH_DB) return VEH_DB;
-  try{
-    const r = await fetch("/static/vehicles.json", {cache:"no-store"});
-    if(!r.ok) throw new Error("vehicles.json no disponible");
-    VEH_DB = await r.json();
-  }catch(e){
-    VEH_DB = {brands:{}};
+  if (VEH_DB) return VEH_DB;
+  const tryUrls = ["/static/data/vehicles.json", "/static/vehicles.json"];
+  for (const url of tryUrls){
+    try{
+      const r = await fetch(url, { cache:"no-store" });
+      if (r.ok){
+        VEH_DB = await r.json();
+        return VEH_DB;
+      }
+    }catch(_){}
   }
+  // fallback vacío
+  VEH_DB = { brands:{} };
   return VEH_DB;
 }
-
-function brandList(db){
-  return Object.entries(db.brands || {}).map(([key, val]) => ({
-    value: key, label: val.label || key.toUpperCase()
-  }));
-}
+</script>
 function modelList(db, brandKey){
   const b = db.brands?.[brandKey]; if(!b) return [];
   return Object.entries(b.models || {}).map(([key, val]) => ({
