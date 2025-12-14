@@ -1,12 +1,17 @@
-meta:
-  name: dpf_off (EDC17C81)
-  author: HOPP Ingenieria
-  version: 1
-  notes: tested
+id: dpf_off
+label: DPF OFF
+engine: diesel
+guards:
+  family: EDC17C81
+  min_size: 2000000
 ops:
-- find: 20 A1 07
-  replace: 00 00 00
-- find: '01'
-  replace: '00'
-checksum:
-  type: none
+  - patch:
+      find_hex:   "01 00 00 00 48 65"   # ejemplo
+      replace_hex:"00 00 00 00 48 65"
+      count: 1
+  - write:
+      at: 0x0010001A
+      hex: "10 53 57 30 35 32 36 33 34 31 36"  # "10SW05263416"
+post:
+  - checksum:
+      type: crc32
