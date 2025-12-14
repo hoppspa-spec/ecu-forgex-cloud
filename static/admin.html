@@ -7,19 +7,19 @@
 <style>
   /* ====== PALETA CON ALTO CONTRASTE ====== */
   :root{
-    --bg:#070b14;           /* más oscuro */
-    --card:#0c1222;         /* paneles */
-    --ink:#f1f5f9;          /* texto principal más claro */
-    --muted:#cbd5e1;        /* texto secundario más claro */
-    --stroke:#26334f;       /* bordes */
+    --bg:#070b14;
+    --card:#0c1222;
+    --ink:#f1f5f9;
+    --muted:#cbd5e1;
+    --stroke:#26334f;
     --brand:#0b1220;
-    --btn:#1e40af;          /* azul profundo */
-    --btnh:#1d4ed8;         /* hover */
-    --ok:#16a34a;           /* verde alto contraste */
-    --warn:#f59e0b;         /* ámbar */
-    --err:#ef4444;          /* rojo */
-    --focus:#93c5fd;        /* anillo de enfoque */
-    --ink-strong:#ffffff;   /* blanco puro para headers/badges */
+    --btn:#1e40af;
+    --btnh:#1d4ed8;
+    --ok:#16a34a;
+    --warn:#f59e0b;
+    --err:#ef4444;
+    --focus:#93c5fd;
+    --ink-strong:#ffffff;
   }
 
   *{box-sizing:border-box}
@@ -133,14 +133,13 @@
     </div>
 
     <div class="right">
-  <button class="btn" id="btnPlantilla">Cargar plantilla</button>
-  <button class="btn secondary" id="btnPlantilla2">Cargar plantilla</button>
-  <button class="btn warning" id="btnValidar">Validar YAML</button>
-  <button class="btn" id="btnGuardarYaml">Guardar sin catálogo</button>
-  <button class="btn success" id="btnGuardar">Guardar receta + catálogo</button>
-  <button class="btn ghost" id="btnExport">⬇️ Descargar recetas (.zip)</button>
+      <button class="btn" id="btnPlantilla">Cargar plantilla</button>
+      <button class="btn secondary" id="btnPlantilla2">Cargar plantilla</button>
+      <button class="btn warning" id="btnValidar">Validar YAML</button>
+      <button class="btn" id="btnGuardarYaml">Guardar sin catálogo</button>
+      <button class="btn success" id="btnGuardar">Guardar receta + catálogo</button>
+      <button class="btn ghost" id="btnExport">⬇️ Descargar recetas (.zip)</button>
     </div>
-
 
     <!-- inputs de archivo ocultos -->
     <input type="file" id="tplFile1" class="tpl-input" accept=".yml,.yaml,.json,.txt" style="display:none"/>
@@ -196,6 +195,7 @@
   </section>
 </div>
 
+<!-- ========== SCRIPTS ========== -->
 <script>
 /* ===== Helpers / Estado común ===== */
 const $ = (q,el=document)=>el.querySelector(q);
@@ -213,15 +213,18 @@ function elog(el, msg){
   box.textContent += (box.textContent? "\n":"") + msg;
   box.scrollTop = box.scrollHeight;
 }
+</script>
+
 <script>
-/* ===== Exportar recetas (ZIP) ===== */
-document.getElementById("btnExport").addEventListener("click", async ()=>{
-  if(!TOKEN){
-    alert("Inicia sesión para descargar el backup."); 
-    return;
-  }
+/* ===== Exportar recetas (ZIP) =====
+   Usa el endpoint que tengas disponible:
+   - Opción A (la que te compartí primero): /admin/export_recipes_zip
+   - Opción B (si implementaste include_catalog): /admin/export_recipes?include_catalog=true
+   Debajo dejo B. Cambia la URL si usas A.
+*/
+document.getElementById("btnExport")?.addEventListener("click", async ()=>{
+  if(!TOKEN){ alert("Inicia sesión para descargar el backup."); return; }
   try{
-    // include_catalog=true para llevar global.json, packs.json y brand/*
     const r = await fetch("/admin/export_recipes?include_catalog=true", {
       headers: { "Authorization": "Bearer " + TOKEN }
     });
@@ -245,7 +248,7 @@ document.getElementById("btnExport").addEventListener("click", async ()=>{
 });
 </script>
 
-  
+<script>
 /* ===== Tabs ===== */
 document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -282,7 +285,7 @@ function wireTemplateButton(btnSel, fileSel){
     $("#yaml_text").value = txt;
   });
 }
-wireTemplateButton("#btnPlantilla2", "#tplFile2"); // segundo botón (el primero pega la demo)
+wireTemplateButton("#btnPlantilla2", "#tplFile2");
 
 /* ===== Validación simple YAML ===== */
 $("#btnValidar").onclick = ()=>{
@@ -361,7 +364,9 @@ $("#btnGuardarYaml").onclick = async ()=>{
     $("#btnGuardarYaml").disabled = false;
   }
 };
+</script>
 
+<script>
 /* ===== Diff → YAML (completo) ===== */
 (function(){
   const ui = {
@@ -461,5 +466,3 @@ $("#btnGuardarYaml").onclick = async ()=>{
 </script>
 </body>
 </html>
-
-
