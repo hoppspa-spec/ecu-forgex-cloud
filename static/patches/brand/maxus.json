@@ -1,0 +1,9 @@
+{
+  "ecus": {
+    "EDC17C81": {
+      "include": ["dpf_off"],
+      "rename": { "dpf_off": "DPF OFF — Maxus (diesel)" },
+      "price": { "dpf_off": 59 }
+    }
+  }
+}
