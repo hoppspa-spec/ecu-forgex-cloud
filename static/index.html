@@ -1,1237 +1,176 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ECU FORGE X — Generar BIN.MOD</title>
+<meta charset="UTF-8">
+<title>ECU Forge X — Diagnóstico y Parches</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
-    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
-  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
-  header a{color:#cbd5e1;text-decoration:none}
-  header .grow{flex:1}
-  .toolbar{display:flex;gap:8px;align-items:center}
-  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:10px 14px;cursor:pointer;transition:filter .12s ease}
-  .btn:hover{background:var(--btnh)}
-  .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px}
-  .btn.alt{background:#0ea5e9}
-  .container{display:grid;grid-template-columns:340px 1fr 340px;gap:18px;padding:18px}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
-  h3{margin:0 0 10px}
-  label{font-size:12px;color:var(--muted)}
-  input,select,button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--stroke);margin-bottom:10px;background:#0e1526;color:var(--ink)}
-  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .muted{color:var(--muted);font-size:13px}
-  .log{background:#000;color:#00ff72;font-family:ui-monospace,Menlo,Consolas;height:200px;border-radius:8px;padding:12px;overflow:auto}
-  .badge{display:inline-block;padding:3px 8px;border-radius:999px;background:#182038;color:#dbe2ff;font-size:12px}
-  .kv{display:grid;grid-template-columns:140px 1fr;gap:6px;font-size:14px}
-  .divider{height:1px;background:var(--stroke);margin:10px 0}
-  /* ===== YAML box (alto contraste) ===== */
-  .yaml-box {
-    background:#0a0f1d;
-    color:#e9f0ff;
-    border:1px solid #2b3a63;
-    border-radius:10px;
-    padding:12px;
-    font-family: ui-monospace, Menlo, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.35;
-    overflow:auto;
-    max-height: 320px;
-  }
-  .yaml-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:8px }
-  .btn.copy { background:#16a34a; color:#021407; font-weight:700 }
-  .btn.copy:hover{ filter:brightness(1.12) }
+:root{
+  --bg:#ffffff;
+  --ink:#2b2b2b;
+  --muted:#555;
+  --border:#d0d0d0;
+  --accent:#004aad;
+  --accent-soft:#e7f0ff;
+  --radius:10px;
+  font-family:'Inter',system-ui,Arial;
+}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:'Inter',sans-serif;
+}
+main{
+  display:grid;
+  grid-template-columns:1.2fr 1.5fr 1.2fr;
+  gap:12px;
+  padding:12px;
+}
+section{
+  border:2px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+  background:white;
+  box-shadow:0 1px 4px rgba(0,0,0,0.04);
+}
+h2{margin-top:0;color:var(--accent);font-weight:600;font-size:1.1rem;}
+label{display:block;margin-top:8px;font-weight:500;font-size:.9rem;}
+input,select,button{
+  width:100%;padding:8px 10px;margin-top:4px;
+  border:1px solid var(--border);border-radius:var(--radius);
+  font-family:inherit;font-size:.9rem;
+}
+button{
+  background:var(--accent);color:white;cursor:pointer;
+  border:none;font-weight:600;margin-top:10px;
+}
+button:hover{background:#0056c2;}
+ul.patch-list{list-style:none;padding:0;margin:0;}
+ul.patch-list li{
+  padding:10px;border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:8px;
+  transition:background .2s;
+}
+ul.patch-list li.active{background:var(--accent-soft);border-color:var(--accent);}
+.ecu-info p{margin:6px 0;font-size:.9rem;color:var(--muted);}
 </style>
 </head>
 <body>
 
-<header>
-  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
-  <a href="/static/catalogo.html" style="margin-left:8px">Catálogo</a>
-  <div class="grow"></div>
-  <div class="toolbar">
-    <button class="btn sm" id="btnTheme">Tema</button>
-    <button class="btn sm" id="btnOpenLogin">Iniciar sesión</button>
-    <button class="btn sm alt" id="btnOpenRegister">Crear cuenta</button>
-    <button class="btn sm" id="btnLogout" style="display:none">Cerrar sesión</button>
-  </div>
-</header>
+<main>
+  <section id="upload">
+    <h2>📂 Análisis de BIN</h2>
+    <label>Marca</label>
+    <select id="selBrand"></select>
+    <label>Modelo</label>
+    <select id="selModel"></select>
+    <label>Año</label>
+    <select id="selYear"></select>
+    <label>Archivo BIN</label>
+    <input type="file" id="binFile" accept=".bin">
+    <button id="analyzeBtn">Analizar BIN</button>
+    <div id="analysisStatus" style="margin-top:10px;font-size:.9rem;color:var(--muted);"></div>
+  </section>
 
-<div class="container">
-  <!-- IZQUIERDA -->
-  <div class="card">
-    <h3>Información del Vehículo</h3>
-
-    <label class="muted" for="selBrand">Marca</label>
-    <select id="selBrand">
-      <option value="">— Selecciona —</option>
-      <option value="custom">Personalizado…</option>
-    </select>
-
-    <label class="muted" for="selModel">Modelo</label>
-    <select id="selModel" disabled>
-      <option value="">— Selecciona —</option>
-    </select>
-
-    <div class="row2">
-      <div>
-        <label class="muted" for="selYear">Año</label>
-        <select id="selYear" disabled>
-          <option value="">— Selecciona —</option>
-        </select>
-      </div>
-      <div>
-        <label class="muted" for="selEngine">Motorización</label>
-        <select id="selEngine" disabled>
-          <option value="">— Selecciona —</option>
-        </select>
-      </div>
+  <section id="ecuInfo">
+    <h2>⚙️ ECU Info</h2>
+    <div class="ecu-info" id="ecuInfoBox">
+      <p>Esperando análisis...</p>
     </div>
+  </section>
 
-    <!-- Campos libres (opcionales) -->
-    <input id="modeloLibre" placeholder="Modelo libre (opcional)"/>
-    <input id="motorLibre"  placeholder="Motor libre (opcional, ej: TSI/HDI/N55)"/>
-
-    <div class="divider"></div>
-
-    <h3>Archivo BIN</h3>
-    <input id="binfile" type="file"/>
-    <button id="btnAnalizar" class="btn">Analizar BIN</button>
-    <div class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</div>
-  </div>
-
-  <!-- CENTRO -->
-  <div class="card">
-    <div class="row2" style="align-items:end">
-      <div>
-        <h3>Parches Disponibles <span id="ecuBadge" class="badge" style="display:none"></span></h3>
-      </div>
-      <div>
-        <label class="muted">Tipo de Motor</label>
-        <select id="engineSelect">
-          <option value="auto">Auto (detectado)</option>
-          <option value="petrol">Petrol</option>
-          <option value="diesel">Diesel</option>
-        </select>
-      </div>
-    </div>
-
-    <select id="patchSelect" disabled>
-      <option value="">— Sube tu BIN para ver opciones —</option>
-    </select>
-    <button id="btnAplicar" class="btn" disabled>Aplicar / Comprar</button>
-
-    <!-- MENSAJE 24h -->
-    <div id="noPatchMsg" class="muted" style="display:none;margin-top:8px">
-      Por ahora no contamos con un parche para tu ECU.<br/>
-      Sube el BIN y te responderemos a la brevedad (máx. <b>24&nbsp;h</b>).
-      <button id="btn24h" class="btn sm" style="margin-top:8px;width:auto">Solicitar solución (24&nbsp;h)</button>
-    </div>
-
-    <h3 style="margin-top:16px">Resultado</h3>
-    <div id="resultado" class="muted">Aún no se ha generado ningún archivo.</div>
-
-    <h3 style="margin-top:16px">Log</h3>
-    <div id="log" class="log">Esperando acciones…</div>
-  </div>
-
-  <!-- DERECHA -->
-  <div class="card">
-    <h3>Ficha ECU</h3>
-    <div class="kv">
-      <div class="muted">ECU Type</div><div id="kv_ecu">—</div>
-      <div class="muted">ECU Part Number</div><div id="kv_pn">—</div>
-      <div class="muted">Software Number</div><div id="kv_sw">—</div>
-      <div class="muted">File size</div><div id="kv_size">—</div>
-      <div class="muted">CVN</div><div id="kv_cvn">—</div>
-      <div class="muted">Parche</div><div id="kv_patch">—</div>
-      <div class="muted">Precio</div><div id="kv_price">—</div>
-    </div>
-
-    <div class="divider"></div>
-    <h3>Resumen YAML</h3>
-    <pre id="ecuYaml" class="yaml-box"># Aún sin datos…</pre>
-    <div class="yaml-actions">
-      <button id="btnCopyYaml" class="btn copy">Copiar YAML</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL LOGIN -->
-<div id="modalLogin" class="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:50">
-  <div class="box" style="background:#101a33;border:1px solid var(--stroke);padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:340px">
-    <h3>Iniciar sesión</h3>
-    <input id="login_email" placeholder="Email" />
-    <input id="login_pass" type="password" placeholder="Contraseña" />
-    <p id="login_err" class="err" style="display:none;color:#f87171;margin:6px 0 0;font-size:13px"></p>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button id="btnLogin" class="btn sm">Ingresar</button>
-      <button class="btn sm" data-close="#modalLogin" style="background:transparent;border:1px solid var(--stroke);">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL REGISTRO -->
-<div id="modalRegister" class="modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:50">
-  <div class="box" style="background:#101a33;border:1px solid var(--stroke);padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:340px">
-    <h3>Crear cuenta</h3>
-    <input id="reg_name" placeholder="Nombre (opcional)" />
-    <input id="reg_email" placeholder="Email" />
-    <input id="reg_pass" type="password" placeholder="Contraseña (min 6)" />
-    <p id="reg_err" class="err" style="display:none;color:#f87171;margin:6px 0 0;font-size:13px"></p>
-    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button id="btnRegister" class="btn sm">Registrarme</button>
-      <button class="btn sm" data-close="#modalRegister" style="background:transparent;border:1px solid var(--stroke);">Cerrar</button>
-    </div>
-  </div>
-</div>
+  <section id="patches">
+    <h2>🧩 Parches Disponibles</h2>
+    <ul class="patch-list" id="patchList"><li>Sin datos</li></ul>
+  </section>
+</main>
 
 <script>
-/* ===== THEME (oscuro por defecto) ===== */
-(function(){
-  const KEY='EFX_THEME';
-  const saved = localStorage.getItem(KEY) || 'dark';
-  document.body.classList.toggle('dark', saved === 'dark');
-  document.getElementById('btnTheme').onclick=()=>{
-    const isDark = !document.body.classList.contains('dark');
-    document.body.classList.toggle('dark', isDark);
-    localStorage.setItem(KEY, isDark ? 'dark' : 'light');
-  };
-})();
-</script>
-
-<script>
-/* ===== Estado/UI + helpers ===== */
-let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
-let lastAnalysis=null, lastFile=null, lastCvn=null, engineDetected="auto";
-
-const $=(q,el=document)=>el.querySelector(q);
-const log=(m)=>{const b=$("#log"); if(!b) return; b.textContent+="\n"+m; b.scrollTop=b.scrollHeight;};
-const setBadge=(t)=>{const b=$("#ecuBadge"); if(!b) return; if(!t){b.style.display="none";b.textContent="";} else {b.style.display="inline-block"; b.textContent=t;}};
-
-function setAuthUi(on){
-  $("#btnOpenLogin").style.display = on? "none":"inline-block";
-  $("#btnOpenRegister").style.display = on? "none":"inline-block";
-  $("#btnLogout").style.display = on? "inline-block":"none";
-}
-setAuthUi(!!TOKEN);
-
-// abrir/cerrar modales login/registro
-$("#btnOpenLogin").onclick = ()=>$("#modalLogin").style.display="flex";
-$("#btnOpenRegister").onclick = ()=>$("#modalRegister").style.display="flex";
-$("#btnLogout").onclick = ()=>{ TOKEN=null; localStorage.removeItem("EFX_TOKEN"); setAuthUi(false); log("Sesión cerrada."); };
-document.querySelectorAll("[data-close]").forEach(btn=>{
-  btn.addEventListener("click",()=>{ const id=btn.getAttribute("data-close"); const m=$(id); if(m) m.style.display="none"; });
-});
-["modalLogin","modalRegister"].forEach(id=>{
-  const m=document.getElementById(id); m.addEventListener("click",(e)=>{ if(e.target===m) m.style.display="none"; });
-});
-document.addEventListener("keydown",(e)=>{ if(e.key==="Escape"){ ["#modalLogin","#modalRegister"].forEach(id=>{const m=$(id); if(m) m.style.display="none";}); }});
-
-function showErr(id,msg){const el=$(id); if(!el) return; el.textContent=msg||""; el.style.display=msg?"block":"none";}
-</script>
-
-<script>
-/* ===== Login/Registro ===== */
-$("#btnLogin").onclick = async ()=>{
-  showErr("#login_err","");
-  const email = $("#login_email").value.trim();
-  const pass  = $("#login_pass").value;
-  if(!email || !pass){ showErr("#login_err","Completa email y contraseña."); return; }
-  const fd = new FormData(); fd.append("username", email); fd.append("password", pass);
-  try{
-    const r = await fetch("/auth/login",{method:"POST",body:fd});
-    if(!r.ok){ showErr("#login_err","Credenciales inválidas."); return; }
-    const d = await r.json();
-    TOKEN = d.access_token; localStorage.setItem("EFX_TOKEN", TOKEN);
-    $("#modalLogin").style.display="none"; setAuthUi(true); log("Sesión iniciada.");
-  }catch{ showErr("#login_err","Error de red."); }
-};
-
-$("#btnRegister").onclick = async ()=>{
-  showErr("#reg_err","");
-  const payload = { email: $("#reg_email").value.trim(), password: $("#reg_pass").value, full_name: $("#reg_name").value || null };
-  if(!payload.email || !payload.password){ showErr("#reg_err","Completa email y contraseña."); return; }
-  try{
-    const r = await fetch("/auth/register",{method:"POST",headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if(!r.ok){ const t=await r.text(); showErr("#reg_err","No se pudo crear la cuenta: "+t); return; }
-    const fd = new FormData(); fd.append("username", payload.email); fd.append("password", payload.password);
-    const lr = await fetch("/auth/login",{method:"POST",body:fd});
-    if(lr.ok){ const d=await lr.json(); TOKEN=d.access_token; localStorage.setItem("EFX_TOKEN", TOKEN); setAuthUi(true); $("#modalRegister").style.display="none"; log("Cuenta creada e iniciada."); }
-    else { $("#modalRegister").style.display="none"; alert("Cuenta creada. Inicia sesión por favor."); }
-  }catch{ showErr("#reg_err","Error de red."); }
-};
-</script>
-
-  <script>
-/* ===== CRC32 (CVN demo) ===== */
-(function(){
-  const table = new Uint32Array(256).map((_,n)=>{let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); return c>>>0;});
-  window.crc32 = (buf)=>{ let c=0^(-1); for(let i=0;i<buf.length;i++) c=(c>>>8)^table[(c^buf[i])&0xFF]; return (c^(-1))>>>0; };
-})();
-</script>
-
-  <script>
-/* ===== Helpers de precio/label ===== */
-function toUSD(p){ if(p==null) return null; if(typeof p==="number") return p; if(typeof p==="object" && p.USD!=null) return Number(p.USD); return null; }
-function labelWithPrice(label, priceLike){ const usd=toUSD(priceLike); return usd!=null ? `${label} — $${usd}` : label; }
-function reflectSelectionInFicha(txt){
-  const m = (txt||"").match(/\$([\d.,]+)/);
-  const label = (txt||"").replace(/\s+—\s+\$[\d.,]+/,"");
-  const price = m ? `$${m[1]}` : "—";
-  $("#kv_patch").textContent = label || "—";
-  $("#kv_price").textContent = price;
-}
-</script>
-
-  <script>
-/* ===== Detectores & carga de parches ===== */
-function detectEcuFamily(ecuType, filename){
-  const src = ((ecuType||"") + " " + (filename||"")).toUpperCase();
-  const tests = [/MG1CS\d*/, /\bMG1\b/, /MED17\.5(\.\d+)?/, /\bMED17\b/, /\bMEVD\b/, /\bME7(\.\d+)?\b/, /EDC17CP\d*/, /EDC17C\d*/, /\bEDC17\b/, /\bEDC16\b/, /\bMD1\b/, /\bDCM\d*\b/, /\bSID\d{3}\b/];
-  for(const re of tests){ const m = src.match(re); if(m) return m[0]; }
-  if(/BOSCH/.test(src) && /MG1/.test(src)) return "MG1";
-  if(/BOSCH/.test(src) && /MED17/.test(src)) return "MED17";
-  if(/BOSCH/.test(src) && /EDC17/.test(src)) return "EDC17";
-  return null;
-}
-function currentEngineMode(){
-  const sel = $("#engineSelect"); if(!sel) return "auto";
-  if(sel.value!=="auto") return sel.value;
-  const fromClient = (()=>{
-    const engSel = ($("#selEngine")?.value || "").toLowerCase();
-    const engTxt = ($("#motorLibre")?.value || "").toLowerCase();
-    const DIESEL = ["tdi","hdi","cdi","dci","multijet","d4d","diesel","sdv6","tddi","edc","md1","edc17","sid","dcm"];
-    const PETROL = ["tsi","tfs","tfsi","mpi","gdi","lci","b48","n20","n55","petrol","gasolina","med","mg1","mevd","me7"];
-    const src = engSel || engTxt;
-    if(!src) return "auto";
-    if(DIESEL.some(k=>src.includes(k))) return "diesel";
-    if(PETROL.some(k=>src.includes(k))) return "petrol";
-    return "auto";
-  })();
-  if(fromClient!=="auto") return fromClient;
-  return engineDetected || "auto";
-}
-
-// caché json simple
-const _jsonCache={};
-async function jget(url){ if(_jsonCache[url]) return _jsonCache[url]; const r=await fetch(url,{cache:"no-store"}); if(!r.ok) throw new Error("No se pudo cargar "+url); const d=await r.json(); _jsonCache[url]=d; return d; }
-
-async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
-  let list=[];
-  try{
-    const g = await jget("/static/patches/global.json");
-    list = (g.patches||[]).map(p=>({...p, engines:(p.engines||[]).map(e=>String(e).toLowerCase()) }));
-  }catch{}
-
-  if(engineMode && engineMode!=="auto"){
-    const want = String(engineMode).toLowerCase();
-    list = list.filter(p => (p.engines||[]).includes(want));
-  }
-  if(ecuFamily){
-    const up = ecuFamily.toUpperCase();
-    list = list.filter(p => (p.compatible_ecu||[]).some(f => up.includes(String(f).toUpperCase())));
-  }
-  if(brandKey){
-    try{
-      const ov = await jget(`/static/patches/brand/${brandKey}.json`);
-      if(ov?.ecus){
-        const famKey = Object.keys(ov.ecus).find(k => ecuFamily && ecuFamily.toUpperCase().includes(k.toUpperCase()));
-        if(famKey){
-          const rules = ov.ecus[famKey];
-          if(rules.exclude) list = list.filter(p => !rules.exclude.includes(p.id));
-          if(rules.include) list = list.filter(p =>  rules.include.includes(p.id));
-          if(rules.rename)  list = list.map(p => ({...p, label: rules.rename[p.id] || p.label}));
-          if(rules.price)   list = list.map(p => (rules.price[p.id]!=null? {...p, price: rules.price[p.id]} : p));
-        }
-      }
-    }catch{}
-  }
-  let packs=[];
-  try{
-    const pk = await jget("/static/patches/packs.json");
-    packs = (pk.packs||[]).filter(x => !engineMode || engineMode==="auto" || !x.engine || x.engine===engineMode);
-  }catch{}
-  return {patches:list, packs};
-}
-
-/* base fillPatches (luego la envolvemos con hint) */
-async function fillPatches(){
-  const sel = $("#patchSelect"), btn=$("#btnAplicar"), msg=$("#noPatchMsg");
-  if(!sel||!btn) return;
-  sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
-
-  if(!lastAnalysis){ sel.append(new Option("— Sube tu BIN para ver opciones —","")); return; }
-  const mode=currentEngineMode();
-  const ecuFam=detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename);
-  const brandKey=$("#selBrand")?.value && $("#selBrand").value!=="custom" ? $("#selBrand").value : null;
-
-  try{
-    const {patches,packs} = await loadPatchesCombined(mode, ecuFam, brandKey);
-    const has = (patches&&patches.length) || (packs&&packs.length);
-    if(!has){ sel.append(new Option("Sin parches disponibles","")); if(msg) msg.style.display="block"; window.__EFX_onPatchChange__?.(); return; }
-
-    sel.disabled=false; btn.disabled=false;
-    sel.append(new Option("— Selecciona una opción —",""));
-    (patches||[]).forEach(p => sel.append(new Option(labelWithPrice(p.label, p.price), p.id)));
-    if(packs && packs.length){
-      sel.append(new Option("──────────── PACKS ────────────",""));
-      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk.price)}`, `pack:${pk.id}`)));
-    }
-  }catch(e){
-    log("Error cargando parches: "+e.message);
-    sel.append(new Option("Error cargando parches",""));
-  } finally {
-    window.__EFX_onPatchChange__?.();
-  }
-}
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  $("#patchSelect").addEventListener("change", ()=>{
-    const sel=$("#patchSelect"); const txt=sel.options[sel.selectedIndex]?.text||""; 
-    if(/─{5,}/.test(txt)){ reflectSelectionInFicha(""); sel.value=""; }
-    else { reflectSelectionInFicha(txt); }
-    window.__EFX_onPatchChange__?.();
-  });
-  ["#selBrand","#selModel","#selYear","#selEngine","#motorLibre","#engineSelect"].forEach(sel=>{
-    const el=$(sel); if(el) el.addEventListener("change", fillPatches);
-    if(el && el.tagName==="INPUT") el.addEventListener("input", fillPatches);
-  });
-});
-</script>
-
-  <script>
-/* ===========================================================
-   EXTRACCIÓN AVANZADA DE SOFTWARE/HARDWARE DESDE BIN + YAML
-   =========================================================== */
-function decodeLatin1(u8){ try{ return new TextDecoder("latin1").decode(u8); }catch{ return ""; } }
-function decodeUTF16LE(u8){
-  if (!u8 || u8.length < 4) return "";
-  try{
-    let zeros=0; for(let i=1;i<Math.min(u8.length,4096);i+=2) if (u8[i]===0) zeros++;
-    if (zeros < 256) return "";
-    return new TextDecoder("utf-16le").decode(new DataView(u8.buffer,u8.byteOffset,u8.byteLength));
-  }catch{ return ""; }
-}
-function uniqueKeepOrder(arr){ const s=new Set(),o=[]; for(const x of arr){const k=String(x); if(!s.has(k)){s.add(k);o.push(x);} } return o; }
-
-function extractSwHwFromText(text, familyHint){
-  const SW=[], HW=[];
-  const patterns = [
-    /(?:\bSW[\s:=\-]{0,3}|Software(?:version)?[\s:=\-]{0,3})([A-Z0-9\.\-_/]{4,40})/gi,
-    /(?:\bHW[\s:=\-]{0,3}|Hardware(?:version)?[\s:=\-]{0,3})([A-Z0-9\.\-_/]{3,40})/gi,
-    /\bZB[\s:=\-]{0,3}([A-Z0-9\.\-_/]{4,40})/gi,
-    /\bPart(?:\s*No\.?|Num(?:ber)?)[:=\- ]{0,3}([A-Z0-9\.\-_/]{4,40})/gi
-  ];
-  const fam=(familyHint||"").toUpperCase(); const famRe=[];
-  if(/MED|MEVD|ME7|MG1/.test(fam)){ famRe.push(/\bSW(?:UP|_VER|VER)?[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); famRe.push(/\bBOSCH[\s-]*SW[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); }
-  if(/EDC|MD1|DCM|SID/.test(fam)){  famRe.push(/\bSW(?:VER|_VER)?[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi);     famRe.push(/\bSoftware[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); }
-
-  const push=(re,kind)=>{ re.lastIndex=0; let m; while((m=re.exec(text))){ const raw=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(!raw) continue; (kind==="SW"?SW:HW).push(raw); if(re.lastIndex===m.index) re.lastIndex++; } };
-  push(patterns[0],"SW"); push(patterns[1],"HW");
-  let m; patterns[2].lastIndex=0; while((m=patterns[2].exec(text))){ const c=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(/^\w{4,}$/.test(c)) SW.push(c); if(patterns[2].lastIndex===m.index) patterns[2].lastIndex++; }
-  patterns[3].lastIndex=0; while((m=patterns[3].exec(text))){ const c=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(/^\w{4,}$/.test(c)) SW.push(c); if(patterns[3].lastIndex===m.index) patterns[3].lastIndex++; }
-  for(const re of famRe) push(re,"SW");
-
-  return { sw: uniqueKeepOrder(SW).slice(0,6), hw: uniqueKeepOrder(HW).slice(0,6) };
-}
-async function extractSwHwFromFile(file, familyHint){
-  const u8=new Uint8Array(await file.arrayBuffer());
-  const a=extractSwHwFromText(decodeLatin1(u8), familyHint);
-  const u=decodeUTF16LE(u8); const b=u?extractSwHwFromText(u, familyHint):{sw:[],hw:[]};
-  return { sw: uniqueKeepOrder(a.sw.concat(b.sw)), hw: uniqueKeepOrder(a.hw.concat(b.hw)) };
-}
-
-function toYaml(obj, indent=0){
-  const pad='  '.repeat(indent);
-  if (obj==null) return 'null';
-  if (Array.isArray(obj)){ return obj.length? obj.map(x=>`${pad}- ${typeof x==='object' ? '\n'+toYaml(x,indent+1) : String(x)}`).join('\n') : '[]'; }
-  if (typeof obj==='object'){
-    const lines=[]; for(const k of Object.keys(obj)){ const v=obj[k];
-      if (v && typeof v==='object' && !Array.isArray(v)){ lines.push(`${pad}${k}:`); lines.push(toYaml(v,indent+1)); }
-      else if (Array.isArray(v)){ lines.push(`${pad}${k}:`); lines.push(v.length? toYaml(v,indent+1) : pad+'  []'); }
-      else { lines.push(`${pad}${k}: ${v==null||v===''? 'null' : String(v)}`); }
-    } return lines.join('\n');
-  }
-  return String(obj);
-}
-function stripPriceFromLabel(text){
-  if (!text) return {label:null, price:null};
-  const m=text.match(/\$([\d.,]+)/); const price=m? Number(m[1].replace(/\./g,'').replace(',', '.')):null;
-  const label=text.replace(/\s+—\s+\$[\d.,]+/, '');
-  return {label, price};
-}
-function updateYamlSummary({ patchStatus, selectedOptionText }){
-  const box=document.getElementById('ecuYaml'); if(!box) return;
-  const fam=(lastAnalysis?.ecu_type||'').trim();
-  const pn=(lastAnalysis?.ecu_part_number||'').trim();
-  const fileName=lastAnalysis?.filename || lastFile?.name || null;
-  const sizeBytes=lastAnalysis?.bin_size || lastFile?.size || null;
-  let label=null, price=null, patchId=null;
-  if (selectedOptionText){ const p=stripPriceFromLabel(selectedOptionText); label=p.label; price=p.price; }
-  const sel=document.getElementById('patchSelect'); if (sel && sel.value){ patchId = sel.value.startsWith('pack:')? sel.value.slice(5) : sel.value; }
-
-  const yamlObj = {
-    ecu: {
-      type: fam || null,
-      part_number: pn || null,
-      software: (window.__EFX_SW_LIST__ || []).map((sw,i)=>({ sw, hw: (window.__EFX_HW_LIST__||[])[i] || null })).slice(0,6)
-    },
-    file: {
-      name: fileName,
-      size_bytes: sizeBytes,
-      cvn_crc32: lastCvn || null
-    },
-    patch: {
-      status: patchStatus,
-      id: patchId || null,
-      label: label || null,
-      price_usd: price ?? null,
-      note: patchStatus === 'not_available' ? 'solución rápida (24h)' : null
-    }
-  };
-  box.textContent = toYaml(yamlObj);
-}
-
-/* Hooks públicos YAML */
-window.__EFX_afterAnalyze__ = async function(){
-  const famHint=(lastAnalysis?.ecu_type||'')+' '+(lastAnalysis?.filename || lastFile?.name || '');
-  let sw=[], hw=[];
-  try{ if(lastFile){ const out=await extractSwHwFromFile(lastFile, famHint); sw=out.sw; hw=out.hw; } }catch{}
-  window.__EFX_SW_LIST__=sw; window.__EFX_HW_LIST__=hw;
-  updateYamlSummary({ patchStatus:'not_available', selectedOptionText:null });
-};
-window.__EFX_onPatchChange__ = function(){
-  const sel=document.getElementById('patchSelect');
-  const txt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : null;
-  if(!txt || /─{5,}/.test(txt)){ updateYamlSummary({ patchStatus:'not_available', selectedOptionText:null }); }
-  else { updateYamlSummary({ patchStatus:'available', selectedOptionText:txt }); }
-};
-
-/* Copiar YAML */
-document.getElementById('btnCopyYaml')?.addEventListener('click', async ()=>{
-  const box=document.getElementById('ecuYaml'); if(!box) return;
-  try{ await navigator.clipboard.writeText(box.textContent||''); alert('YAML copiado.'); }
-  catch{ const ta=document.createElement('textarea'); ta.value=box.textContent||''; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('YAML copiado.'); }
-});
-</script>
-
-  <script>
-/* ===== Helpers visuales + patrón ECU + Ficha + fillPatchesForEcu ===== */
-function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
-function logAction(text, color="lime", delay=0){
-  setTimeout(() => {
-    const box = document.getElementById("log");
-    if(!box) return;
-    const line = document.createElement("div");
-    line.style.color = color;
-    line.textContent = text;
-    box.appendChild(line);
-    box.scrollTop = box.scrollHeight;
-  }, delay);
-}
-
-async function tryPatternDetect(fb){
-  try{
-    const patt = await (await fetch("/static/data/ecu_patterns.json",{cache:"no-store"})).json();
-    const pn = fb?.ecu_part_number || fb?.part_number || "";
-    const sw = fb?.software_number || "";
-    const hit = patt.find(e => e.patterns.some(p => p.pn===pn || p.sw===sw));
-    return hit?.ecu_family || null;
-  }catch{ return null; }
-}
-
-async function askManualEcu(){
-  try{
-    const families = await (await fetch("/static/data/ecu_families.json",{cache:"no-store"})).json();
-    const val = prompt("No se detectó la ECU automáticamente.\nIngresa o selecciona la familia ECU (ej: EDC17C81, MED17, MG1):", families[0] || "");
-    return (val||"").trim().toUpperCase() || null;
-  }catch{
-    const val = prompt("No se detectó la ECU automáticamente.\nIngresa manualmente la familia ECU:", "");
-    return (val||"").trim().toUpperCase() || null;
-  }
-}
-
-function setFicha(id, val){
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.textContent = (val && val!=="null") ? val : "—";
-}
-
-async function fillPatchesForEcu(ecuFamily){
-  const sel = document.getElementById("patchSelect");
-  const btn = document.getElementById("btnAplicar");
-  const msg = document.getElementById("noPatchMsg");
-  sel.innerHTML = ""; sel.disabled = true; btn.disabled = true; if(msg) msg.style.display = "none";
-
-  try{
-    const { patches=[], packs=[] } = await (await fetch("/static/patches/global.json",{cache:"no-store"})).json();
-    const engineMode = (()=>{
-      const sel = document.getElementById("engineSelect");
-      if(!sel) return "auto";
-      return sel.value !== "auto" ? sel.value : (engineDetected || "auto");
-    })();
-
-    const filtered = patches
-      .filter(p => !ecuFamily || (p.compatible_ecu||[]).some(f => (ecuFamily||"").toUpperCase().includes(String(f).toUpperCase())))
-      .filter(p => engineMode==="auto" || (p.engines||[]).map(e=>String(e).toLowerCase()).includes(engineMode));
-
-    if(filtered.length===0 && packs.length===0){
-      sel.append(new Option("Sin parches disponibles",""));
-      if(msg) msg.style.display = "block";
-      return;
-    }
-
-    sel.disabled=false; btn.disabled=false;
-    sel.append(new Option("— Selecciona una opción —",""));
-    filtered.forEach(p => {
-      const usd = typeof p.price==="object" && p.price?.USD!=null ? p.price.USD : (typeof p.price==="number" ? p.price : null);
-      const label = usd!=null ? `${p.label} — $${usd}` : p.label;
-      sel.append(new Option(label, p.id));
-    });
-
-    if(packs.length){
-      sel.append(new Option("──────────── PACKS ────────────",""));
-      packs.forEach(pk=>{
-        const usd = typeof pk.price==="object" && pk.price?.USD!=null ? pk.price.USD : (typeof pk.price==="number" ? pk.price : null);
-        const label = usd!=null ? `🧩 ${pk.label} — $${usd}` : `🧩 ${pk.label}`;
-        sel.append(new Option(label, `pack:${pk.id}`));
-      });
-    }
-  }catch(e){
-    logAction("Error cargando parches: "+e.message,"red");
-    sel.append(new Option("Error cargando parches",""));
-  }
-}
-</script>
-
-  <script>
-/* ===== Analizar BIN con espera 5s y YAML ===== */
-document.getElementById("binfile").addEventListener("change", async (e)=>{
-  lastFile = e.target.files?.[0] || null;
-  if(lastFile){
-    const buf = new Uint8Array(await lastFile.arrayBuffer());
-    lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8,'0');
-    document.getElementById("kv_cvn").textContent  = lastCvn;
-    document.getElementById("kv_size").textContent = new Intl.NumberFormat('es-CL').format(lastFile.size) + " bytes";
-  }
-});
-
-document.getElementById("btnAnalizar").onclick = async ()=>{
-  const f = document.getElementById("binfile").files[0];
-  if(!f){ alert("Selecciona un BIN"); return; }
-  if(!/\.(bin|mpc|org|e2p|101)$/i.test(f.name||"")){
-    alert("Formato no soportado. Usa .bin, .mpc, .org, .e2p, .101"); return;
-  }
-
-  const buf = new Uint8Array(await f.arrayBuffer());
-  lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8,'0');
-  document.getElementById("kv_cvn").textContent  = lastCvn;
-  document.getElementById("kv_size").textContent = new Intl.NumberFormat('es-CL').format(f.size) + " bytes";
-
-  logAction("Subiendo y analizando BIN…","deepskyblue");   // inmediato
-
-  const fd = new FormData(); fd.append("bin_file", f);
-  let r, data=null;
-  try{
-    r = await fetch("/analyze_bin",{method:"POST",body:fd});
-  }catch(e){
-    logAction("Error de red en /analyze_bin","red", 5000);
-    alert("No se pudo analizar el BIN (red)."); return;
-  }
-
-  await sleep(5000); // sensación de “estamos trabajando…”
-  logAction(`Respuesta /analyze_bin: ${r.status}`, r.ok ? "gold" : "red");
-
-  if(!r.ok){
-    const t = await r.text().catch(()=>"(sin detalle)");
-    logAction("Error analizando BIN → "+t,"red");
-    alert("No se pudo analizar el BIN.\nHTTP "+r.status); return;
-  }
-
-  data = await r.json();
-  lastAnalysis = data;
-
-  // ECU detectada, patrón o manual
-  let ecu = data.ecu_type || null;
-  if(!ecu){
-    ecu = await tryPatternDetect(data);
-    if(ecu) logAction(`ECU reconocida por patrón: ${ecu}`,"violet");
-  }
-  if(!ecu){
-    ecu = await askManualEcu();
-    if(ecu) logAction(`ECU seleccionada manualmente: ${ecu}`,"violet");
-  }
-
-  // Ficha ECU
-  setBadge(ecu || null);
-  setFicha("kv_ecu", ecu || "—");
-  setFicha("kv_pn",  data.ecu_part_number || "—");
-  setFicha("kv_sw",  data.software_number || "—");
-  setFicha("kv_size", new Intl.NumberFormat('es-CL').format(data.bin_size||f.size||0) + " bytes");
-
-  // Tipo de motor inferido
-  if(/EDC|MD1|MJD|DCM|SID/i.test(ecu||"")) engineDetected="diesel";
-  else if(/MED|MG1|MEVD|ME7/i.test(ecu||"")) engineDetected="petrol";
-  else engineDetected="auto";
-  (document.getElementById("engineSelect")||{}).value = "auto";
-
-  lastAnalysis.ecu_type = ecu || lastAnalysis.ecu_type;
-
-  logAction(`Análisis OK. ECU: ${ecu || "Desconocida"}  PN: ${data.ecu_part_number || "—"}`, "white");
-
-  await fillPatchesForEcu(ecu);
-  await window.__EFX_afterAnalyze__?.();
-};
-</script>
-
-  <script>
-/* ===== Aplicar / Comprar + 24h ===== */
-$("#btnAplicar").onclick = async ()=>{
-  const sel = $("#patchSelect");
-  const value = sel.value;
-  if(!lastAnalysis){ alert("Primero analiza un BIN"); return; }
-  if(!value){ alert("Selecciona una opción"); return; }
-  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
-
-  const patchId = value.startsWith("pack:") ? value.slice(5) : value;
-  const r = await fetch("/orders",{
-    method:"POST",
-    headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-    body: JSON.stringify({ analysis_id: lastAnalysis.analysis_id, patch_option_id: patchId })
-  });
-  if(!r.ok){ const t=await r.text(); alert("Error creando orden:\n"+t); return; }
-  const d = await r.json();
-  location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
-};
-
-$("#btn24h").onclick = async ()=>{
-  if(!TOKEN){ $("#modalLogin").style.display="flex"; return; }
-  const payload = {
-    marca: $("#selBrand").value || null,
-    modelo: $("#selModel").value || $("#modeloLibre").value || null,
-    anio: $("#selYear").value || null,
-    motor: $("#selEngine").value || $("#motorLibre").value || null,
-    ecu_type: $("#kv_ecu").textContent||null,
-    ecu_part_number: $("#kv_pn").textContent||null,
-    manufacturer_number: null,
-    analysis_id: lastAnalysis?.analysis_id || null,
-    original_filename: lastAnalysis?.filename || null
-  };
-  const r = await fetch("/patch_requests",{
-    method:"POST",
-    headers:{'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json'},
-    body: JSON.stringify(payload)
-  });
-  if(!r.ok){ alert("No se pudo crear la solicitud 24h"); return; }
-  const d = await r.json(); alert("Solicitud creada: "+d.request_id+" (SLA: "+d.sla_hours+"h)");
-};
-</script>
-
-  <script>
-/* ===== Verificación rápida de sesión (opcional) ===== */
-async function assertAuth() {
-  if (!TOKEN) { $("#modalLogin").style.display = "flex"; return false; }
-  try {
-    const r = await fetch("/users/me", { headers: { "Authorization": "Bearer " + TOKEN } });
-    if (r.ok) return true;
-  } catch (_) {}
-  localStorage.removeItem("EFX_TOKEN");
-  TOKEN = null;
-  setAuthUi(false);
-  alert("Tu sesión expiró. Inicia sesión nuevamente.");
-  $("#modalLogin").style.display = "flex";
-  return false;
-}
-</script>
-
-  <script>
-/* ===========================================================
-   VEHICLES DROPDOWNS + AUTODETECCIÓN (sin <script> anidados)
-   =========================================================== */
-let VEH_DB = null;
-let ecuFamilyHint = null;
-
-// helpers select
-function setOptions(sel, items, placeholder){
-  sel.innerHTML = "";
-  if(placeholder) sel.append(new Option(placeholder, ""));
-  for(const it of items){
-    sel.append(new Option(it.label, it.value));
-  }
-  sel.disabled = !items.length;
-}
-
-// cargar DB desde 2 rutas posibles
 async function loadVehiclesDb(){
-  if (VEH_DB) return VEH_DB;
-  const tryUrls = ["/static/data/vehicles.json", "/static/vehicles.json"];
-  for (const url of tryUrls){
-    try{
-      const r = await fetch(url, { cache:"no-store" });
-      if (r.ok){
-        VEH_DB = await r.json();
-        return VEH_DB;
-      }
-    }catch(_){}
-  }
-  VEH_DB = { brands:{} };
-  return VEH_DB;
+  const r = await fetch("/static/data/vehicles.json").catch(()=>null);
+  if(!r?.ok) return {brands:{}};
+  return await r.json();
 }
 
-function brandList(db){
-  return Object.entries(db.brands || {}).map(([key, val]) => ({ value: key, label: val.label || key.toUpperCase() }));
-}
-function modelList(db, brandKey){
-  const b = db.brands?.[brandKey]; if(!b) return [];
-  return Object.entries(b.models || {}).map(([key, val]) => ({ value: key, label: val.label || key }));
-}
-function yearList(db, brandKey, modelKey){
-  const m = db.brands?.[brandKey]?.models?.[modelKey]; if(!m) return [];
-  return Object.keys(m.years || {}).map(range => ({ value: range, label: range }));
-}
-
-// aplica meta (motor + pista de ECU)
-function applyVehicleMeta(db, brandKey, modelKey, range){
-  ecuFamilyHint = null;
-  if(!brandKey || !modelKey || !range) { fillPatches(); return; }
-  const meta = db.brands?.[brandKey]?.models?.[modelKey]?.years?.[range];
-  if(!meta){ fillPatches(); return; }
-
-  if(meta.engine && (meta.engine === "diesel" || meta.engine === "petrol")){
-    const sel = document.getElementById("engineSelect");
-    if(sel){ sel.value = "auto"; window.engineDetected = meta.engine; }
-  }
-  if(Array.isArray(meta.ecu_families) && meta.ecu_families.length){
-    ecuFamilyHint = String(meta.ecu_families[0]);
-  }
-  fillPatches();
-}
-
-function selectedBrandKey(){
-  const v = document.getElementById("selBrand")?.value || "";
-  return v && v !== "custom" ? v : null;
-}
-function brandKeyFromInput(){ return selectedBrandKey(); }
-
-/* wrap de fillPatches para usar ecuFamilyHint cuando no hay BIN */
-const _origFillPatches = fillPatches;
-fillPatches = async function(){
-  await _internalFillPatchesWithHint();
-};
-
-async function _internalFillPatchesWithHint(){
-  const sel = $("#patchSelect"), btn=$("#btnAplicar"), msg=$("#noPatchMsg");
-  if(!sel||!btn) return;
-  sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
-
-  if(!lastAnalysis && !ecuFamilyHint){
-    sel.append(new Option("— Sube tu BIN o selecciona vehículo —",""));
-    return;
-  }
-
-  const mode = currentEngineMode();
-  const ecuFamFromBin = detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename);
-  const chosenFam = ecuFamFromBin || ecuFamilyHint || null;
-  const brandKey = brandKeyFromInput();
-
-  try{
-    const {patches,packs} = await loadPatchesCombined(mode, chosenFam, brandKey);
-    const has = (patches&&patches.length) || (packs&&packs.length);
-    if(!has){ sel.append(new Option("Sin parches disponibles","")); if(msg) msg.style.display="block"; return; }
-    sel.disabled=false; btn.disabled=false;
-    sel.append(new Option("— Selecciona una opción —",""));
-    (patches||[]).forEach(p => sel.append(new Option(labelWithPrice(p.label, p.price), p.id)));
-    if(packs && packs.length){
-      sel.append(new Option("────────── PACKS ──────────",""));
-      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk.price)}`, `pack:${pk.id}`)));
-    }
-  }catch(e){
-    log("Error cargando parches: "+e.message);
-    sel.append(new Option("Error cargando parches",""));
+function fillBrandSelect(db){
+  const sel=document.getElementById("selBrand");
+  sel.innerHTML='<option value="">— Selecciona —</option>';
+  for(const [k,v] of Object.entries(db.brands||{})){
+    const opt=document.createElement("option");
+    opt.value=k;opt.textContent=v.label;
+    sel.appendChild(opt);
   }
 }
 
-/* override menor: usa pista fam si no viene desde BIN */
-const _origLoadPatchesCombined = loadPatchesCombined;
-loadPatchesCombined = async function(engineMode, ecuFamily, brandKey){
-  const fam = ecuFamily || ecuFamilyHint || null;
-  return _origLoadPatchesCombined(engineMode, fam, brandKey);
-};
+function fillModelSelect(db){
+  const b=document.getElementById("selBrand").value;
+  const m=document.getElementById("selModel");
+  m.innerHTML='<option value="">— Selecciona —</option>';
+  if(!b) return;
+  const brand=db.brands[b];
+  for(const [k,v] of Object.entries(brand.models||{})){
+    const o=document.createElement("option");
+    o.value=k;o.textContent=v.label;m.appendChild(o);
+  }
+}
 
-async function initVehicleForm(){
-  const db = await loadVehiclesDb();
-  const selBrand = $("#selBrand");
-  const selModel = $("#selModel");
-  const selYear  = $("#selYear");
-  const selEngine= $("#selEngine");
+function fillYearSelect(db){
+  const b=document.getElementById("selBrand").value;
+  const model=document.getElementById("selModel").value;
+  const y=document.getElementById("selYear");
+  y.innerHTML='<option value="">— Selecciona —</option>';
+  if(!b||!model)return;
+  const years=db.brands[b].models[model].years;
+  for(const k of Object.keys(years)){
+    const o=document.createElement("option");
+    o.value=k;o.textContent=k;y.appendChild(o);
+  }
+}
 
-  setOptions(selBrand, [...brandList(db), {value:"custom", label:"Personalizado…"}], "— Selecciona —");
+async function analyzeBIN(){
+  const brand=document.getElementById("selBrand").value;
+  const model=document.getElementById("selModel").value;
+  const year=document.getElementById("selYear").value;
+  const ecuMeta=window.VEH_DB.brands?.[brand]?.models?.[model]?.years?.[year];
+  document.getElementById("analysisStatus").textContent="Analizando archivo...";
+  await new Promise(r=>setTimeout(r,1500));
+  const ecu=ecuMeta?.ecu_families?.[0]||"Desconocida";
+  document.getElementById("ecuInfoBox").innerHTML=`
+    <p><strong>ECU Type:</strong> ${ecu}</p>
+    <p><strong>Motor:</strong> ${ecuMeta?.engine||"—"}</p>
+  `;
+  loadPatches(ecu, ecuMeta?.engine);
+}
 
-  selBrand.addEventListener("change", ()=>{
-    const bk = selectedBrandKey();
-    setOptions(selModel, bk ? modelList(db, bk) : [], "— Selecciona —");
-    setOptions(selYear, [], "— Selecciona —");
-    ecuFamilyHint = null;
-    applyVehicleMeta(db, bk, null, null);
+async function loadPatches(ecuFamily, engine){
+  const r = await fetch("/static/patches/global.json").catch(()=>null);
+  const list=document.getElementById("patchList");
+  list.innerHTML="";
+  if(!r?.ok){list.innerHTML="<li>Error cargando catálogo</li>";return;}
+  const db=await r.json();
+  const patches=db.patches.filter(p=>{
+    const ecuOk=!ecuFamily||p.compatible_ecu?.includes(ecuFamily);
+    const engOk=!engine||p.engines?.includes(engine);
+    return ecuOk && engOk;
   });
-
-  selModel.addEventListener("change", ()=>{
-    const bk = selectedBrandKey();
-    const mk = selModel.value || null;
-    setOptions(selYear, (bk && mk) ? yearList(db, bk, mk) : [], "— Selecciona —");
-    ecuFamilyHint = null;
-    applyVehicleMeta(db, bk, mk, null);
-  });
-
-  selYear.addEventListener("change", ()=>{
-    const bk = selectedBrandKey();
-    const mk = selModel.value || null;
-    const yr = selYear.value || null;
-    applyVehicleMeta(db, bk, mk, yr);
-  });
-
-  selEngine.addEventListener("change", ()=>{
-    if(selEngine.value === "petrol" || selEngine.value === "diesel"){
-      window.engineDetected = selEngine.value;
-    }
-    fillPatches();
-  });
+  if(!patches.length){list.innerHTML="<li>No hay parches disponibles</li>";return;}
+  for(const p of patches){
+    const li=document.createElement("li");
+    li.textContent=`${p.label} — $${p.price?.USD||0} USD`;
+    li.classList.add("active");
+    list.appendChild(li);
+  }
 }
 
-document.addEventListener("DOMContentLoaded", initVehicleForm);
+document.addEventListener("DOMContentLoaded", async ()=>{
+  const db=await loadVehiclesDb();
+  window.VEH_DB=db;
+  fillBrandSelect(db);
+  selBrand.onchange=()=>fillModelSelect(db);
+  selModel.onchange=()=>fillYearSelect(db);
+  document.getElementById("analyzeBtn").onclick=analyzeBIN;
+});
 </script>
-<script>
-/* ===========================================================
-   Panel de “Datos ECU (manual + offsets)”
-   - Botón en la zona de YAML
-   - Modal con filas editables (clave/valor/offset)
-   - Autodetección de offsets buscando ASCII en el BIN
-   - Actualiza Ficha ECU, Parches y Resumen YAML
-   =========================================================== */
-
-(function(){
-  // ------- Estado -------
-  window.__EFX_MANUAL_ECU__ = window.__EFX_MANUAL_ECU__ || {
-    ecu_type: null,          // Ej: "BOSCH EDC17C81"
-    mpc_type: null,          // Ej: "BASE_ECU tc1782"
-    entries: []              // [{key,label,value,offset}]
-  };
-
-  // ------- Helpers -------
-  const $ = (q, el=document)=>el.querySelector(q);
-  const hex = (n)=> "0x"+(Number(n)>>>0).toString(16).toUpperCase().padStart(8,'0');
-  const normOffset = (txt)=> {
-    if (!txt) return null;
-    const s = String(txt).trim().replace(/^(\$|0x)/i,'');
-    const v = parseInt(s, 16);
-    return isFinite(v) ? hex(v) : null;
-  };
-  function ensureYamlButton(){
-    const actions = document.querySelector(".yaml-actions");
-    if(!actions || actions.querySelector("#btnEcuManual")) return;
-    const btn = document.createElement("button");
-    btn.id = "btnEcuManual";
-    btn.className = "btn sm";
-    btn.textContent = "Ingresar datos ECU (SW/offsets)";
-    actions.prepend(btn);
-    btn.onclick = openModal;
-  }
-
-  // Crea modal (una sola vez)
-  function ensureModal(){
-    if($("#ecuManualModal")) return;
-    const wrap = document.createElement("div");
-    wrap.id = "ecuManualModal";
-    wrap.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:center;justify-content:center";
-    wrap.innerHTML = `
-      <div style="width:680px;max-width:92vw;background:#101a33;border:1px solid #1f2a44;border-radius:12px;padding:16px;box-shadow:0 12px 50px rgba(0,0,0,.5)">
-        <h3 style="margin:0 0 10px">Datos ECU — Manual & Offsets</h3>
-
-        <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
-          <div>
-            <label style="color:#94a3b8;font-size:12px">ECU Type</label>
-            <input id="man_ecu_type" placeholder="Ej: BOSCH EDC17C81">
-          </div>
-          <div>
-            <label style="color:#94a3b8;font-size:12px">Tipo MPC</label>
-            <input id="man_mpc_type" placeholder="Ej: BASE_ECU tc1782">
-          </div>
-        </div>
-
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px">
-          <div style="color:#94a3b8;font-size:12px">Campos (clave / valor / offset hex)</div>
-          <div style="display:flex;gap:8px">
-            <button id="btnAddRow" class="btn sm">Agregar fila</button>
-            <button id="btnAutoscan" class="btn sm">Auto-sugerir offsets</button>
-          </div>
-        </div>
-
-        <div id="rows" style="max-height:280px;overflow:auto;border:1px solid #1f2a44;border-radius:8px;padding:8px;background:#0f1629"></div>
-
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
-          <button id="btnSaveManual" class="btn sm">Guardar</button>
-          <button id="btnCloseManual" class="btn sm" style="background:transparent;border:1px solid #1f2a44">Cerrar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(wrap);
-
-    $("#btnCloseManual").onclick = ()=> wrap.style.display="none";
-    $("#btnAddRow").onclick = ()=> addRow();
-    $("#btnAutoscan").onclick = autoscanOffsets;
-    $("#btnSaveManual").onclick = saveManual;
-
-    // Prefill desde estado
-    $("#man_ecu_type").value = window.__EFX_MANUAL_ECU__.ecu_type || "";
-    $("#man_mpc_type").value = window.__EFX_MANUAL_ECU__.mpc_type || "";
-    if(window.__EFX_MANUAL_ECU__.entries.length){
-      window.__EFX_MANUAL_ECU__.entries.forEach(addRow);
-    }else{
-      // tres filas sugeridas
-      addRow({key:"sw_number", label:"SW number", value:"10SW05263416", offset:"$10001A"});
-      addRow({key:"mpc_base",  label:"Tipo de MPC", value:"BASE_ECU tc1782", offset:"$1000FD"});
-      addRow({key:"ecu_type",  label:"ECU type",   value:"BOSCH EDC17C81",  offset:"$1000EE"});
-    }
-  }
-
-  function rowTpl(data){
-    const d = data || {};
-    return `
-      <div class="row" style="display:grid;grid-template-columns:160px 1fr 160px 36px;gap:8px;margin-bottom:8px">
-        <input class="key"    placeholder="clave (ej: sw_number)" value="${(d.key||"")}">
-        <input class="value"  placeholder="valor (ej: 10SW05263416)" value="${(d.value||"")}">
-        <input class="offset" placeholder="offset (hex ej: $10001A)" value="${(d.offset||"")}">
-        <button class="del btn sm" title="Eliminar" style="background:#ef4444">×</button>
-        <div style="grid-column: 1 / span 2">
-          <input class="label" placeholder="etiqueta (opcional, ej: SW number)" value="${(d.label||"")}">
-        </div>
-      </div>
-    `;
-  }
-  function addRow(data){
-    const box = $("#rows");
-    const wrap = document.createElement("div");
-    wrap.innerHTML = rowTpl(data);
-    const row = wrap.firstElementChild;
-    row.querySelector(".del").onclick = ()=> row.remove();
-    box.appendChild(row);
-  }
-
-  function openModal(){
-    ensureModal();
-    $("#ecuManualModal").style.display = "flex";
-  }
-
-  // Busca una cadena ASCII dentro del BIN y propone offset (posición)
-  function findAscii(buf, text){
-    if(!buf || !text) return null;
-    const pat = new TextEncoder().encode(String(text));
-    outer: for(let i=0;i<=buf.length-pat.length;i++){
-      for(let j=0;j<pat.length;j++){
-        if(buf[i+j]!==pat[j]) continue outer;
-      }
-      return i; // posición
-    }
-    return null;
-  }
-
-  async function autoscanOffsets(){
-    try{
-      // usa lastFile del flujo existente
-      if(!(window.lastFile instanceof File)){
-        alert("Primero sube/analiza un BIN para poder sugerir offsets.");
-        return;
-      }
-      const u8 = new Uint8Array(await lastFile.arrayBuffer());
-      const rows = Array.from($("#rows").querySelectorAll(".row"));
-      let hits=0;
-      for(const r of rows){
-        const val = r.querySelector(".value").value.trim();
-        if(!val) continue;
-        const pos = findAscii(u8, val);
-        if(pos!=null){
-          r.querySelector(".offset").value = hex(pos);
-          hits++;
-        }
-      }
-      alert(hits ? `Offsets sugeridos para ${hits} campo(s).` : "No se hallaron coincidencias ASCII en el BIN.");
-    }catch{ alert("No se pudieron sugerir offsets."); }
-  }
-
-  function saveManual(){
-    const ecuType = $("#man_ecu_type").value.trim() || null;
-    const mpcType = $("#man_mpc_type").value.trim() || null;
-
-    const entries=[];
-    $("#rows").querySelectorAll(".row").forEach(r=>{
-      const key = r.querySelector(".key").value.trim();
-      const label = r.querySelector(".label").value.trim() || null;
-      const value = r.querySelector(".value").value.trim();
-      const off = normOffset(r.querySelector(".offset").value);
-      if(key && value){
-        entries.push({key, label, value, offset: off});
-      }
-    });
-
-    window.__EFX_MANUAL_ECU__ = { ecu_type: ecuType, mpc_type: mpcType, entries };
-
-    // Reflejar en Ficha ECU si procede
-    if (ecuType && typeof setFicha === "function") setFicha("kv_ecu", ecuType);
-    const swRow = entries.find(e => e.key.toLowerCase().includes("sw"));
-    if (swRow && typeof setFicha === "function") setFicha("kv_sw", swRow.value);
-
-    // Esto puede cambiar el filtrado de parches si cambiamos ECU type
-    if (typeof fillPatches === "function") fillPatches();
-
-    // Forzar refresco del YAML
-    if (typeof window.__EFX_onPatchChange__ === "function") window.__EFX_onPatchChange__();
-    $("#ecuManualModal").style.display = "none";
-  }
-
-  // ------- Monkeypatch YAML: inyecta sección "manual" + aplica ecu_type/mpc_type -------
-  const _origUpdateYaml = window.updateYamlSummary;
-  window.updateYamlSummary = function(opts){
-    // Delega al original
-    if (typeof _origUpdateYaml === "function") _origUpdateYaml(opts);
-
-    try{
-      const box = document.getElementById("ecuYaml");
-      if(!box) return;
-
-      // Parse muy simple del YAML ya renderizado para volver a imprimir anexando "manual"
-      // (sin intentar YAML real → solo concatenamos de forma clara)
-      const manual = window.__EFX_MANUAL_ECU__ || {};
-      const lines = [];
-      lines.push("");
-      lines.push("manual:");
-      lines.push(`  ecu_type: ${manual.ecu_type ? manual.ecu_type : "null"}`);
-      lines.push(`  mpc_type: ${manual.mpc_type ? manual.mpc_type : "null"}`);
-      if (manual.entries && manual.entries.length){
-        lines.push("  fields:");
-        manual.entries.forEach(e=>{
-          lines.push("    -");
-          lines.push(`      key: ${e.key}`);
-          lines.push(`      label: ${e.label ? e.label : "null"}`);
-          lines.push(`      value: ${e.value}`);
-          lines.push(`      offset: ${e.offset ? e.offset : "null"}`);
-        });
-      } else {
-        lines.push("  fields: []");
-      }
-
-      // Anexa
-      box.textContent = box.textContent.replace(/\s*$/,"") + "\n" + lines.join("\n");
-    }catch(_){}
-  };
-
-  // ------- Hook post-análisis: intenta extraer pistas SW/MPC/ECU y precargar -------
-  const _origAfterAnalyze = window.__EFX_afterAnalyze__;
-  window.__EFX_afterAnalyze__ = async function(){
-    if (typeof _origAfterAnalyze === "function") await _origAfterAnalyze();
-
-    try{
-      if(!(window.lastFile instanceof File)) return;
-      const textLatin = await (async()=> new TextDecoder("latin1").decode(new Uint8Array(await lastFile.arrayBuffer())))();
-
-      // Pistas básicas (regex)
-      const sw = (textLatin.match(/\b[0-9A-Z]{2}SW[0-9A-Z]{6,}\b/i) || [])[0] || null;
-      const mpc = (textLatin.match(/\btc1(?:7|8)\d{2}\b/i) || [])[0] || null; // tc1766/tc1782/...
-      const ecu = (textLatin.match(/\b(MED|MEVD|MG1|ME7|EDC1?\dC?\d*|MD1|SID\d{3}|DCM\d*)\b/i) || [])[0] || null;
-
-      // No sobrescribas si el usuario ya puso algo
-      if (!window.__EFX_MANUAL_ECU__.entries.length && (sw||mpc||ecu)){
-        const pre = [];
-        if (sw)  pre.push({key:"sw_number", label:"SW number", value:sw,  offset:null});
-        if (mpc) pre.push({key:"mpc_base",  label:"Tipo de MPC", value:mpc, offset:null});
-        if (ecu) window.__EFX_MANUAL_ECU__.ecu_type = ecu.toUpperCase();
-        window.__EFX_MANUAL_ECU__.entries = pre;
-      }
-
-      ensureYamlButton();
-    }catch{
-      ensureYamlButton();
-    }
-  };
-
-  // Inicializa botón si no hay análisis aún
-  document.addEventListener("DOMContentLoaded", ensureYamlButton);
-})();
-</script>
-<script>
-// --- 1) Detectores fortalecidos (añade EDC17C81, etc.)
-const _oldDetectEcuFamily = detectEcuFamily;
-detectEcuFamily = function(ecuType, filename){
-  const src = ((ecuType||"") + " " + (filename||"")).toUpperCase();
-  const extra = [/EDC17C81\b/, /\bEDC17CP\d+\b/, /\bEDC17C\d+\b/];
-  for(const re of extra){ const m = src.match(re); if(m) return m[0]; }
-  return _oldDetectEcuFamily(ecuType, filename);
-};
-
-// --- 2) Loader con fallback inteligente (ECU → brand+engine → solo engine)
-const __origLoad = loadPatchesCombined;
-async function loadPatchesSmart(engineMode, ecuFamily, brandKey){
-  // intento 1: tal cual
-  let out = await __origLoad(engineMode, ecuFamily, brandKey);
-  if((out.patches?.length||0) + (out.packs?.length||0)) return out;
-
-  // intento 2: marca + motor (por si la ECU salió "Desconocida")
-  out = await __origLoad(engineMode, null, brandKey);
-  if((out.patches?.length||0) + (out.packs?.length||0)) return out;
-
-  // intento 3: solo motor (catálogo global por tipo de motor)
-  out = await __origLoad(engineMode, null, null);
-  return out;
-}
-
-// --- 3) fillPatches usa el loader nuevo y respeta pista de vehículo (ecuFamilyHint)
-const _oldFillPatchesCore = fillPatches;
-fillPatches = async function(){
-  const sel = $("#patchSelect"), btn=$("#btnAplicar"), msg=$("#noPatchMsg");
-  if(!sel||!btn) return;
-  sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
-
-  // si no hay BIN, permitimos pista desde el formulario de vehículo
-  if(!lastAnalysis && !window.ecuFamilyHint){
-    sel.append(new Option("— Sube tu BIN o selecciona vehículo —",""));
-    return;
-  }
-
-  const mode  = currentEngineMode();                        // auto/petrol/diesel (con heurística/vehículo)
-  const ecuFam= detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename) || window.ecuFamilyHint || null;
-  const brand = (typeof brandKeyFromDropdown==="function" ? brandKeyFromDropdown() : null);
-
-  try{
-    const {patches,packs} = await loadPatchesSmart(mode, ecuFam, brand);
-    const has = (patches&&patches.length) || (packs&&packs.length);
-    if(!has){
-      sel.append(new Option("Sin parches disponibles",""));
-      if(msg) msg.style.display="block";
-      window.__EFX_onPatchChange__?.();
-      return;
-    }
-    sel.disabled=false; btn.disabled=false;
-    sel.append(new Option("— Selecciona una opción —",""));
-    (patches||[]).forEach(p => sel.append(new Option(labelWithPrice(p.label, p.price), p.id)));
-    if(packs && packs.length){
-      sel.append(new Option("────────── PACKS ──────────",""));
-      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk.price)}`, `pack:${pk.id}`)));
-    }
-  }catch(e){
-    log("Error cargando parches (smart): "+e.message);
-    sel.append(new Option("Error cargando parches",""));
-  } finally {
-    window.__EFX_onPatchChange__?.();
-  }
-};
-</script>
-
-  
-
 </body>
 </html>
