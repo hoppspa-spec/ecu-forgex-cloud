@@ -23,6 +23,9 @@ from sqlalchemy.exc import IntegrityError
 from tools.setup_storage import autoinit as efx_autoinit
 import io, tempfile, zipfile
 from fastapi.responses import FileResponse
+from app.routers import public
+app.include_router(public.router)
+
 
 
 # -------------------------------------------------------------------
