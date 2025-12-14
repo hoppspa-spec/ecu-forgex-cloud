@@ -31,6 +31,23 @@
   .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;z-index:50}
   .modal>.box{background:#101a33;border:1px solid var(--stroke);padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.35);width:340px}
   .err{display:none;color:#f87171;margin:6px 0 0;font-size:13px}
+  /* ===== YAML box (alto contraste) ===== */
+.yaml-box {
+  background:#0a0f1d;
+  color:#e9f0ff;
+  border:1px solid #2b3a63;
+  border-radius:10px;
+  padding:12px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow:auto;
+  max-height: 320px;
+}
+.yaml-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:8px }
+.btn.copy { background:#16a34a; color:#021407; font-weight:700 }
+.btn.copy:hover{ filter:brightness(1.12) }
+
 </style>
 </head>
 <body>
