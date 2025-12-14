@@ -629,4 +629,18 @@ async def admin_import_recipes(zip_file: UploadFile = File(...), user: User = De
           with zf.open(name) as src, open(dest, "wb") as out:
             out.write(src.read())
     return {"ok": True, "imported": True}
+@app.get("/catalog/patches")
+def get_catalog():
+    gpath = PATCHES_DIR / "global.json"
+    return _load_json(gpath, {"patches": []})
+
+@app.get("/recipes/index")
+def recipes_index():
+    out = []
+    for fam_dir in RECIPES_DIR.iterdir():
+      if fam_dir.is_dir():
+        for y in fam_dir.glob("*.yml"):
+          out.append({"ecu_family": fam_dir.name, "patch_id": y.stem})
+    out.sort(key=lambda x: (x["ecu_family"], x["patch_id"]))
+    return {"recipes": out}
 
