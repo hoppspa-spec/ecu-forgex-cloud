@@ -1,16 +1,12 @@
 meta:
-  name: DPF OFF (EDC17C81)
+  name: dpf_off (EDC17C81)
+  author: HOPP Ingenieria
   version: 1
-  author: "Equipo EFX"
-  notes: "Remueve el limitador de DPF - prueba en banco antes de producción"
-
+  notes: tested
 ops:
-  - find: "12 34 56 78"
-    replace: "12 34 56 79"
-    max_hits: 1
-  - find: "AB CD EF 00"
-    replace: "AB CD EF 01"
-    max_hits: 2
-
+- find: 20 A1 07
+  replace: 00 00 00
+- find: '01'
+  replace: '00'
 checksum:
   type: none
