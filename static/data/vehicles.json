@@ -36,13 +36,17 @@
       }
     },
 
+  "brands": {
     "maxus": {
       "label": "Maxus",
       "models": {
         "t60": {
           "label": "T60 (LDV T60)",
           "years": {
-            "2017-2022": { "engine": "diesel", "ecu_families": ["EDC17C81"] }
+            "2017-2022": {
+              "engine": "diesel",
+              "ecu_families": ["EDC17C81"]
+            }
           }
         }
       }
