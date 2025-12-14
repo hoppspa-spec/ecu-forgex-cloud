@@ -611,6 +611,122 @@ async function assertAuth() {
   $("#modalLogin").style.display = "flex";
   return false;
 }
+  <script>
+/* ==== helpers decode ===== */
+function decodeLatin1(u8){ try{ return new TextDecoder("latin1").decode(u8); }catch{ return ""; } }
+function decodeUTF16LE(u8){
+  if (!u8 || u8.length < 4) return "";
+  try{
+    let zeros=0; for(let i=1;i<Math.min(u8.length,4096);i+=2) if (u8[i]===0) zeros++;
+    if (zeros < 256) return "";
+    return new TextDecoder("utf-16le").decode(new DataView(u8.buffer,u8.byteOffset,u8.byteLength));
+  }catch{ return ""; }
+}
+function uniqueKeepOrder(arr){ const s=new Set(),o=[]; for(const x of arr){const k=String(x); if(!s.has(k)){s.add(k);o.push(x);} } return o; }
+
+/* ==== extracción SW/HW desde texto + family hint ===== */
+function extractSwHwFromText(text, familyHint){
+  const SW=[], HW=[];
+  const patterns = [
+    /(?:\bSW[\s:=\-]{0,3}|Software(?:version)?[\s:=\-]{0,3})([A-Z0-9\.\-_/]{4,40})/gi,
+    /(?:\bHW[\s:=\-]{0,3}|Hardware(?:version)?[\s:=\-]{0,3})([A-Z0-9\.\-_/]{3,40})/gi,
+    /\bZB[\s:=\-]{0,3}([A-Z0-9\.\-_/]{4,40})/gi,
+    /\bPart(?:\s*No\.?|Num(?:ber)?)[:=\- ]{0,3}([A-Z0-9\.\-_/]{4,40})/gi
+  ];
+  const fam=(familyHint||"").toUpperCase(); const famRe=[];
+  if(/MED|MEVD|ME7|MG1/.test(fam)){ famRe.push(/\bSW(?:UP|_VER|VER)?[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); famRe.push(/\bBOSCH[\s-]*SW[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); }
+  if(/EDC|MD1|DCM|SID/.test(fam)){  famRe.push(/\bSW(?:VER|_VER)?[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi);     famRe.push(/\bSoftware[:=\- ]{0,3}([A-Z0-9\.\-_/]{5,40})/gi); }
+
+  const push=(re,kind)=>{ re.lastIndex=0; let m; while((m=re.exec(text))){ const raw=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(!raw) continue; (kind==="SW"?SW:HW).push(raw); if(re.lastIndex===m.index) re.lastIndex++; } };
+  push(patterns[0],"SW"); push(patterns[1],"HW");
+  let m; patterns[2].lastIndex=0; while((m=patterns[2].exec(text))){ const c=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(/^\w{4,}$/.test(c)) SW.push(c); if(patterns[2].lastIndex===m.index) patterns[2].lastIndex++; }
+  patterns[3].lastIndex=0; while((m=patterns[3].exec(text))){ const c=(m[1]||"").trim().replace(/[^\w\.\-_/]/g,""); if(/^\w{4,}$/.test(c)) SW.push(c); if(patterns[3].lastIndex===m.index) patterns[3].lastIndex++; }
+  for(const re of famRe) push(re,"SW");
+
+  return { sw: uniqueKeepOrder(SW).slice(0,6), hw: uniqueKeepOrder(HW).slice(0,6) };
+}
+async function extractSwHwFromFile(file, familyHint){
+  const u8=new Uint8Array(await file.arrayBuffer());
+  const a=extractSwHwFromText(decodeLatin1(u8), familyHint);
+  const u=decodeUTF16LE(u8); const b=u?extractSwHwFromText(u, familyHint):{sw:[],hw:[]};
+  return { sw: uniqueKeepOrder(a.sw.concat(b.sw)), hw: uniqueKeepOrder(a.hw.concat(b.hw)) };
+}
+
+/* ==== YAML render ===== */
+function toYaml(obj, indent=0){
+  const pad='  '.repeat(indent);
+  if (obj==null) return 'null';
+  if (Array.isArray(obj)){ return obj.length? obj.map(x=>`${pad}- ${typeof x==='object' ? '\n'+toYaml(x,indent+1) : String(x)}`).join('\n') : '[]'; }
+  if (typeof obj==='object'){
+    const lines=[]; for(const k of Object.keys(obj)){ const v=obj[k];
+      if (v && typeof v==='object' && !Array.isArray(v)){ lines.push(`${pad}${k}:`); lines.push(toYaml(v,indent+1)); }
+      else if (Array.isArray(v)){ lines.push(`${pad}${k}:`); lines.push(v.length? toYaml(v,indent+1) : pad+'  []'); }
+      else { lines.push(`${pad}${k}: ${v==null||v===''? 'null' : String(v)}`); }
+    } return lines.join('\n');
+  }
+  return String(obj);
+}
+function stripPriceFromLabel(text){
+  if (!text) return {label:null, price:null};
+  const m=text.match(/\$([\d.,]+)/); const price=m? Number(m[1].replace(/\./g,'').replace(',', '.')):null;
+  const label=text.replace(/\s+—\s+\$[\d.,]+/, '');
+  return {label, price};
+}
+function updateYamlSummary({ patchStatus, selectedOptionText }){
+  const box=document.getElementById('ecuYaml'); if(!box) return;
+  const fam=(lastAnalysis?.ecu_type||'').trim();
+  const pn=(lastAnalysis?.ecu_part_number||'').trim();
+  const fileName=lastAnalysis?.filename || lastFile?.name || null;
+  const sizeBytes=lastAnalysis?.bin_size || lastFile?.size || null;
+  let label=null, price=null, patchId=null;
+  if (selectedOptionText){ const p=stripPriceFromLabel(selectedOptionText); label=p.label; price=p.price; }
+  const sel=document.getElementById('patchSelect'); if (sel && sel.value){ patchId = sel.value.startsWith('pack:')? sel.value.slice(5) : sel.value; }
+
+  const yamlObj = {
+    ecu: {
+      type: fam || null,
+      part_number: pn || null,
+      software: (window.__EFX_SW_LIST__ || []).map((sw,i)=>({ sw, hw: (window.__EFX_HW_LIST__||[])[i] || null })).slice(0,6)
+    },
+    file: {
+      name: fileName,
+      size_bytes: sizeBytes,
+      cvn_crc32: lastCvn || null
+    },
+    patch: {
+      status: patchStatus,  // "available" | "not_available"
+      id: patchId || null,
+      label: label || null,
+      price_usd: price ?? null,
+      note: patchStatus === 'not_available' ? 'solución rápida (24h)' : null
+    }
+  };
+  box.textContent = toYaml(yamlObj);
+}
+
+/* ==== Hooks públicos ===== */
+window.__EFX_afterAnalyze__ = async function(){
+  const famHint=(lastAnalysis?.ecu_type||'')+' '+(lastAnalysis?.filename || lastFile?.name || '');
+  let sw=[], hw=[];
+  try{ if(lastFile){ const out=await extractSwHwFromFile(lastFile, famHint); sw=out.sw; hw=out.hw; } }catch{}
+  window.__EFX_SW_LIST__=sw; window.__EFX_HW_LIST__=hw;
+  updateYamlSummary({ patchStatus:'not_available', selectedOptionText:null });
+};
+window.__EFX_onPatchChange__ = function(){
+  const sel=document.getElementById('patchSelect');
+  const txt = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : null;
+  if(!txt || /─{5,}/.test(txt)){ updateYamlSummary({ patchStatus:'not_available', selectedOptionText:null }); }
+  else { updateYamlSummary({ patchStatus:'available', selectedOptionText:txt }); }
+};
+
+/* ==== Copiar YAML ===== */
+document.getElementById('btnCopyYaml')?.addEventListener('click', async ()=>{
+  const box=document.getElementById('ecuYaml'); if(!box) return;
+  try{ await navigator.clipboard.writeText(box.textContent||''); alert('YAML copiado.'); }
+  catch{ const ta=document.createElement('textarea'); ta.value=box.textContent||''; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); alert('YAML copiado.'); }
+});
+</script>
+
 </script>
 
 </body>
