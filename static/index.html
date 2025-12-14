@@ -722,6 +722,197 @@ async function assertAuth() {
   return false;
 }
 </script>
+<script>
+/* ===========================================================
+   VEHICLES DROPDOWNS + AUTODETECCIÓN
+   - Lee static/vehicles.json
+   - Pobla Marca/Modelo/Año/Motorización
+   - Fija motor y pista de familia ECU (ecuFamilyHint)
+   - Dispara fillPatches() cuando cambian selecciones
+   =========================================================== */
+let VEH_DB = null;
+let ecuFamilyHint = null;   // pista desde dropdowns (cuando no hay BIN analizado)
+
+// helpers select
+function setOptions(sel, items, placeholder){
+  sel.innerHTML = "";
+  if(placeholder) sel.append(new Option(placeholder, ""));
+  for(const it of items){
+    sel.append(new Option(it.label, it.value));
+  }
+  sel.disabled = !items.length;
+}
+
+async function loadVehiclesDb(){
+  if(VEH_DB) return VEH_DB;
+  try{
+    const r = await fetch("/static/vehicles.json", {cache:"no-store"});
+    if(!r.ok) throw new Error("vehicles.json no disponible");
+    VEH_DB = await r.json();
+  }catch(e){
+    VEH_DB = {brands:{}};
+  }
+  return VEH_DB;
+}
+
+function brandList(db){
+  return Object.entries(db.brands || {}).map(([key, val]) => ({
+    value: key, label: val.label || key.toUpperCase()
+  }));
+}
+function modelList(db, brandKey){
+  const b = db.brands?.[brandKey]; if(!b) return [];
+  return Object.entries(b.models || {}).map(([key, val]) => ({
+    value: key, label: val.label || key
+  }));
+}
+function yearList(db, brandKey, modelKey){
+  const m = db.brands?.[brandKey]?.models?.[modelKey]; if(!m) return [];
+  return Object.keys(m.years || {}).map(range => ({ value: range, label: range }));
+}
+
+// Ajusta #engineSelect, ecuFamilyHint y llama fillPatches()
+function applyVehicleMeta(db, brandKey, modelKey, range){
+  ecuFamilyHint = null;
+  if(!brandKey || !modelKey || !range) { fillPatches(); return; }
+
+  const meta = db.brands?.[brandKey]?.models?.[modelKey]?.years?.[range];
+  if(!meta){ fillPatches(); return; }
+
+  // set motor
+  if(meta.engine && (meta.engine === "diesel" || meta.engine === "petrol")){
+    const sel = document.getElementById("engineSelect");
+    if(sel){
+      sel.value = "auto";           // mantenemos "auto" para que tu pipeline respete prioridad
+      // Pero definimos la señal de detección preferida:
+      window.engineDetected = meta.engine; // tu código ya usa engineDetected
+    }
+  }
+
+  // pista de familia ECU
+  if(Array.isArray(meta.ecu_families) && meta.ecu_families.length){
+    ecuFamilyHint = String(meta.ecu_families[0]); // prioriza la primera
+  }
+
+  fillPatches(); // refresca lista de parches con la nueva pista
+}
+
+// Resuelve la marca seleccionada (o null)
+function selectedBrandKey(){
+  const v = document.getElementById("selBrand")?.value || "";
+  return v && v !== "custom" ? v : null;
+}
+
+// Reemplaza tu brandKeyFromInput() para que use el dropdown:
+function brandKeyFromInput(){
+  return selectedBrandKey();
+}
+
+// PATCH: usa pista ecuFamilyHint si aún no hay análisis BIN
+const _origFillPatches = fillPatches;
+fillPatches = async function(){
+  // wrap tu lógica: si lastAnalysis no tiene ecu_type/filename,
+  // usa la pista ecuFamilyHint para filtrar por familia en loadPatchesCombined
+  // -> añadimos un cuarto arg opcional al loader
+  await _internalFillPatchesWithHint();
+};
+
+async function _internalFillPatchesWithHint(){
+  const sel = $("#patchSelect"), btn=$("#btnAplicar"), msg=$("#noPatchMsg");
+  if(!sel||!btn) return;
+  sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
+
+  if(!lastAnalysis && !ecuFamilyHint){
+    sel.append(new Option("— Sube tu BIN o selecciona vehículo —",""));
+    return;
+  }
+
+  const mode = currentEngineMode();
+  const ecuFamFromBin = detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename);
+  const chosenFam = ecuFamFromBin || ecuFamilyHint || null;
+  const brandKey = brandKeyFromInput();
+
+  try{
+    const {patches,packs} = await loadPatchesCombined(mode, chosenFam, brandKey);
+    const has = (patches&&patches.length) || (packs&&packs.length);
+    if(!has){ sel.append(new Option("Sin parches disponibles","")); if(msg) msg.style.display="block"; return; }
+    sel.disabled=false; btn.disabled=false;
+    sel.append(new Option("— Selecciona una opción —",""));
+    (patches||[]).forEach(p => sel.append(new Option(labelWithPrice(p.label, p.price), p.id)));
+    if(packs && packs.length){
+      sel.append(new Option("────────── PACKS ──────────",""));
+      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk.price)}`, `pack:${pk.id}`)));
+    }
+  }catch(e){
+    log("Error cargando parches: "+e.message);
+    sel.append(new Option("Error cargando parches",""));
+  }
+}
+
+// Parche menor: acepta una familia sugerida (ecuFamilyHint) en el loader
+const _origLoadPatchesCombined = loadPatchesCombined;
+loadPatchesCombined = async function(engineMode, ecuFamily, brandKey){
+  // si ecuFamily viene vacío y tenemos pista, úsala
+  const fam = ecuFamily || ecuFamilyHint || null;
+  return _origLoadPatchesCombined(engineMode, fam, brandKey);
+};
+
+// Bootstrap de los dropdowns
+async function initVehicleForm(){
+  const db = await loadVehiclesDb();
+
+  const selBrand = document.getElementById("selBrand");
+  const selModel = document.getElementById("selModel");
+  const selYear  = document.getElementById("selYear");
+  const selEngine= document.getElementById("selEngine");
+
+  // 1) Marcas
+  const brands = brandList(db);
+  const showCustom = [{value:"custom", label:"Personalizado…"}];
+  setOptions(selBrand, [...brands, ...showCustom], "— Selecciona —");
+
+  // 2) Modelos (depende de marca)
+  selBrand.addEventListener("change", ()=>{
+    const bk = selectedBrandKey();
+    setOptions(selModel, bk ? modelList(db, bk) : [], "— Selecciona —");
+    setOptions(selYear, [], "— Selecciona —");
+    ecuFamilyHint = null;
+    applyVehicleMeta(db, bk, null, null);
+  });
+
+  // 3) Años (depende de modelo)
+  selModel.addEventListener("change", ()=>{
+    const bk = selectedBrandKey();
+    const mk = selModel.value || null;
+    setOptions(selYear, (bk && mk) ? yearList(db, bk, mk) : [], "— Selecciona —");
+    ecuFamilyHint = null;
+    applyVehicleMeta(db, bk, mk, null);
+  });
+
+  // 4) Al elegir un rango de años, aplicamos meta (motor + ecu_families)
+  selYear.addEventListener("change", ()=>{
+    const bk = selectedBrandKey();
+    const mk = selModel.value || null;
+    const yr = selYear.value || null;
+    applyVehicleMeta(db, bk, mk, yr);
+  });
+
+  // 5) Si el usuario fuerza “Motorización”, respétalo (y refresca parches)
+  selEngine.addEventListener("change", ()=>{
+    // Forzamos la preferencia manual sobre engineDetected si el usuario lo toca
+    if(selEngine.value === "petrol" || selEngine.value === "diesel"){
+      window.engineDetected = selEngine.value;
+    }else{
+      // volver a auto
+      // si había meta del vehículo, applyVehicleMeta ya lo pone
+    }
+    fillPatches();
+  });
+}
+
+// inicia
+document.addEventListener("DOMContentLoaded", initVehicleForm);
+</script>
 
 </body>
 </html>
