@@ -906,6 +906,263 @@ async function initVehicleForm(){
 
 document.addEventListener("DOMContentLoaded", initVehicleForm);
 </script>
+<script>
+/* ===========================================================
+   Panel de “Datos ECU (manual + offsets)”
+   - Botón en la zona de YAML
+   - Modal con filas editables (clave/valor/offset)
+   - Autodetección de offsets buscando ASCII en el BIN
+   - Actualiza Ficha ECU, Parches y Resumen YAML
+   =========================================================== */
+
+(function(){
+  // ------- Estado -------
+  window.__EFX_MANUAL_ECU__ = window.__EFX_MANUAL_ECU__ || {
+    ecu_type: null,          // Ej: "BOSCH EDC17C81"
+    mpc_type: null,          // Ej: "BASE_ECU tc1782"
+    entries: []              // [{key,label,value,offset}]
+  };
+
+  // ------- Helpers -------
+  const $ = (q, el=document)=>el.querySelector(q);
+  const hex = (n)=> "0x"+(Number(n)>>>0).toString(16).toUpperCase().padStart(8,'0');
+  const normOffset = (txt)=> {
+    if (!txt) return null;
+    const s = String(txt).trim().replace(/^(\$|0x)/i,'');
+    const v = parseInt(s, 16);
+    return isFinite(v) ? hex(v) : null;
+  };
+  function ensureYamlButton(){
+    const actions = document.querySelector(".yaml-actions");
+    if(!actions || actions.querySelector("#btnEcuManual")) return;
+    const btn = document.createElement("button");
+    btn.id = "btnEcuManual";
+    btn.className = "btn sm";
+    btn.textContent = "Ingresar datos ECU (SW/offsets)";
+    actions.prepend(btn);
+    btn.onclick = openModal;
+  }
+
+  // Crea modal (una sola vez)
+  function ensureModal(){
+    if($("#ecuManualModal")) return;
+    const wrap = document.createElement("div");
+    wrap.id = "ecuManualModal";
+    wrap.style.cssText = "display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:60;align-items:center;justify-content:center";
+    wrap.innerHTML = `
+      <div style="width:680px;max-width:92vw;background:#101a33;border:1px solid #1f2a44;border-radius:12px;padding:16px;box-shadow:0 12px 50px rgba(0,0,0,.5)">
+        <h3 style="margin:0 0 10px">Datos ECU — Manual & Offsets</h3>
+
+        <div class="row2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+          <div>
+            <label style="color:#94a3b8;font-size:12px">ECU Type</label>
+            <input id="man_ecu_type" placeholder="Ej: BOSCH EDC17C81">
+          </div>
+          <div>
+            <label style="color:#94a3b8;font-size:12px">Tipo MPC</label>
+            <input id="man_mpc_type" placeholder="Ej: BASE_ECU tc1782">
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:6px 0 4px">
+          <div style="color:#94a3b8;font-size:12px">Campos (clave / valor / offset hex)</div>
+          <div style="display:flex;gap:8px">
+            <button id="btnAddRow" class="btn sm">Agregar fila</button>
+            <button id="btnAutoscan" class="btn sm">Auto-sugerir offsets</button>
+          </div>
+        </div>
+
+        <div id="rows" style="max-height:280px;overflow:auto;border:1px solid #1f2a44;border-radius:8px;padding:8px;background:#0f1629"></div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">
+          <button id="btnSaveManual" class="btn sm">Guardar</button>
+          <button id="btnCloseManual" class="btn sm" style="background:transparent;border:1px solid #1f2a44">Cerrar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(wrap);
+
+    $("#btnCloseManual").onclick = ()=> wrap.style.display="none";
+    $("#btnAddRow").onclick = ()=> addRow();
+    $("#btnAutoscan").onclick = autoscanOffsets;
+    $("#btnSaveManual").onclick = saveManual;
+
+    // Prefill desde estado
+    $("#man_ecu_type").value = window.__EFX_MANUAL_ECU__.ecu_type || "";
+    $("#man_mpc_type").value = window.__EFX_MANUAL_ECU__.mpc_type || "";
+    if(window.__EFX_MANUAL_ECU__.entries.length){
+      window.__EFX_MANUAL_ECU__.entries.forEach(addRow);
+    }else{
+      // tres filas sugeridas
+      addRow({key:"sw_number", label:"SW number", value:"10SW05263416", offset:"$10001A"});
+      addRow({key:"mpc_base",  label:"Tipo de MPC", value:"BASE_ECU tc1782", offset:"$1000FD"});
+      addRow({key:"ecu_type",  label:"ECU type",   value:"BOSCH EDC17C81",  offset:"$1000EE"});
+    }
+  }
+
+  function rowTpl(data){
+    const d = data || {};
+    return `
+      <div class="row" style="display:grid;grid-template-columns:160px 1fr 160px 36px;gap:8px;margin-bottom:8px">
+        <input class="key"    placeholder="clave (ej: sw_number)" value="${(d.key||"")}">
+        <input class="value"  placeholder="valor (ej: 10SW05263416)" value="${(d.value||"")}">
+        <input class="offset" placeholder="offset (hex ej: $10001A)" value="${(d.offset||"")}">
+        <button class="del btn sm" title="Eliminar" style="background:#ef4444">×</button>
+        <div style="grid-column: 1 / span 2">
+          <input class="label" placeholder="etiqueta (opcional, ej: SW number)" value="${(d.label||"")}">
+        </div>
+      </div>
+    `;
+  }
+  function addRow(data){
+    const box = $("#rows");
+    const wrap = document.createElement("div");
+    wrap.innerHTML = rowTpl(data);
+    const row = wrap.firstElementChild;
+    row.querySelector(".del").onclick = ()=> row.remove();
+    box.appendChild(row);
+  }
+
+  function openModal(){
+    ensureModal();
+    $("#ecuManualModal").style.display = "flex";
+  }
+
+  // Busca una cadena ASCII dentro del BIN y propone offset (posición)
+  function findAscii(buf, text){
+    if(!buf || !text) return null;
+    const pat = new TextEncoder().encode(String(text));
+    outer: for(let i=0;i<=buf.length-pat.length;i++){
+      for(let j=0;j<pat.length;j++){
+        if(buf[i+j]!==pat[j]) continue outer;
+      }
+      return i; // posición
+    }
+    return null;
+  }
+
+  async function autoscanOffsets(){
+    try{
+      // usa lastFile del flujo existente
+      if(!(window.lastFile instanceof File)){
+        alert("Primero sube/analiza un BIN para poder sugerir offsets.");
+        return;
+      }
+      const u8 = new Uint8Array(await lastFile.arrayBuffer());
+      const rows = Array.from($("#rows").querySelectorAll(".row"));
+      let hits=0;
+      for(const r of rows){
+        const val = r.querySelector(".value").value.trim();
+        if(!val) continue;
+        const pos = findAscii(u8, val);
+        if(pos!=null){
+          r.querySelector(".offset").value = hex(pos);
+          hits++;
+        }
+      }
+      alert(hits ? `Offsets sugeridos para ${hits} campo(s).` : "No se hallaron coincidencias ASCII en el BIN.");
+    }catch{ alert("No se pudieron sugerir offsets."); }
+  }
+
+  function saveManual(){
+    const ecuType = $("#man_ecu_type").value.trim() || null;
+    const mpcType = $("#man_mpc_type").value.trim() || null;
+
+    const entries=[];
+    $("#rows").querySelectorAll(".row").forEach(r=>{
+      const key = r.querySelector(".key").value.trim();
+      const label = r.querySelector(".label").value.trim() || null;
+      const value = r.querySelector(".value").value.trim();
+      const off = normOffset(r.querySelector(".offset").value);
+      if(key && value){
+        entries.push({key, label, value, offset: off});
+      }
+    });
+
+    window.__EFX_MANUAL_ECU__ = { ecu_type: ecuType, mpc_type: mpcType, entries };
+
+    // Reflejar en Ficha ECU si procede
+    if (ecuType && typeof setFicha === "function") setFicha("kv_ecu", ecuType);
+    const swRow = entries.find(e => e.key.toLowerCase().includes("sw"));
+    if (swRow && typeof setFicha === "function") setFicha("kv_sw", swRow.value);
+
+    // Esto puede cambiar el filtrado de parches si cambiamos ECU type
+    if (typeof fillPatches === "function") fillPatches();
+
+    // Forzar refresco del YAML
+    if (typeof window.__EFX_onPatchChange__ === "function") window.__EFX_onPatchChange__();
+    $("#ecuManualModal").style.display = "none";
+  }
+
+  // ------- Monkeypatch YAML: inyecta sección "manual" + aplica ecu_type/mpc_type -------
+  const _origUpdateYaml = window.updateYamlSummary;
+  window.updateYamlSummary = function(opts){
+    // Delega al original
+    if (typeof _origUpdateYaml === "function") _origUpdateYaml(opts);
+
+    try{
+      const box = document.getElementById("ecuYaml");
+      if(!box) return;
+
+      // Parse muy simple del YAML ya renderizado para volver a imprimir anexando "manual"
+      // (sin intentar YAML real → solo concatenamos de forma clara)
+      const manual = window.__EFX_MANUAL_ECU__ || {};
+      const lines = [];
+      lines.push("");
+      lines.push("manual:");
+      lines.push(`  ecu_type: ${manual.ecu_type ? manual.ecu_type : "null"}`);
+      lines.push(`  mpc_type: ${manual.mpc_type ? manual.mpc_type : "null"}`);
+      if (manual.entries && manual.entries.length){
+        lines.push("  fields:");
+        manual.entries.forEach(e=>{
+          lines.push("    -");
+          lines.push(`      key: ${e.key}`);
+          lines.push(`      label: ${e.label ? e.label : "null"}`);
+          lines.push(`      value: ${e.value}`);
+          lines.push(`      offset: ${e.offset ? e.offset : "null"}`);
+        });
+      } else {
+        lines.push("  fields: []");
+      }
+
+      // Anexa
+      box.textContent = box.textContent.replace(/\s*$/,"") + "\n" + lines.join("\n");
+    }catch(_){}
+  };
+
+  // ------- Hook post-análisis: intenta extraer pistas SW/MPC/ECU y precargar -------
+  const _origAfterAnalyze = window.__EFX_afterAnalyze__;
+  window.__EFX_afterAnalyze__ = async function(){
+    if (typeof _origAfterAnalyze === "function") await _origAfterAnalyze();
+
+    try{
+      if(!(window.lastFile instanceof File)) return;
+      const textLatin = await (async()=> new TextDecoder("latin1").decode(new Uint8Array(await lastFile.arrayBuffer())))();
+
+      // Pistas básicas (regex)
+      const sw = (textLatin.match(/\b[0-9A-Z]{2}SW[0-9A-Z]{6,}\b/i) || [])[0] || null;
+      const mpc = (textLatin.match(/\btc1(?:7|8)\d{2}\b/i) || [])[0] || null; // tc1766/tc1782/...
+      const ecu = (textLatin.match(/\b(MED|MEVD|MG1|ME7|EDC1?\dC?\d*|MD1|SID\d{3}|DCM\d*)\b/i) || [])[0] || null;
+
+      // No sobrescribas si el usuario ya puso algo
+      if (!window.__EFX_MANUAL_ECU__.entries.length && (sw||mpc||ecu)){
+        const pre = [];
+        if (sw)  pre.push({key:"sw_number", label:"SW number", value:sw,  offset:null});
+        if (mpc) pre.push({key:"mpc_base",  label:"Tipo de MPC", value:mpc, offset:null});
+        if (ecu) window.__EFX_MANUAL_ECU__.ecu_type = ecu.toUpperCase();
+        window.__EFX_MANUAL_ECU__.entries = pre;
+      }
+
+      ensureYamlButton();
+    }catch{
+      ensureYamlButton();
+    }
+  };
+
+  // Inicializa botón si no hay análisis aún
+  document.addEventListener("DOMContentLoaded", ensureYamlButton);
+})();
+</script>
 
   
 
