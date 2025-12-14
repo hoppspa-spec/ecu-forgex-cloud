@@ -2,7 +2,7 @@
   "family": "EDC17C81",
   "label": "Bosch EDC17C81",
   "engine_default": "diesel",
-  "notes": "ECU usada en Maxus/LDV, PSA, etc.",
+  "notes": "Familia Bosch EDC17C81. Maxus/LDV, PSA, etc.",
   "overrides": {
     "maxus": {
       "rename": { "dpf_off": "DPF OFF — Maxus (diesel)" },
