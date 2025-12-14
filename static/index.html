@@ -1163,6 +1163,73 @@ document.addEventListener("DOMContentLoaded", initVehicleForm);
   document.addEventListener("DOMContentLoaded", ensureYamlButton);
 })();
 </script>
+<script>
+// --- 1) Detectores fortalecidos (añade EDC17C81, etc.)
+const _oldDetectEcuFamily = detectEcuFamily;
+detectEcuFamily = function(ecuType, filename){
+  const src = ((ecuType||"") + " " + (filename||"")).toUpperCase();
+  const extra = [/EDC17C81\b/, /\bEDC17CP\d+\b/, /\bEDC17C\d+\b/];
+  for(const re of extra){ const m = src.match(re); if(m) return m[0]; }
+  return _oldDetectEcuFamily(ecuType, filename);
+};
+
+// --- 2) Loader con fallback inteligente (ECU → brand+engine → solo engine)
+const __origLoad = loadPatchesCombined;
+async function loadPatchesSmart(engineMode, ecuFamily, brandKey){
+  // intento 1: tal cual
+  let out = await __origLoad(engineMode, ecuFamily, brandKey);
+  if((out.patches?.length||0) + (out.packs?.length||0)) return out;
+
+  // intento 2: marca + motor (por si la ECU salió "Desconocida")
+  out = await __origLoad(engineMode, null, brandKey);
+  if((out.patches?.length||0) + (out.packs?.length||0)) return out;
+
+  // intento 3: solo motor (catálogo global por tipo de motor)
+  out = await __origLoad(engineMode, null, null);
+  return out;
+}
+
+// --- 3) fillPatches usa el loader nuevo y respeta pista de vehículo (ecuFamilyHint)
+const _oldFillPatchesCore = fillPatches;
+fillPatches = async function(){
+  const sel = $("#patchSelect"), btn=$("#btnAplicar"), msg=$("#noPatchMsg");
+  if(!sel||!btn) return;
+  sel.innerHTML=""; sel.disabled=true; btn.disabled=true; if(msg) msg.style.display="none";
+
+  // si no hay BIN, permitimos pista desde el formulario de vehículo
+  if(!lastAnalysis && !window.ecuFamilyHint){
+    sel.append(new Option("— Sube tu BIN o selecciona vehículo —",""));
+    return;
+  }
+
+  const mode  = currentEngineMode();                        // auto/petrol/diesel (con heurística/vehículo)
+  const ecuFam= detectEcuFamily(lastAnalysis?.ecu_type, lastAnalysis?.filename) || window.ecuFamilyHint || null;
+  const brand = (typeof brandKeyFromDropdown==="function" ? brandKeyFromDropdown() : null);
+
+  try{
+    const {patches,packs} = await loadPatchesSmart(mode, ecuFam, brand);
+    const has = (patches&&patches.length) || (packs&&packs.length);
+    if(!has){
+      sel.append(new Option("Sin parches disponibles",""));
+      if(msg) msg.style.display="block";
+      window.__EFX_onPatchChange__?.();
+      return;
+    }
+    sel.disabled=false; btn.disabled=false;
+    sel.append(new Option("— Selecciona una opción —",""));
+    (patches||[]).forEach(p => sel.append(new Option(labelWithPrice(p.label, p.price), p.id)));
+    if(packs && packs.length){
+      sel.append(new Option("────────── PACKS ──────────",""));
+      packs.forEach(pk => sel.append(new Option(`🧩 ${labelWithPrice(pk.label, pk.price)}`, `pack:${pk.id}`)));
+    }
+  }catch(e){
+    log("Error cargando parches (smart): "+e.message);
+    sel.append(new Option("Error cargando parches",""));
+  } finally {
+    window.__EFX_onPatchChange__?.();
+  }
+};
+</script>
 
   
 
