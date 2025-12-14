@@ -1,0 +1,15 @@
+[
+  {
+    "ecu_family": "EDC17C81",
+    "patterns": [
+      { "pn": "1037527034", "sw": "SW1037527034", "desc": "Maxus/LDV T60 2.0TD" },
+      { "pn": "1037527090", "sw": "SW1037527090", "desc": "LDV D90 2.0TD" }
+    ]
+  },
+  {
+    "ecu_family": "MEVD17.2",
+    "patterns": [
+      { "pn": "8639501", "sw": "SW8639501", "desc": "BMW 320i N20" }
+    ]
+  }
+]
