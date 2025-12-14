@@ -172,5 +172,261 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   document.getElementById("analyzeBtn").onclick=analyzeBIN;
 });
 </script>
+  <script>
+/* ========= Helpers UI ========= */
+const $ = (q, el=document) => el.querySelector(q);
+const fmt = n => new Intl.NumberFormat('es-CL').format(n||0);
+
+/* ========= Carga y normalización de vehicles.json ========= */
+async function loadVehiclesDb(){
+  const tryUrls = ["/static/data/vehicles.json", "/static/vehicles.json"];
+  for (const url of tryUrls){
+    try{
+      const r = await fetch(url, {cache:"no-store"});
+      if (!r.ok) continue;
+      const raw = await r.json();
+      return normalizeVehicles(raw);
+    }catch(_){}
+  }
+  return { brands:{} };
+}
+function normalizeVehicles(raw){
+  // Soporta:
+  //  A) {brands:{ bmw:{label,models:{...}} }}
+  //  B) {brands:[ {key,label,models:[{key,label,years:[...],engines:[...]}]} ]}
+  const out = { brands:{} };
+  if (Array.isArray(raw?.brands)){
+    for (const b of raw.brands){
+      const models = {};
+      for (const m of (b.models||[])){
+        // si viene como lista simple de años => m.years: [2017,2018] → guardamos como rango único "YYYY-YYYY"
+        let yearsObj = {};
+        if (Array.isArray(m.years)){
+          const min = Math.min(...m.years), max = Math.max(...m.years);
+          yearsObj[`${min}-${max}`] = { engine:null, ecu_families:[] };
+        } else if (typeof m.years === "object"){
+          yearsObj = m.years;
+        }
+        models[m.key] = { label: m.label || m.key, years: yearsObj };
+      }
+      out.brands[b.key] = { label:b.label||b.key, models };
+    }
+  } else if (raw?.brands && typeof raw.brands === "object"){
+    // Ya está en el formato que queremos
+    return raw;
+  }
+  return out;
+}
+
+/* ========= Poblar selects ========= */
+function fillBrandSelect(db){
+  const sel = document.getElementById("selBrand");
+  sel.innerHTML = '<option value="">— Selecciona —</option>';
+  for (const [k,v] of Object.entries(db.brands||{})){
+    const o = document.createElement("option");
+    o.value = k; o.textContent = v.label || k;
+    sel.appendChild(o);
+  }
+  document.getElementById("selModel").innerHTML = '<option value="">— Selecciona —</option>';
+  document.getElementById("selYear").innerHTML  = '<option value="">— Selecciona —</option>';
+}
+function fillModelSelect(db){
+  const brandKey = document.getElementById("selBrand").value;
+  const sel = document.getElementById("selModel");
+  sel.innerHTML = '<option value="">— Selecciona —</option>';
+  document.getElementById("selYear").innerHTML = '<option value="">— Selecciona —</option>';
+  if (!brandKey) return;
+  const brand = db.brands?.[brandKey]; if (!brand) return;
+  for (const [k,v] of Object.entries(brand.models||{})){
+    const o = document.createElement("option");
+    o.value = k; o.textContent = v.label || k;
+    sel.appendChild(o);
+  }
+}
+function fillYearSelect(db){
+  const brandKey = document.getElementById("selBrand").value;
+  const modelKey = document.getElementById("selModel").value;
+  const sel = document.getElementById("selYear");
+  sel.innerHTML = '<option value="">— Selecciona —</option>';
+  if (!brandKey || !modelKey) return;
+  const years = db.brands?.[brandKey]?.models?.[modelKey]?.years || {};
+  for (const range of Object.keys(years)){
+    const o = document.createElement("option");
+    o.value = range; o.textContent = range;
+    sel.appendChild(o);
+  }
+}
+
+/* ========= Bootstrap ========= */
+window.__EFX__ = { VEH_DB:null, TOKEN: localStorage.getItem("EFX_TOKEN") || null, lastAnalysis:null, engineDetected:"auto" };
+
+document.addEventListener("DOMContentLoaded", async ()=>{
+  const db = await loadVehiclesDb();
+  window.__EFX__.VEH_DB = db;
+
+  // listeners bien enlazados (antes estaban referenciados por variable inexistente)
+  document.getElementById("selBrand").addEventListener("change", ()=>fillModelSelect(db));
+  document.getElementById("selModel").addEventListener("change", ()=>fillYearSelect(db));
+
+  fillBrandSelect(db);
+
+  // Botón analizar
+  document.getElementById("analyzeBtn").addEventListener("click", analyzeBIN);
+});
+</script>
+<script>
+/* ========= Detección básica ========= */
+function detectEngineByEcu(ecuType){
+  const t = (ecuType||"").toUpperCase();
+  if (/(EDC|MD1|MJD|DCM|SID)/.test(t)) return "diesel";
+  if (/(MED|MG1|MEVD|ME7)/.test(t))    return "petrol";
+  return "auto";
+}
+function currentBrandKey(){ return document.getElementById("selBrand").value || null; }
+
+/* ========= Carga de parches (con overrides por brand si existen) ========= */
+const _jsonCache = {};
+async function jget(url){
+  if (_jsonCache[url]) return _jsonCache[url];
+  const r = await fetch(url, {cache:"no-store"});
+  if (!r.ok) throw new Error("No se pudo cargar "+url);
+  const d = await r.json(); _jsonCache[url]=d; return d;
+}
+async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
+  let patches=[], packs=[];
+  try{
+    const g = await jget("/static/patches/global.json");
+    patches = (g.patches||[]).map(p => ({...p, engines:(p.engines||[]).map(e=>String(e).toLowerCase())}));
+    packs   = g.packs || [];
+  }catch(_){}
+
+  // Filtrar por motor
+  if (engineMode && engineMode!=="auto"){
+    const want = String(engineMode).toLowerCase();
+    patches = patches.filter(p => (p.engines||[]).includes(want));
+    packs   = packs.filter(x => !x.engine || x.engine===engineMode);
+  }
+  // Filtrar por familia ECU
+  if (ecuFamily){
+    const up = ecuFamily.toUpperCase();
+    patches = patches.filter(p => (p.compatible_ecu||[]).some(f => up.includes(String(f).toUpperCase())));
+  }
+  // Overrides por marca
+  if (brandKey){
+    try{
+      const ov = await jget(`/static/patches/brand/${brandKey}.json`);
+      if (ov?.ecus && ecuFamily){
+        const famKey = Object.keys(ov.ecus).find(k => ecuFamily.toUpperCase().includes(k.toUpperCase()));
+        if (famKey){
+          const rules = ov.ecus[famKey];
+          if (rules.exclude) patches = patches.filter(p => !rules.exclude.includes(p.id));
+          if (rules.include) patches = patches.filter(p =>  rules.include.includes(p.id));
+          if (rules.rename)  patches = patches.map(p => ({...p, label: rules.rename[p.id] || p.label}));
+          if (rules.price)   patches = patches.map(p => (rules.price[p.id]!=null? {...p, price: rules.price[p.id]} : p));
+        }
+      }
+    }catch(_){}
+  }
+  return { patches, packs };
+}
+
+/* ========= Render lista de parches ========= */
+function toUSD(p){ if(p==null) return null; if(typeof p==="number") return p; if(typeof p==="object" && p.USD!=null) return Number(p.USD); return null; }
+function renderPatches({patches=[], packs=[]}){
+  const ul = document.getElementById("patchList");
+  ul.innerHTML = "";
+  const add = (text, data) => {
+    const li = document.createElement("li");
+    li.className = "active";
+    li.textContent = text;
+    li.dataset.patchId = data?.id || "";
+    li.addEventListener("click", onSelectPatch);
+    ul.appendChild(li);
+  };
+  if (!patches.length && !packs.length){
+    ul.innerHTML = "<li>No hay parches disponibles</li>";
+    return;
+  }
+  for (const p of patches){
+    const price = toUSD(p.price);
+    add(`${p.label}${price!=null?` — $${price}`:""}`, {id:p.id});
+  }
+  if (packs.length){
+    const sep = document.createElement("li");
+    sep.textContent = "──────── Packs ────────";
+    sep.style.opacity = .6; sep.style.textAlign="center";
+    ul.appendChild(sep);
+    for (const pk of packs){
+      const price = toUSD(pk.price);
+      add(`🧩 ${pk.label}${price!=null?` — $${price}`:""}`, {id:`pack:${pk.id}`});
+    }
+  }
+}
+
+/* ========= Click en parche (checkout) ========= */
+async function onSelectPatch(e){
+  const id = e.currentTarget.dataset.patchId;
+  if (!id) return;
+  // requiere sesión
+  if (!window.__EFX__.TOKEN){
+    // si tienes modal, ábrelo aquí:
+    alert("Inicia sesión para continuar con la compra.");
+    return;
+  }
+  try{
+    const r = await fetch("/orders",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+window.__EFX__.TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify({ analysis_id: window.__EFX__.lastAnalysis?.analysis_id, patch_option_id: id.startsWith("pack:")? id.slice(5):id })
+    });
+    if(!r.ok){ const t=await r.text(); alert("Error creando orden:\n"+t); return; }
+    const d = await r.json();
+    location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
+  }catch(err){
+    alert("No se pudo crear la orden.");
+  }
+}
+
+/* ========= Analizar BIN: usa backend real ========= */
+async function analyzeBIN(){
+  const file = document.getElementById("binFile").files?.[0] || null;
+  const status = document.getElementById("analysisStatus");
+  status.textContent = "Subiendo y analizando BIN…";
+
+  if (!file){ status.textContent="Selecciona un archivo BIN."; return; }
+  if (!/\.(bin|mpc|org|e2p|101|mpc)$/i.test(file.name)){ status.textContent="Formato no soportado."; return; }
+
+  const fd = new FormData(); fd.append("bin_file", file);
+
+  try{
+    const r = await fetch("/analyze_bin", {method:"POST", body:fd});
+    if(!r.ok){ status.textContent = "No se pudo analizar el BIN."; return; }
+    const data = await r.json();
+    window.__EFX__.lastAnalysis = data;
+
+    // ECU y motor
+    const ecuType  = data.ecu_type || "Desconocida";
+    const engine   = detectEngineByEcu(ecuType);
+    window.__EFX__.engineDetected = engine;
+
+    // Pintar ECU info
+    $("#ecuInfoBox").innerHTML = `
+      <p><strong>ECU Type:</strong> ${ecuType}</p>
+      <p><strong>Part Number:</strong> ${data.ecu_part_number || "—"}</p>
+      <p><strong>File size:</strong> ${fmt(data.bin_size)} bytes</p>
+      <p><strong>Motor:</strong> ${engine}</p>
+    `;
+    status.textContent = "Análisis completado.";
+
+    // Parches
+    const brandKey = currentBrandKey();
+    const {patches, packs} = await loadPatchesCombined(engine, ecuType, brandKey);
+    renderPatches({patches, packs});
+  }catch(_){
+    status.textContent = "Error de red durante el análisis.";
+  }
+}
+</script>
+
 </body>
 </html>
