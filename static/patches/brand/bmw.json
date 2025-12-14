@@ -1,24 +1,23 @@
 {
-  "brand": "BMW",
   "ecus": {
-    "MG1": {
-      "include": ["speed_limiter","rpm_limit","pop_bang","catalyst_eff_off","o2_post_off","dtc_off"],
-      "exclude": ["lambda_off"],
+    "MED17": {
+      "include": ["speed_limiter", "rpm_limit", "dtc_off"],
+      "exclude": ["dpf_off", "egr_off"],
       "rename": {
-        "rpm_limit": "RPM Limit Increase (Safe MG1)"
+        "speed_limiter": "Vmax OFF (BMW)",
+        "rpm_limit": "RPM Limit +500"
+      },
+      "price": {
+        "speed_limiter": 49,
+        "rpm_limit": 45
       }
     },
-    "MEVD": {
-      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","dtc_off"]
-    },
-    "MED17": {
-      "include": ["speed_limiter","rpm_limit","catalyst_eff_off","o2_post_off","pop_bang","dtc_off"]
-    },
-    "EDC17": {
-      "include": ["speed_limiter","torque_limiters_opt","dpf_off","egr_off","swirl_flaps_off","adblue_scr_off","dtc_off"]
-    },
-    "MD1": {
-      "include": ["speed_limiter","torque_limiters_opt","dpf_off","egr_off","adblue_scr_off","dtc_off"]
+    "MG1": {
+      "include": ["speed_limiter", "dtc_off"],
+      "rename": {
+        "dtc_off": "DTC General OFF (BMW MG1)"
+      }
     }
   }
 }
+
