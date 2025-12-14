@@ -1,62 +1,51 @@
-[
-  {
-    "brand": "Maxus",
-    "key": "maxus",
-    "models": [
-      {
-        "name": "T60",
-        "years": [2017, 2018, 2019, 2020, 2021, 2022],
-        "engines": [
-          { "name": "2.0 TD", "ecu_family": "EDC17C81", "engine": "diesel" }
-        ]
+{
+  "brands": {
+    "bmw": {
+      "label": "BMW",
+      "models": {
+        "320i": {
+          "label": "320i",
+          "years": {
+            "2016-2020": { "engine": "petrol", "ecu_families": ["MED17","MG1"] }
+          }
+        },
+        "320d": {
+          "label": "320d",
+          "years": {
+            "2012-2017": { "engine": "diesel", "ecu_families": ["EDC17"] }
+          }
+        }
       }
-    ]
-  },
-  {
-    "brand": "BMW",
-    "key": "bmw",
-    "models": [
-      {
-        "name": "320i (F30)",
-        "years": [2012, 2013, 2014, 2015, 2016, 2017, 2018],
-        "engines": [
-          { "name": "2.0T N20", "ecu_family": "MEVD17", "engine": "petrol" }
-        ]
-      },
-      {
-        "name": "320d (F30)",
-        "years": [2012, 2013, 2014, 2015, 2016, 2017, 2018],
-        "engines": [
-          { "name": "2.0d N47", "ecu_family": "EDC17C06", "engine": "diesel" }
-        ]
+    },
+
+    "vw": {
+      "label": "Volkswagen",
+      "models": {
+        "golf_gti": {
+          "label": "Golf GTI",
+          "years": {
+            "2014-2019": { "engine": "petrol", "ecu_families": ["MED17","MG1"] }
+          }
+        },
+        "golf_tdi": {
+          "label": "Golf TDI",
+          "years": {
+            "2010-2014": { "engine": "diesel", "ecu_families": ["EDC17","EDC16"] }
+          }
+        }
       }
-    ]
-  },
-  {
-    "brand": "Volkswagen",
-    "key": "vw",
-    "models": [
-      {
-        "name": "Golf 7",
-        "years": [2013, 2014, 2015, 2016, 2017, 2018, 2019],
-        "engines": [
-          { "name": "1.4 TSI", "ecu_family": "MED17.5.2", "engine": "petrol" },
-          { "name": "2.0 TDI", "ecu_family": "EDC17C64", "engine": "diesel" }
-        ]
+    },
+
+    "maxus": {
+      "label": "Maxus",
+      "models": {
+        "t60": {
+          "label": "T60 (LDV T60)",
+          "years": {
+            "2017-2022": { "engine": "diesel", "ecu_families": ["EDC17C81"] }
+          }
+        }
       }
-    ]
-  },
-  {
-    "brand": "Mercedes-Benz",
-    "key": "mercedes",
-    "models": [
-      {
-        "name": "C220d (W205)",
-        "years": [2015, 2016, 2017, 2018, 2019],
-        "engines": [
-          { "name": "2.1 CDI", "ecu_family": "EDC17CP46", "engine": "diesel" }
-        ]
-      }
-    ]
+    }
   }
-]
+}
