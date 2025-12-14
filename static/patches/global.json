@@ -80,15 +80,14 @@
     },
     {
       "id": "dpf_off",
-      "label": "DPF OFF",
-      "desc": "Deshabilita regeneraciones y monitoreo del filtro DPF.",
+      "label": "DPF OFF (EDC17C81)",
+      "desc": "Desactiva Filtro Particulas Diesel.",
       "category": "emissions",
       "engines": ["diesel"],
-      "compatible_ecu": ["EDC16","EDC17","MD1","DENSO","DELPHI","DCM"],
-      "price": {"USD": 89},
-      "complexity": "high",
-      "notes": "Uso off-road. Puede requerir hardware reemplazo/downpipe."
-    },
+      "compatible_ecu": ["EDC17C81","EDC17"],
+      "price": { "USD": 59 },
+      "path": "EDC17C81/dpf_off.yml"
+},
     {
       "id": "egr_off",
       "label": "EGR OFF",
@@ -96,7 +95,7 @@
       "category": "emissions",
       "engines": ["diesel"],
       "compatible_ecu": ["EDC16","EDC17","MD1","SID","DENSO","DELPHI"],
-      "price": {"USD": 69},
+      "price": {"USD": 59},
       "complexity": "med"
     },
     {
@@ -142,3 +141,4 @@
     }
   ]
 }
+
