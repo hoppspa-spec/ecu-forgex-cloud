@@ -13,3 +13,15 @@
     ]
   }
 ]
+[
+  {
+    "ecu_family": "EDC17C81",
+    "patterns": [
+      { "pn": "0281xxxxxx" },
+      { "sw": "1039S3xxxxx" },
+      { "sw": "LDV-T60-EDC17C81" }
+    ]
+  }
+]
+
+
