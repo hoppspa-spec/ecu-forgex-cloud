@@ -1,144 +1,65 @@
 {
-  "version": "2025-12-07",
-  "categories": {
-    "performance": "Mejoras de rendimiento / respuesta",
-    "emissions": "Desactivación o ajustes de sistemas de emisiones (solo uso fuera de vía)",
-    "sound": "Sonido / experiencia",
-    "diagnostic": "Diagnóstico y compatibilidad"
-  },
+  "version": 1,
   "patches": [
-    {
-      "id": "speed_limiter",
-      "label": "Speed Limiter OFF",
-      "desc": "Desactiva o incrementa el limitador de velocidad.",
-      "category": "performance",
-      "engines": ["petrol","diesel"],
-      "compatible_ecu": ["MED17","MG1","MEVD","EDC17","MD1","DENSO","SIEMENS_SID","DELPHI","CONTINENTAL_DCM"],
-      "price": {"USD": 49},
-      "complexity": "low"
-    },
-    {
-      "id": "rpm_limit",
-      "label": "RPM Limit Increase",
-      "desc": "Permite elevar el corte de RPM dentro de márgenes seguros.",
-      "category": "performance",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1","MEVD","ME7"],
-      "price": {"USD": 69},
-      "complexity": "med"
-    },
-    {
-      "id": "torque_limiters_opt",
-      "label": "Torque Limiters Optimization",
-      "desc": "Optimiza limitadores de par (IQ, NM, aire/combustible).",
-      "category": "performance",
-      "engines": ["diesel","petrol"],
-      "compatible_ecu": ["EDC16","EDC17","MD1","DENSO","DELPHI","SID"],
-      "price": {"USD": 79},
-      "complexity": "high"
-    },
-    {
-      "id": "pop_bang",
-      "label": "Pop & Bang",
-      "desc": "Petardeos controlados en desaceleración (solo uso deportivo).",
-      "category": "sound",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1"],
-      "price": {"USD": 69},
-      "complexity": "med",
-      "notes": "Requiere escape en buen estado; no recomendado con catalizador original."
-    },
-    {
-      "id": "catalyst_eff_off",
-      "label": "Catalyst Efficiency OFF",
-      "desc": "Anula el monitoreo de eficiencia del catalizador.",
-      "category": "emissions",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1","MEVD"],
-      "price": {"USD": 59},
-      "complexity": "med"
-    },
-    {
-      "id": "o2_post_off",
-      "label": "O2 Post-cat OFF",
-      "desc": "Desactiva la sonda lambda posterior al catalizador.",
-      "category": "emissions",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1","MEVD"],
-      "price": {"USD": 49},
-      "complexity": "low"
-    },
-    {
-      "id": "evap_off",
-      "label": "EVAP OFF",
-      "desc": "Desactiva sistema de control de emisiones evaporativas.",
-      "category": "emissions",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1","MEVD"],
-      "price": {"USD": 39},
-      "complexity": "low"
-    },
     {
       "id": "dpf_off",
       "label": "DPF OFF (EDC17C81)",
-      "desc": "Desactiva Filtro Particulas Diesel.",
+      "desc": "Desactiva Filtro de Partículas Diesel.",
       "category": "emissions",
       "engines": ["diesel"],
-      "compatible_ecu": ["EDC17C81","EDC17"],
+      "compatible_ecu": ["EDC17C81", "EDC17"],
       "price": { "USD": 59 },
       "path": "EDC17C81/dpf_off.yml"
-},
+    },
     {
       "id": "egr_off",
-      "label": "EGR OFF",
-      "desc": "Desactiva la válvula EGR y diagnósticos asociados.",
+      "label": "EGR OFF (EDC17C81)",
+      "desc": "Desactiva la válvula EGR.",
       "category": "emissions",
       "engines": ["diesel"],
-      "compatible_ecu": ["EDC16","EDC17","MD1","SID","DENSO","DELPHI"],
-      "price": {"USD": 59},
-      "complexity": "med"
+      "compatible_ecu": ["EDC17C81", "EDC17"],
+      "price": { "USD": 49 },
+      "path": "EDC17C81/egr_off.yml"
     },
     {
-      "id": "adblue_scr_off",
-      "label": "AdBlue / SCR OFF",
-      "desc": "Desactiva el sistema SCR (urea) y sus monitores.",
-      "category": "emissions",
-      "engines": ["diesel"],
-      "compatible_ecu": ["EDC17","MD1","DCM","SID"],
-      "price": {"USD": 99},
-      "complexity": "high"
-    },
-    {
-      "id": "swirl_flaps_off",
-      "label": "Swirl Flaps OFF",
-      "desc": "Anula mariposas de admisión (swirl) y DTCs relacionados.",
-      "category": "performance",
-      "engines": ["diesel"],
-      "compatible_ecu": ["EDC16","EDC17","MD1"],
-      "price": {"USD": 59},
-      "complexity": "med"
-    },
-    {
-      "id": "lambda_off",
-      "label": "Closed-loop O2 OFF",
-      "desc": "Desactiva el lazo cerrado en gasolina para mapas puramente abiertos.",
+      "id": "stage1_petrol_med17",
+      "label": "Stage 1 (MED17)",
+      "desc": "Optimización Stage 1 para motores gasolina MED17.",
       "category": "performance",
       "engines": ["petrol"],
-      "compatible_ecu": ["MED17","MG1"],
-      "price": {"USD": 59},
-      "complexity": "high",
-      "conflicts": ["o2_post_off","catalyst_eff_off"]
+      "compatible_ecu": ["MED17", "MED17.5.2", "MEVD17"],
+      "price": { "USD": 149 },
+      "path": "MED17/stage1.yml"
     },
     {
-      "id": "dtc_off",
-      "label": "DTC OFF (Lista)",
-      "desc": "Desactiva códigos de falla específicos (se pasa lista de DTCs).",
-      "category": "diagnostic",
-      "engines": ["petrol","diesel"],
-      "compatible_ecu": ["MED17","MG1","MEVD","EDC16","EDC17","MD1","DENSO","SID","DCM","DELPHI"],
-      "price": {"USD": 39},
-      "complexity": "low"
+      "id": "vmax_off_med17",
+      "label": "Speed Limiter OFF (MED17)",
+      "desc": "Elimina limitador de velocidad.",
+      "category": "comfort",
+      "engines": ["petrol"],
+      "compatible_ecu": ["MED17", "MEVD17", "MG1"],
+      "price": { "USD": 69 },
+      "path": "MED17/vmax_off.yml"
+    },
+    {
+      "id": "stage1_diesel_edc17",
+      "label": "Stage 1 (EDC17C64)",
+      "desc": "Optimización Stage 1 para TDI EDC17C64.",
+      "category": "performance",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC17C64", "EDC17"],
+      "price": { "USD": 129 },
+      "path": "EDC17C64/stage1.yml"
+    },
+    {
+      "id": "popcorn_hardcut_edc17",
+      "label": "Popcorn/Hardcut (EDC17C64)",
+      "desc": "Rev limiter estilo hardcut (solo manual).",
+      "category": "fun",
+      "engines": ["diesel"],
+      "compatible_ecu": ["EDC17C64"],
+      "price": { "USD": 59 },
+      "path": "EDC17C64/popcorn.yml"
     }
   ]
 }
-
