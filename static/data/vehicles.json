@@ -1,4 +1,23 @@
 {
+  "brands": [
+    {
+      "key": "maxus",
+      "label": "Maxus",
+      "models": [
+        {
+          "name": "Maxus V80",
+          "variants": [
+            {
+              "trim": "2.5 Diesel",
+              "years": [2018,2019,2020,2021],
+              "engine": "diesel",
+              "ecu_family": "EDC17C81"
+            }
+          ]
+        }
+      ]
+    }
+{
   "brands": {
     "bmw": {
       "label": "BMW",
@@ -49,3 +68,4 @@
     }
   }
 }
+
