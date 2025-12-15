@@ -4,7 +4,7 @@
     {
       "id": "dpf_off",
       "label": "DPF OFF — Maxus (diesel)",
-      "description": "Elimina/neutraliza el sistema DPF (demo). Úsese con responsabilidad.",
+      "description": "Desactiva/neutraliza DPF (demo).",
       "price": { "USD": 59 },
       "engines": ["diesel"],
       "compatible_ecu": ["EDC17C81"],
@@ -12,10 +12,9 @@
         "yml": "/static/patches/EDC17C81/dpf_off.yml",
         "diff": "/static/patches/EDC17C81/dpf_off.bsdiff"
       },
-      "meta": {
-        "author": "Team ECU Forge",
-        "created": "2025-12-15"
-      }
+      "meta": { "author": "ECU Forge X", "created": "2025-12-15" }
     }
-  ]
+  ],
+  "packs": []
 }
+
