@@ -1,65 +1,21 @@
 {
-  "version": 1,
+  "generated_at": "2025-12-15T00:00:00Z",
   "patches": [
     {
       "id": "dpf_off",
-      "label": "DPF OFF (EDC17C81)",
-      "desc": "Desactiva Filtro de Partículas Diesel.",
-      "category": "emissions",
-      "engines": ["diesel"],
-      "compatible_ecu": ["EDC17C81", "EDC17"],
+      "label": "DPF OFF — Maxus (diesel)",
+      "description": "Elimina/neutraliza el sistema DPF (demo). Úsese con responsabilidad.",
       "price": { "USD": 59 },
-      "path": "EDC17C81/dpf_off.yml"
-    },
-    {
-      "id": "egr_off",
-      "label": "EGR OFF (EDC17C81)",
-      "desc": "Desactiva la válvula EGR.",
-      "category": "emissions",
       "engines": ["diesel"],
-      "compatible_ecu": ["EDC17C81", "EDC17"],
-      "price": { "USD": 49 },
-      "path": "EDC17C81/egr_off.yml"
-    },
-    {
-      "id": "stage1_petrol_med17",
-      "label": "Stage 1 (MED17)",
-      "desc": "Optimización Stage 1 para motores gasolina MED17.",
-      "category": "performance",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17", "MED17.5.2", "MEVD17"],
-      "price": { "USD": 149 },
-      "path": "MED17/stage1.yml"
-    },
-    {
-      "id": "vmax_off_med17",
-      "label": "Speed Limiter OFF (MED17)",
-      "desc": "Elimina limitador de velocidad.",
-      "category": "comfort",
-      "engines": ["petrol"],
-      "compatible_ecu": ["MED17", "MEVD17", "MG1"],
-      "price": { "USD": 69 },
-      "path": "MED17/vmax_off.yml"
-    },
-    {
-      "id": "stage1_diesel_edc17",
-      "label": "Stage 1 (EDC17C64)",
-      "desc": "Optimización Stage 1 para TDI EDC17C64.",
-      "category": "performance",
-      "engines": ["diesel"],
-      "compatible_ecu": ["EDC17C64", "EDC17"],
-      "price": { "USD": 129 },
-      "path": "EDC17C64/stage1.yml"
-    },
-    {
-      "id": "popcorn_hardcut_edc17",
-      "label": "Popcorn/Hardcut (EDC17C64)",
-      "desc": "Rev limiter estilo hardcut (solo manual).",
-      "category": "fun",
-      "engines": ["diesel"],
-      "compatible_ecu": ["EDC17C64"],
-      "price": { "USD": 59 },
-      "path": "EDC17C64/popcorn.yml"
+      "compatible_ecu": ["EDC17C81"],
+      "files": {
+        "yml": "/static/patches/EDC17C81/dpf_off.yml",
+        "diff": "/static/patches/EDC17C81/dpf_off.bsdiff"
+      },
+      "meta": {
+        "author": "Team ECU Forge",
+        "created": "2025-12-15"
+      }
     }
   ]
 }
