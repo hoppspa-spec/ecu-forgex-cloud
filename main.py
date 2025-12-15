@@ -1,37 +1,25 @@
-# src/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Importa routers *después* de crear app o usa una factory;
-# aquí usamos factory para evitar cualquier orden raro.
-from app.routers import public as public_router
-from app.routers import admin as admin_router
-from app.routers import auth as auth_router
-from app.routers import orders as orders_router
+# 🔴 Importa los routers por archivo, NO desde el paquete vacío
+from app.routers.public import router as public_router
+from app.routers.admin import router as admin_router
 
-def create_app() -> FastAPI:
-    app = FastAPI(title="ECU Forge X", version="0.1.0")
+app = FastAPI(title="ECU Forge X")
 
-    # CORS (ajusta orígenes si quieres)
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# CORS básico
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    # Incluye routers aquí, con prefijos si aplica
-    app.include_router(public_router.router, prefix="")
-    app.include_router(auth_router.router,   prefix="/auth")
-    app.include_router(admin_router.router,  prefix="/admin")
-    app.include_router(orders_router.router, prefix="")
+# Monta routers
+app.include_router(public_router)
+app.include_router(admin_router)
 
-    @app.get("/health")
-    def health():
-        return {"ok": True}
-
-    return app
-
-# instancia que uvicorn/render usará -> "app.main:app"
-app = create_app()
+# Healthcheck para Render
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
