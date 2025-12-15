@@ -1,438 +1,91 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>ECU Forge X — Diagnóstico y Parches</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ECU FORGE X — Generar BIN.MOD</title>
+<link rel="preconnect" href="https://www.hopp.cl" />
 <style>
-  .admin-only { display:none; }
-[data-owner="1"] .admin-only { display:block; }
-:root{
-  --bg:#ffffff;
-  --ink:#2b2b2b;
-  --muted:#555;
-  --border:#d0d0d0;
-  --accent:#004aad;
-  --accent-soft:#e7f0ff;
-  --radius:10px;
-  font-family:'Inter',system-ui,Arial;
-}
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--ink);
-  font-family:'Inter',sans-serif;
-}
-main{
-  display:grid;
-  grid-template-columns:1.2fr 1.5fr 1.2fr;
-  gap:12px;
-  padding:12px;
-}
-section{
-  border:2px solid var(--border);
-  border-radius:var(--radius);
-  padding:16px;
-  background:white;
-  box-shadow:0 1px 4px rgba(0,0,0,0.04);
-}
-h2{margin-top:0;color:var(--accent);font-weight:600;font-size:1.1rem;}
-label{display:block;margin-top:8px;font-weight:500;font-size:.9rem;}
-input,select,button{
-  width:100%;padding:8px 10px;margin-top:4px;
-  border:1px solid var(--border);border-radius:var(--radius);
-  font-family:inherit;font-size:.9rem;
-}
-button{
-  background:var(--accent);color:white;cursor:pointer;
-  border:none;font-weight:600;margin-top:10px;
-}
-button:hover{background:#0056c2;}
-ul.patch-list{list-style:none;padding:0;margin:0;}
-ul.patch-list li{
-  padding:10px;border:1px solid var(--border);
-  border-radius:var(--radius);margin-bottom:8px;
-  transition:background .2s;
-}
-ul.patch-list li.active{background:var(--accent-soft);border-color:var(--accent);}
-.ecu-info p{margin:6px 0;font-size:.9rem;color:var(--muted);}
+  :root{
+    --bg:#ffffff; --ink:#2b2f38; --muted:#6b7280;
+    --stroke:#2f3a4a; --accent:#0b5ed7; --accent-2:#0ea5e9;
+    --card:#fff; --chip:#f6f7fb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui, Segoe UI, Roboto, Arial}
+  header{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:2px solid var(--stroke);background:#fafafa}
+  header .brand{font-weight:800;font-size:18px;letter-spacing:.3px}
+  .container{display:grid;grid-template-columns:360px 1fr 420px;gap:16px;padding:16px;max-width:1400px;margin:0 auto}
+  .card{background:var(--card);border:2px solid #2f3a4a;border-radius:10px;padding:14px}
+  h3{margin:0 0 8px;font-size:16px}
+  label{font-size:13px;color:var(--muted);display:block;margin-top:6px}
+  input,select,button{width:100%;padding:10px;border:2px solid #2f3a4a;border-radius:8px;background:#fff;color:var(--ink);font-size:14px}
+  button.btn{background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+  button.btn:disabled{opacity:.6;cursor:not-allowed}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .patch{border:2px solid #2f3a4a;border-radius:10px;padding:10px;background:#fff}
+  .patch .title{font-weight:700}
+  .kv{margin-top:4px}
+  .kv div{margin:2px 0}
+  .yaml{margin-top:10px;background:#0a0f1d;color:#e9f0ff;border:2px solid #2f3a4a;border-radius:10px;padding:10px;max-height:320px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+  .debug{display:none;margin-top:10px;background:#fff1; border:2px dashed #2f3a4a; padding:8px;border-radius:8px}
+  small.muted{color:var(--muted)}
 </style>
 </head>
-<script src="/static/js/efx-admin-gate.js"></script>
-<script src="/static/js/efx-ui-reorder.js"></script>
-<script src="/static/js/efx-offsets-panel.js"></script>
-<script src="/static/js/efx-testmode.js"></script>
 <body>
+<header>
+  <div class="brand">ECU FORGE X</div>
+  <div style="flex:1"></div>
+  <button id="btnLogin" class="btn" style="width:auto;background:var(--accent-2)">Iniciar sesión</button>
+  <button id="btnLogout" class="btn" style="width:auto;display:none">Cerrar sesión</button>
+</header>
 
-<main>
-  <section id="upload">
-    <h2>📂 Análisis de BIN</h2>
+<div class="container">
+  <!-- IZQUIERDA: FORM -->
+  <div class="card">
+    <h3>📁 Análisis de BIN</h3>
     <label>Marca</label>
-    <select id="selBrand"></select>
+    <select id="selBrand"><option value="">— Selecciona —</option></select>
     <label>Modelo</label>
-    <select id="selModel"></select>
+    <select id="selModel" disabled><option value="">— Selecciona —</option></select>
     <label>Año</label>
-    <select id="selYear"></select>
+    <select id="selYear" disabled><option value="">— Selecciona —</option></select>
+
     <label>Archivo BIN</label>
-    <input type="file" id="binFile" accept=".bin">
-    <button id="analyzeBtn">Analizar BIN</button>
-    <div id="analysisStatus" style="margin-top:10px;font-size:.9rem;color:var(--muted);"></div>
-  </section>
+    <input id="binfile" type="file" />
 
-  <section id="ecuInfo">
-    <h2>⚙️ ECU Info</h2>
-    <div class="ecu-info" id="ecuInfoBox">
-      <p>Esperando análisis...</p>
+    <div style="margin-top:10px">
+      <button id="btnAnalizar" class="btn">Analizar BIN</button>
     </div>
-  </section>
+    <div id="formNote" style="margin-top:8px"><small class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</small></div>
+  </div>
 
-  <section id="patches">
-    <h2>🧩 Parches Disponibles</h2>
-    <ul class="patch-list" id="patchList"><li>Sin datos</li></ul>
-  </section>
-</main>
+  <!-- CENTRO: ECU INFO -->
+  <div class="card">
+    <h3>⚙️ ECU Info</h3>
+    <div id="ecuInfo" class="kv">
+      <div>Esperando análisis…</div>
+    </div>
 
-<script>
-async function loadVehiclesDb(){
-  const r = await fetch("/static/data/vehicles.json").catch(()=>null);
-  if(!r?.ok) return {brands:{}};
-  return await r.json();
-}
+    <div id="debugBox" class="debug">
+      <strong>Offsets / Debug (sólo admin)</strong>
+      <div id="debugContent"><small class="muted">—</small></div>
+    </div>
+  </div>
 
-function fillBrandSelect(db){
-  const sel=document.getElementById("selBrand");
-  sel.innerHTML='<option value="">— Selecciona —</option>';
-  for(const [k,v] of Object.entries(db.brands||{})){
-    const opt=document.createElement("option");
-    opt.value=k;opt.textContent=v.label;
-    sel.appendChild(opt);
-  }
-}
+  <!-- DERECHA: PARCHES + YAML -->
+  <div class="card">
+    <h3>🧩 Parches Disponibles</h3>
+    <div id="patchList" class="list">
+      <div class="patch"><div class="title">No hay parches disponibles</div></div>
+    </div>
 
-function fillModelSelect(db){
-  const b=document.getElementById("selBrand").value;
-  const m=document.getElementById("selModel");
-  m.innerHTML='<option value="">— Selecciona —</option>';
-  if(!b) return;
-  const brand=db.brands[b];
-  for(const [k,v] of Object.entries(brand.models||{})){
-    const o=document.createElement("option");
-    o.value=k;o.textContent=v.label;m.appendChild(o);
-  }
-}
+    <h3 style="margin-top:12px">Resumen YAML</h3>
+    <pre id="yamlBox" class="yaml"># Aún sin datos…</pre>
+    <button id="btnCopyYaml" class="btn" style="margin-top:8px">Copiar YAML</button>
+  </div>
+</div>
 
-function fillYearSelect(db){
-  const b=document.getElementById("selBrand").value;
-  const model=document.getElementById("selModel").value;
-  const y=document.getElementById("selYear");
-  y.innerHTML='<option value="">— Selecciona —</option>';
-  if(!b||!model)return;
-  const years=db.brands[b].models[model].years;
-  for(const k of Object.keys(years)){
-    const o=document.createElement("option");
-    o.value=k;o.textContent=k;y.appendChild(o);
-  }
-}
-
-async function analyzeBIN(){
-  const brand=document.getElementById("selBrand").value;
-  const model=document.getElementById("selModel").value;
-  const year=document.getElementById("selYear").value;
-  const ecuMeta=window.VEH_DB.brands?.[brand]?.models?.[model]?.years?.[year];
-  document.getElementById("analysisStatus").textContent="Analizando archivo...";
-  await new Promise(r=>setTimeout(r,1500));
-  const ecu=ecuMeta?.ecu_families?.[0]||"Desconocida";
-  document.getElementById("ecuInfoBox").innerHTML=`
-    <p><strong>ECU Type:</strong> ${ecu}</p>
-    <p><strong>Motor:</strong> ${ecuMeta?.engine||"—"}</p>
-  `;
-  loadPatches(ecu, ecuMeta?.engine);
-}
-
-async function loadPatches(ecuFamily, engine){
-  const r = await fetch("/static/patches/global.json").catch(()=>null);
-  const list=document.getElementById("patchList");
-  list.innerHTML="";
-  if(!r?.ok){list.innerHTML="<li>Error cargando catálogo</li>";return;}
-  const db=await r.json();
-  const patches=db.patches.filter(p=>{
-    const ecuOk=!ecuFamily||p.compatible_ecu?.includes(ecuFamily);
-    const engOk=!engine||p.engines?.includes(engine);
-    return ecuOk && engOk;
-  });
-  if(!patches.length){list.innerHTML="<li>No hay parches disponibles</li>";return;}
-  for(const p of patches){
-    const li=document.createElement("li");
-    li.textContent=`${p.label} — $${p.price?.USD||0} USD`;
-    li.classList.add("active");
-    list.appendChild(li);
-  }
-}
-
-document.addEventListener("DOMContentLoaded", async ()=>{
-  const db=await loadVehiclesDb();
-  window.VEH_DB=db;
-  fillBrandSelect(db);
-  selBrand.onchange=()=>fillModelSelect(db);
-  selModel.onchange=()=>fillYearSelect(db);
-  document.getElementById("analyzeBtn").onclick=analyzeBIN;
-});
-</script>
-  <script>
-/* ========= Helpers UI ========= */
-const $ = (q, el=document) => el.querySelector(q);
-const fmt = n => new Intl.NumberFormat('es-CL').format(n||0);
-
-/* ========= Carga y normalización de vehicles.json ========= */
-async function loadVehiclesDb(){
-  const tryUrls = ["/static/data/vehicles.json", "/static/vehicles.json"];
-  for (const url of tryUrls){
-    try{
-      const r = await fetch(url, {cache:"no-store"});
-      if (!r.ok) continue;
-      const raw = await r.json();
-      return normalizeVehicles(raw);
-    }catch(_){}
-  }
-  return { brands:{} };
-}
-function normalizeVehicles(raw){
-  // Soporta:
-  //  A) {brands:{ bmw:{label,models:{...}} }}
-  //  B) {brands:[ {key,label,models:[{key,label,years:[...],engines:[...]}]} ]}
-  const out = { brands:{} };
-  if (Array.isArray(raw?.brands)){
-    for (const b of raw.brands){
-      const models = {};
-      for (const m of (b.models||[])){
-        // si viene como lista simple de años => m.years: [2017,2018] → guardamos como rango único "YYYY-YYYY"
-        let yearsObj = {};
-        if (Array.isArray(m.years)){
-          const min = Math.min(...m.years), max = Math.max(...m.years);
-          yearsObj[`${min}-${max}`] = { engine:null, ecu_families:[] };
-        } else if (typeof m.years === "object"){
-          yearsObj = m.years;
-        }
-        models[m.key] = { label: m.label || m.key, years: yearsObj };
-      }
-      out.brands[b.key] = { label:b.label||b.key, models };
-    }
-  } else if (raw?.brands && typeof raw.brands === "object"){
-    // Ya está en el formato que queremos
-    return raw;
-  }
-  return out;
-}
-
-/* ========= Poblar selects ========= */
-function fillBrandSelect(db){
-  const sel = document.getElementById("selBrand");
-  sel.innerHTML = '<option value="">— Selecciona —</option>';
-  for (const [k,v] of Object.entries(db.brands||{})){
-    const o = document.createElement("option");
-    o.value = k; o.textContent = v.label || k;
-    sel.appendChild(o);
-  }
-  document.getElementById("selModel").innerHTML = '<option value="">— Selecciona —</option>';
-  document.getElementById("selYear").innerHTML  = '<option value="">— Selecciona —</option>';
-}
-function fillModelSelect(db){
-  const brandKey = document.getElementById("selBrand").value;
-  const sel = document.getElementById("selModel");
-  sel.innerHTML = '<option value="">— Selecciona —</option>';
-  document.getElementById("selYear").innerHTML = '<option value="">— Selecciona —</option>';
-  if (!brandKey) return;
-  const brand = db.brands?.[brandKey]; if (!brand) return;
-  for (const [k,v] of Object.entries(brand.models||{})){
-    const o = document.createElement("option");
-    o.value = k; o.textContent = v.label || k;
-    sel.appendChild(o);
-  }
-}
-function fillYearSelect(db){
-  const brandKey = document.getElementById("selBrand").value;
-  const modelKey = document.getElementById("selModel").value;
-  const sel = document.getElementById("selYear");
-  sel.innerHTML = '<option value="">— Selecciona —</option>';
-  if (!brandKey || !modelKey) return;
-  const years = db.brands?.[brandKey]?.models?.[modelKey]?.years || {};
-  for (const range of Object.keys(years)){
-    const o = document.createElement("option");
-    o.value = range; o.textContent = range;
-    sel.appendChild(o);
-  }
-}
-
-/* ========= Bootstrap ========= */
-window.__EFX__ = { VEH_DB:null, TOKEN: localStorage.getItem("EFX_TOKEN") || null, lastAnalysis:null, engineDetected:"auto" };
-
-document.addEventListener("DOMContentLoaded", async ()=>{
-  const db = await loadVehiclesDb();
-  window.__EFX__.VEH_DB = db;
-
-  // listeners bien enlazados (antes estaban referenciados por variable inexistente)
-  document.getElementById("selBrand").addEventListener("change", ()=>fillModelSelect(db));
-  document.getElementById("selModel").addEventListener("change", ()=>fillYearSelect(db));
-
-  fillBrandSelect(db);
-
-  // Botón analizar
-  document.getElementById("analyzeBtn").addEventListener("click", analyzeBIN);
-});
-</script>
-<script>
-/* ========= Detección básica ========= */
-function detectEngineByEcu(ecuType){
-  const t = (ecuType||"").toUpperCase();
-  if (/(EDC|MD1|MJD|DCM|SID)/.test(t)) return "diesel";
-  if (/(MED|MG1|MEVD|ME7)/.test(t))    return "petrol";
-  return "auto";
-}
-function currentBrandKey(){ return document.getElementById("selBrand").value || null; }
-
-/* ========= Carga de parches (con overrides por brand si existen) ========= */
-const _jsonCache = {};
-async function jget(url){
-  if (_jsonCache[url]) return _jsonCache[url];
-  const r = await fetch(url, {cache:"no-store"});
-  if (!r.ok) throw new Error("No se pudo cargar "+url);
-  const d = await r.json(); _jsonCache[url]=d; return d;
-}
-async function loadPatchesCombined(engineMode, ecuFamily, brandKey){
-  let patches=[], packs=[];
-  try{
-    const g = await jget("/static/patches/global.json");
-    patches = (g.patches||[]).map(p => ({...p, engines:(p.engines||[]).map(e=>String(e).toLowerCase())}));
-    packs   = g.packs || [];
-  }catch(_){}
-
-  // Filtrar por motor
-  if (engineMode && engineMode!=="auto"){
-    const want = String(engineMode).toLowerCase();
-    patches = patches.filter(p => (p.engines||[]).includes(want));
-    packs   = packs.filter(x => !x.engine || x.engine===engineMode);
-  }
-  // Filtrar por familia ECU
-  if (ecuFamily){
-    const up = ecuFamily.toUpperCase();
-    patches = patches.filter(p => (p.compatible_ecu||[]).some(f => up.includes(String(f).toUpperCase())));
-  }
-  // Overrides por marca
-  if (brandKey){
-    try{
-      const ov = await jget(`/static/patches/brand/${brandKey}.json`);
-      if (ov?.ecus && ecuFamily){
-        const famKey = Object.keys(ov.ecus).find(k => ecuFamily.toUpperCase().includes(k.toUpperCase()));
-        if (famKey){
-          const rules = ov.ecus[famKey];
-          if (rules.exclude) patches = patches.filter(p => !rules.exclude.includes(p.id));
-          if (rules.include) patches = patches.filter(p =>  rules.include.includes(p.id));
-          if (rules.rename)  patches = patches.map(p => ({...p, label: rules.rename[p.id] || p.label}));
-          if (rules.price)   patches = patches.map(p => (rules.price[p.id]!=null? {...p, price: rules.price[p.id]} : p));
-        }
-      }
-    }catch(_){}
-  }
-  return { patches, packs };
-}
-
-/* ========= Render lista de parches ========= */
-function toUSD(p){ if(p==null) return null; if(typeof p==="number") return p; if(typeof p==="object" && p.USD!=null) return Number(p.USD); return null; }
-function renderPatches({patches=[], packs=[]}){
-  const ul = document.getElementById("patchList");
-  ul.innerHTML = "";
-  const add = (text, data) => {
-    const li = document.createElement("li");
-    li.className = "active";
-    li.textContent = text;
-    li.dataset.patchId = data?.id || "";
-    li.addEventListener("click", onSelectPatch);
-    ul.appendChild(li);
-  };
-  if (!patches.length && !packs.length){
-    ul.innerHTML = "<li>No hay parches disponibles</li>";
-    return;
-  }
-  for (const p of patches){
-    const price = toUSD(p.price);
-    add(`${p.label}${price!=null?` — $${price}`:""}`, {id:p.id});
-  }
-  if (packs.length){
-    const sep = document.createElement("li");
-    sep.textContent = "──────── Packs ────────";
-    sep.style.opacity = .6; sep.style.textAlign="center";
-    ul.appendChild(sep);
-    for (const pk of packs){
-      const price = toUSD(pk.price);
-      add(`🧩 ${pk.label}${price!=null?` — $${price}`:""}`, {id:`pack:${pk.id}`});
-    }
-  }
-}
-
-/* ========= Click en parche (checkout) ========= */
-async function onSelectPatch(e){
-  const id = e.currentTarget.dataset.patchId;
-  if (!id) return;
-  // requiere sesión
-  if (!window.__EFX__.TOKEN){
-    // si tienes modal, ábrelo aquí:
-    alert("Inicia sesión para continuar con la compra.");
-    return;
-  }
-  try{
-    const r = await fetch("/orders",{
-      method:"POST",
-      headers:{ "Authorization":"Bearer "+window.__EFX__.TOKEN, "Content-Type":"application/json" },
-      body: JSON.stringify({ analysis_id: window.__EFX__.lastAnalysis?.analysis_id, patch_option_id: id.startsWith("pack:")? id.slice(5):id })
-    });
-    if(!r.ok){ const t=await r.text(); alert("Error creando orden:\n"+t); return; }
-    const d = await r.json();
-    location.href = d.checkout_url || `/static/checkout.html?order_id=${d.id}`;
-  }catch(err){
-    alert("No se pudo crear la orden.");
-  }
-}
-
-/* ========= Analizar BIN: usa backend real ========= */
-async function analyzeBIN(){
-  const file = document.getElementById("binFile").files?.[0] || null;
-  const status = document.getElementById("analysisStatus");
-  status.textContent = "Subiendo y analizando BIN…";
-
-  if (!file){ status.textContent="Selecciona un archivo BIN."; return; }
-  if (!/\.(bin|mpc|org|e2p|101|mpc)$/i.test(file.name)){ status.textContent="Formato no soportado."; return; }
-
-  const fd = new FormData(); fd.append("bin_file", file);
-
-  try{
-    const r = await fetch("/analyze_bin", {method:"POST", body:fd});
-    if(!r.ok){ status.textContent = "No se pudo analizar el BIN."; return; }
-    const data = await r.json();
-    window.__EFX__.lastAnalysis = data;
-
-    // ECU y motor
-    const ecuType  = data.ecu_type || "Desconocida";
-    const engine   = detectEngineByEcu(ecuType);
-    window.__EFX__.engineDetected = engine;
-
-    // Pintar ECU info
-    $("#ecuInfoBox").innerHTML = `
-      <p><strong>ECU Type:</strong> ${ecuType}</p>
-      <p><strong>Part Number:</strong> ${data.ecu_part_number || "—"}</p>
-      <p><strong>File size:</strong> ${fmt(data.bin_size)} bytes</p>
-      <p><strong>Motor:</strong> ${engine}</p>
-    `;
-    status.textContent = "Análisis completado.";
-
-    // Parches
-    const brandKey = currentBrandKey();
-    const {patches, packs} = await loadPatchesCombined(engine, ecuType, brandKey);
-    renderPatches({patches, packs});
-  }catch(_){
-    status.textContent = "Error de red durante el análisis.";
-  }
-}
-</script>
-
+<script src="/static/js/index.js"></script>
 </body>
 </html>
