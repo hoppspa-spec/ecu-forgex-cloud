@@ -1,33 +1,37 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from typing import Dict
+# app/routers/public.py
+from fastapi import APIRouter, HTTPException, Query
+from app.services.recipes import list_families, get_family_catalog
 
-router = APIRouter(tags=["public"])
+router = APIRouter(prefix="/public", tags=["public"])
 
-@router.get("/")
-def root():
-    return {"name": "ECU Forge X API", "status": "ok"}
+@router.get("/families")
+def families():
+    return {"families": list_families()}
 
-@router.post("/analyze_bin")
-async def analyze_bin(bin_file: UploadFile = File(...)) -> Dict:
-    data = await bin_file.read()
-    size = len(data)
+@router.get("/recipes/{family}")
+def recipes_by_family(family: str, engine: str | None = Query(default=None, description="petrol|diesel|auto")):
+    cat = get_family_catalog(family)
+    fam = cat.get("family")
+    if not fam:
+        raise HTTPException(status_code=404, detail="Family not found")
 
-    # TODO: aquí llamas a tu analizador real si ya lo tienes
-    # from app.services.analyze import analyze_bin_bytes
-    # info = analyze_bin_bytes(data)
+    eng = (engine or "auto").lower().strip()
+    items = cat.get("recipes", [])
 
-    # Demo estable (no rompe el front)
-    info = {
-        "analysis_id": "demo-anl-1",
-        "filename": bin_file.filename,
-        "bin_size": size,
-        "ecu_type": "Desconocida",         # reemplaza cuando detectes
-        "ecu_part_number": None,
-        "software_number": None,
+    # filtra por engine si corresponde
+    if eng in ("petrol", "diesel"):
+        def _ok(r):
+            engines = r.get("engines")
+            if not engines:
+                return True  # si no especifica, se muestra
+            return eng in engines
+        items = [r for r in items if _ok(r)]
+
+    # sólo activos
+    items = [r for r in items if r.get("active", True)]
+
+    return {
+        "family": fam,
+        "recipes": items,
+        "meta": cat.get("meta", {})
     }
-    return info
-
-@router.get("/patches")
-def list_patches():
-    # TODO: leer desde /static/patches o desde store/recipes
-    return {"patches": [], "packs": []}
