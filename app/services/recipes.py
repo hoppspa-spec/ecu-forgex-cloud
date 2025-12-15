@@ -1,6 +1,3 @@
-# Hace a app/routers un paquete de Python
-# No exporta nada; importamos por módulo (public/admin).
-# app/services/recipes.py
 from pathlib import Path
 import json
 import yaml
