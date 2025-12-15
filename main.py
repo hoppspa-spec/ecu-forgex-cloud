@@ -18,6 +18,16 @@ app.add_middleware(
 # Monta routers
 app.include_router(public_router)
 app.include_router(admin_router)
+from fastapi.responses import RedirectResponse
+
+# Redirección a front y admin
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/static/index.html")
+
+@app.get("/admin", include_in_schema=False)
+def admin_root():
+    return RedirectResponse(url="/static/admin.html")
 
 # Healthcheck para Render
 @app.get("/healthz")
