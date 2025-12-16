@@ -4,6 +4,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.public import router as public_router
+app.include_router(public_router)
+
 from app.routers.admin import router as admin_router
 
 app = FastAPI(title="ECU Forge X")
