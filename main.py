@@ -4,11 +4,10 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.public import router as public_router
-from app.routers.admin  import router as admin_router
+from app.routers.admin  import router as admin_router  # si lo usas
 
-app = FastAPI(title="ECU Forge X API")
+app = FastAPI(title="ECU Forge X")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -16,6 +15,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Sirve /static/**
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Routers
+app.include_router(public_router)
+app.include_router(admin_router)
+
+# Redirecciones convenientes
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse("/static/index.html")
+
+@app.get("/admin", include_in_schema=False)
+def admin_root():
+    return RedirectResponse("/static/admin.html")
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
+}
 # Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
