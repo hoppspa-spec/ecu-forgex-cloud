@@ -1,18 +1,24 @@
 # app/routers/public.py
-from fastapi import APIRouter, Query
-from fastapi.responses import JSONResponse
-from app.services.patch_catalog import list_recipes_for_family
+from fastapi import APIRouter, UploadFile, File
+import hashlib
 
-router = APIRouter(prefix="/public", tags=["public"])
+router = APIRouter(prefix="", tags=["public"])
 
-@router.get("/recipes/{family}")
-def public_list_recipes(family: str, engine: str = Query("auto")):
-    """
-    Devuelve {"family","engine","recipes":[{id,label,price}]}
-    Lee YAMLs desde static/patches/<family>/*.yml
-    """
-    try:
-        data = list_recipes_for_family(family, engine)
-        return JSONResponse(data)
-    except Exception as e:
-        return JSONResponse({"family": family, "engine": engine, "recipes": [], "error": str(e)}, status_code=200)
+@router.post("/analyze_bin")
+async def analyze_bin(bin_file: UploadFile = File(...)):
+    data = await bin_file.read()
+
+    size = len(data)
+    crc = hashlib.crc32(data) & 0xFFFFFFFF
+
+    # 🔥 detección ECU demo (realista)
+    ecu_type = "EDC17C81" if size > 2000000 else "UNKNOWN"
+
+    return {
+        "analysis_id": "demo-analysis-001",
+        "filename": bin_file.filename,
+        "bin_size": size,
+        "cvn_crc32": f"{crc:08X}",
+        "ecu_type": ecu_type,
+        "ecu_part_number": None
+    }
