@@ -1,6 +1,6 @@
-// static/js/index.js
+// static/js/index.js  (reemplazo completo)
 (() => {
-  const ADMIN_EMAIL = "demo@ecuforge.dev"; // <- cambia por el tuyo si quieres
+  const ADMIN_EMAIL = "demo@ecuforge.dev"; // cámbialo si quieres
   let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
   let CURRENT_USER = null;
 
@@ -10,16 +10,16 @@
   let engineDetected = "auto";
 
   const $ = (q, el=document) => el.querySelector(q);
-  const yamlBox = $("#yamlBox");
-  const ecuInfo = $("#ecuInfo");
-  const patchList = $("#patchList");
-  const debugBox = $("#debugBox");
+  const yamlBox   = $("#yamlBox");
+  const ecuInfo   = $("#ecuInfo");
+  const patchList = document.getElementById("patchList") || document.getElementById("patches-list");
+  const debugBox  = $("#debugBox");
   const debugContent = $("#debugContent");
 
-  const btnLogin = $("#btnLogin");
+  const btnLogin  = $("#btnLogin");
   const btnLogout = $("#btnLogout");
 
-  // --- Auth UI (dummy: muestra/oculta botones; usa /users/me si existe)
+  // ---------------- Auth UI (opcional) ----------------
   async function fetchMe(){
     if(!TOKEN) return null;
     try{
@@ -29,47 +29,48 @@
     }catch{ return null; }
   }
   function setAuthUi(on){
-    btnLogin.style.display = on? "none":"inline-block";
-    btnLogout.style.display = on? "inline-block":"none";
+    if(btnLogin)  btnLogin.style.display  = on? "none":"inline-block";
+    if(btnLogout) btnLogout.style.display = on? "inline-block":"none";
   }
-  btnLogin.onclick = () => alert("Para el modo prueba, puedes usar tu login normal. (Este botón sólo cambia visibilidad).");
-  btnLogout.onclick = () => { TOKEN=null; localStorage.removeItem("EFX_TOKEN"); setAuthUi(false); location.reload(); };
+  btnLogin?.addEventListener("click", () => alert("Modo demo: usa tu login normal. Este botón solo muestra/oculta."));
+  btnLogout?.addEventListener("click", () => { TOKEN=null; localStorage.removeItem("EFX_TOKEN"); setAuthUi(false); location.reload(); });
 
-  // --- Carga marcas/modelos/años mínimo (placeholder, no bloquea nada)
+  // ---------------- Dropdowns mínimos ----------------
   const VEH = {
     brands: [
-      { key:"maxus", label:"Maxus", models:[
-        { key:"t60", label:"T60 (LDV T60)", years:["2017-2022"] }
-      ] }
+      { key:"maxus", label:"Maxus", models:[ { key:"t60", label:"T60 (LDV T60)", years:["2017-2022"] } ] }
     ]
   };
   function fillBrands(){
     const selBrand = $("#selBrand");
+    if(!selBrand) return;
     selBrand.innerHTML = '<option value="">— Selecciona —</option>';
     VEH.brands.forEach(b => selBrand.append(new Option(b.label,b.key)));
-    $("#selModel").disabled = true; $("#selYear").disabled = true;
+    const selModel = $("#selModel");
+    const selYear  = $("#selYear");
+    if(selModel) selModel.disabled = true;
+    if(selYear)  selYear.disabled  = true;
+
     selBrand.onchange = () => {
       const b = VEH.brands.find(x=>x.key===selBrand.value);
-      const selModel = $("#selModel");
       selModel.innerHTML = '<option value="">— Selecciona —</option>';
       (b?.models||[]).forEach(m=>selModel.append(new Option(m.label,m.key)));
       selModel.disabled = !b;
-      $("#selYear").innerHTML = '<option value="">— Selecciona —</option>';
-      $("#selYear").disabled = true;
+      selYear.innerHTML = '<option value="">— Selecciona —</option>';
+      selYear.disabled = true;
     };
-    $("#selModel").onchange = ()=>{
+    selModel.onchange = ()=>{
       const b = VEH.brands.find(x=>x.key===$("#selBrand").value);
       const m = (b?.models||[]).find(x=>x.key===$("#selModel").value);
-      const selYear = $("#selYear");
       selYear.innerHTML = '<option value="">— Selecciona —</option>';
       (m?.years||[]).forEach(y=>selYear.append(new Option(y,y)));
       selYear.disabled = !m;
     };
   }
 
-  // --- Utiles
+  // ---------------- Utils ----------------
   function toYaml(obj, indent=0){
-    const pad = '  '.repeat(indent);
+    const pad='  '.repeat(indent);
     if (obj==null) return 'null';
     if (Array.isArray(obj)){
       return obj.length
@@ -101,28 +102,38 @@
       },
       patch: patch || { status:"not_selected" }
     };
-    yamlBox.textContent = toYaml(obj);
+    if (yamlBox) yamlBox.textContent = toYaml(obj);
   }
   function setEcuInfoHtml(){
-    const ecu = lastAnalysis?.ecu_type || "Desconocida";
-    const pn  = lastAnalysis?.ecu_part_number || "—";
-    const size = new Intl.NumberFormat('es-CL').format(lastAnalysis?.bin_size||0);
+    const ecu   = lastAnalysis?.ecu_type || "Desconocida";
+    const pn    = lastAnalysis?.ecu_part_number || "—";
+    const size  = new Intl.NumberFormat('es-CL').format(lastAnalysis?.bin_size||0);
     const motor = engineDetected;
-    ecuInfo.innerHTML = `
-      <div><strong>ECU Type:</strong> ${ecu}</div>
-      <div><strong>Part Number:</strong> ${pn}</div>
-      <div><strong>File size:</strong> ${size} bytes</div>
-      <div><strong>Motor:</strong> ${motor}</div>
-    `;
+    if (ecuInfo){
+      ecuInfo.innerHTML = `
+        <div><strong>ECU Type:</strong> ${ecu}</div>
+        <div><strong>Part Number:</strong> ${pn}</div>
+        <div><strong>File size:</strong> ${size} bytes</div>
+        <div><strong>Motor:</strong> ${motor}</div>
+      `;
+    }
+  }
+
+  function showPatchLoading(text="Cargando parches…"){
+    if(!patchList) return;
+    patchList.innerHTML = `<div class="patch"><div class="title">${text}</div></div>`;
   }
   function renderPatches(items){
+    if(!patchList) return;
     if(!items || !items.length){
       patchList.innerHTML = `<div class="patch"><div class="title">No hay parches disponibles</div></div>`;
       return;
     }
     patchList.innerHTML = "";
-    items.forEach(p=>{
-      const price = (typeof p.price==="number") ? ` — $${p.price}` : "";
+    for (const p of items){
+      const price = (typeof p.price==="number")
+        ? ` — $${p.price}`
+        : (typeof p.price==="object" && p.price?.USD!=null ? ` — $${p.price.USD}` : "");
       const el = document.createElement("div");
       el.className = "patch";
       el.innerHTML = `
@@ -132,22 +143,22 @@
           <button class="btn" data-id="${p.id}">Aplicar / Comprar</button>
         </div>
       `;
-      el.querySelector("button").onclick = ()=> {
-        updateYaml({patch: { status:"selected", id:p.id, label:p.label, price_usd:p.price ?? null }});
+      el.querySelector("button").onclick = ()=>{
+        updateYaml({patch:{ status:"selected", id:p.id, label:p.label, price_usd:(typeof p.price==="number"?p.price:(p.price?.USD??null)) }});
         alert(`Seleccionado: ${p.label}`);
       };
       patchList.appendChild(el);
-    });
+    }
   }
 
-  // --- CRC32 (para CVN demo)
+  // ---------------- CRC32 para CVN demo ----------------
   (function(){
     const table = new Uint32Array(256).map((_,n)=>{let c=n; for(let k=0;k<8;k++) c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1); return c>>>0;});
     window.crc32 = (buf)=>{ let c=0^(-1); for(let i=0;i<buf.length;i++) c=(c>>>8)^table[(c^buf[i])&0xFF]; return (c^(-1))>>>0; };
   })();
 
-  // --- BIN change
-  $("#binfile").addEventListener("change", async (e)=>{
+  // ---------------- BIN change ----------------
+  $("#binfile")?.addEventListener("change", async (e)=>{
     lastFile = e.target.files?.[0] || null;
     if(lastFile){
       const buf = new Uint8Array(await lastFile.arrayBuffer());
@@ -155,9 +166,43 @@
     }
   });
 
-  // --- Analizar BIN (modo prueba compatible con tu backend actual)
-  $("#btnAnalizar").onclick = async ()=>{
-    const f = $("#binfile").files[0];
+  // ---------------- Carga de parches (API + fallback) ----------------
+  async function loadFamilyPatches(family, engine){
+    showPatchLoading();
+    // 1) API moderna
+    try{
+      const url = `/public/recipes/${encodeURIComponent(family)}?engine=${encodeURIComponent(engine||"auto")}`;
+      const r = await fetch(url, { cache: "no-store" });
+      if (r.ok){
+        const d = await r.json();
+        if (Array.isArray(d?.recipes) && d.recipes.length){
+          renderPatches(d.recipes);
+          return;
+        }
+      }
+    }catch(_){ /* sigue a fallback */ }
+
+    // 2) Fallback a /static/patches/global.json
+    try{
+      const g = await fetch("/static/patches/global.json", { cache:"no-store" });
+      if (g.ok){
+        const data = await g.json();
+        const patches = (data.patches||[]).filter(p =>
+          (p.compatible_ecu||[]).some(e => String(e).toUpperCase() === String(family).toUpperCase())
+          && (!engine || engine==="auto" || (p.engines||[]).map(x=>String(x).toLowerCase()).includes(engine.toLowerCase()))
+        );
+        renderPatches(patches);
+        return;
+      }
+    }catch(_){}
+
+    // Si nada funcionó:
+    renderPatches([]);
+  }
+
+  // ---------------- Analizar BIN ----------------
+  $("#btnAnalizar")?.addEventListener("click", async ()=>{
+    const f = $("#binfile")?.files?.[0];
     if(!f){ alert("Selecciona un BIN"); return; }
     if(!/\.(bin|mpc|org|e2p|101)$/i.test(f.name||"")){ alert("Formato no soportado."); return; }
 
@@ -175,7 +220,7 @@
     const data = await r.json();
     lastAnalysis = data;
 
-    // motor por heurística simple
+    // Motor heurístico
     if(/EDC|MD1|MJD|DCM|SID/i.test(data.ecu_type||"")) engineDetected="diesel";
     else if(/MED|MG1|MEVD|ME7/i.test(data.ecu_type||"")) engineDetected="petrol";
     else engineDetected="auto";
@@ -183,34 +228,26 @@
     setEcuInfoHtml();
     updateYaml({patch:{status:"not_selected"}});
 
-    // === MODO PRUEBA: Forzamos familia EDC17C81 (siempre)
-    await loadFamilyPatches("EDC17C81", engineDetected);
-  };
+    // Familia detectada (fallback a la de prueba)
+    const fam = (lastAnalysis?.ecu_type || "").trim() || "EDC17C81";
+    await loadFamilyPatches(fam, engineDetected);
+  });
 
-  async function loadFamilyPatches(family, engine){
-    try{
-      const url = `/public/recipes/${encodeURIComponent(family)}?engine=${encodeURIComponent(engine||"auto")}`;
-      const r = await fetch(url);
-      if(!r.ok){ renderPatches([]); return; }
-      const d = await r.json();
-      renderPatches(d.recipes||[]);
-    }catch{
-      renderPatches([]);
-    }
-  }
-
-  // --- Copiar YAML
+  // ---------------- Copiar YAML ----------------
   $("#btnCopyYaml")?.addEventListener("click", async ()=>{
-    try{ await navigator.clipboard.writeText(yamlBox.textContent||''); alert('YAML copiado.'); }
+    try{ await navigator.clipboard.writeText(yamlBox?.textContent||''); alert('YAML copiado.'); }
     catch{ alert("No se pudo copiar."); }
   });
 
-  // --- Init
+  // ---------------- Init ----------------
   (async function init(){
     fillBrands();
     setAuthUi(!!TOKEN);
     CURRENT_USER = await fetchMe();
     const isAdmin = !!CURRENT_USER && (CURRENT_USER.email || CURRENT_USER.username || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
-    if(isAdmin){ debugBox.style.display="block"; debugContent.innerHTML = `<small class="muted">Listo para mostrar offsets obtenidos del análisis</small>`; }
+    if(isAdmin && debugBox){ 
+      debugBox.style.display="block"; 
+      if(debugContent) debugContent.innerHTML = `<small class="muted">Debug listo (offsets cuando el backend los exponga)</small>`;
+    }
   })();
 })();
