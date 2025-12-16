@@ -1,8 +1,6 @@
 # app/routers/public.py
 from fastapi import APIRouter, UploadFile, File
-import hashlib
-from app.routers.public import router as public_router
-app.include_router(public_router)
+import zlib
 
 router = APIRouter(prefix="", tags=["public"])
 
@@ -11,10 +9,10 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
     data = await bin_file.read()
 
     size = len(data)
-    crc = hashlib.crc32(data) & 0xFFFFFFFF
+    crc = zlib.crc32(data) & 0xFFFFFFFF
 
-    # 🔥 detección ECU demo (realista)
-    ecu_type = "EDC17C81" if size > 2000000 else "UNKNOWN"
+    # Detección demo
+    ecu_type = "EDC17C81" if size > 2_000_000 else "UNKNOWN"
 
     return {
         "analysis_id": "demo-analysis-001",
@@ -24,4 +22,3 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_type": ecu_type,
         "ecu_part_number": None
     }
-
