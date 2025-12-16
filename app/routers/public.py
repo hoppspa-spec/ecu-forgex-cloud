@@ -1,6 +1,8 @@
 # app/routers/public.py
 from fastapi import APIRouter, UploadFile, File
 import hashlib
+from app.routers.public import router as public_router
+app.include_router(public_router)
 
 router = APIRouter(prefix="", tags=["public"])
 
@@ -22,3 +24,4 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_type": ecu_type,
         "ecu_part_number": None
     }
+
