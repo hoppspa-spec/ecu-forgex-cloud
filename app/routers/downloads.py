@@ -1,17 +1,17 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
-import tempfile
+from app.routers.orders import ORDERS_DB
 
 router = APIRouter(prefix="/download", tags=["download"])
 
 @router.get("/{order_id}")
 def download_bin(order_id: str):
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mod.bin")
-    tmp.write(f"ECU FORGE X - BIN MOD DEMO\nORDER={order_id}\n".encode("utf-8"))
-    tmp.close()
+    o = ORDERS_DB.get(order_id)
+    if not o or not o.get("download_ready"):
+        raise HTTPException(status_code=404, detail="Download not ready")
 
     return FileResponse(
-        tmp.name,
+        o["mod_file_path"],
         filename=f"ecu_forgex_{order_id}.mod.bin",
         media_type="application/octet-stream"
     )
