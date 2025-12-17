@@ -5,6 +5,10 @@ from fastapi.staticfiles import StaticFiles
 
 from app.routers.public import router as public_router
 from app.routers.admin import router as admin_router
+from app.routers.orders import router as orders_router
+from app.routers.downloads import router as downloads_router
+app.include_router(orders_router)
+app.include_router(downloads_router)
 
 app = FastAPI(title="ECU Forge X")
 
