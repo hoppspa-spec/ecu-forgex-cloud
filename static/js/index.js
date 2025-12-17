@@ -223,4 +223,23 @@
   // INIT
   fillBrands();
   updateYaml();
+    // ===== LOGIN DEMO =====
+  const btnLogin = document.getElementById("btnLogin");
+  const btnLogout = document.getElementById("btnLogout");
+
+  if (btnLogin) {
+    btnLogin.onclick = () => {
+      // te manda a la pantalla de login/listado (ajusta si tu ruta es otra)
+      location.href = "/static/usuarios.html?next=/static/index.html";
+    };
+  }
+
+  if (btnLogout) {
+    btnLogout.onclick = () => {
+      localStorage.removeItem("EFX_TOKEN");
+      alert("Sesión cerrada (demo).");
+      location.reload();
+    };
+  }
 })();
+
