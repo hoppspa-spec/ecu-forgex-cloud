@@ -1,0 +1,23 @@
+{
+  "family": "EDC17C81",
+  "engine": "diesel",
+  "patches": [
+    {
+      "id": "demo_signature",
+      "label": "DEMO SIGNATURE (safe test)",
+      "price": 59,
+      "rules": {
+        "min_size": 2000000,
+        "max_size": 4000000
+      },
+      "actions": [
+        {
+          "type": "patch_in_padding",
+          "needle_hex": "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF",
+          "write_ascii": "ECUFORGEX_DEMO_OK",
+          "max_scan_tail": 1048576
+        }
+      ]
+    }
+  ]
+}
