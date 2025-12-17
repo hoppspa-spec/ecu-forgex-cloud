@@ -1,3 +1,4 @@
+# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -10,7 +11,6 @@ from app.routers.downloads import router as downloads_router
 
 app = FastAPI(title="ECU Forge X")
 
-# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,7 +27,6 @@ app.include_router(admin_router)
 app.include_router(orders_router)
 app.include_router(downloads_router)
 
-# Home redirects
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/static/index.html")
@@ -36,7 +35,6 @@ def root():
 def admin_root():
     return RedirectResponse("/static/admin.html")
 
-# Health
 @app.get("/healthz")
 def healthz():
     return {"ok": True}
