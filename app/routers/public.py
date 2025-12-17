@@ -1,4 +1,3 @@
-# app/routers/public.py
 from fastapi import APIRouter, UploadFile, File
 import zlib
 
@@ -11,7 +10,7 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
     size = len(data)
     crc = zlib.crc32(data) & 0xFFFFFFFF
 
-    # Detección demo
+    # demo: detección ECU simple
     ecu_type = "EDC17C81" if size > 2_000_000 else "UNKNOWN"
 
     return {
