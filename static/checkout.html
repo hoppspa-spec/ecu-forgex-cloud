@@ -53,7 +53,7 @@
 <script>
 const $ = (q,el=document)=>el.querySelector(q);
 const params = new URLSearchParams(location.search);
-const ORDER_ID = (params.get("order_id") || "").trim(); // UUID string
+const ORDER_ID = params.get("order_id") || "";
 
 async function fetchOrder(){
   const box = $("#orderBox");
