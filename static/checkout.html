@@ -17,6 +17,7 @@
   .btn{background:var(--btn);border:0;color:#fff;padding:12px 16px;border-radius:10px;cursor:pointer;display:inline-block;text-align:center}
   .btn:hover{background:var(--btnh)}
   .btn.ok{background:var(--ok);color:#00150a}
+  .btn.gray{background:#374151}
   .actions{display:flex;flex-direction:column;gap:12px}
   .help li{margin:6px 0}
 </style>
@@ -34,8 +35,9 @@
     <div id="orderBox" class="muted">Cargando orden…</div>
 
     <div class="actions" style="margin-top:14px">
+      <button id="btnDemoPay" class="btn">✅ Confirmar pago DEMO</button>
       <a id="btnDownload" class="btn ok" style="display:none" download>⬇️ Descargar .MOD</a>
-      <a class="btn" href="/static/index.html">← Volver</a>
+      <a class="btn gray" href="/static/index.html">← Volver</a>
     </div>
 
     <div id="msg" class="muted" style="margin-top:10px"></div>
@@ -44,8 +46,8 @@
   <div class="card">
     <h3>Ayuda</h3>
     <ul class="help">
-      <li>Modo demo: la orden queda <b>paid</b> al tiro.</li>
-      <li>La descarga se hace desde <code>/download/&lt;order_id&gt;</code>.</li>
+      <li>Modo demo: confirmas el pago y se habilita descarga.</li>
+      <li>La descarga viene de <code>/download/&lt;order_id&gt;</code>.</li>
     </ul>
   </div>
 </div>
@@ -55,13 +57,30 @@ const $ = (q,el=document)=>el.querySelector(q);
 const params = new URLSearchParams(location.search);
 const ORDER_ID = params.get("order_id") || "";
 
+const TOKEN_KEY = "EFX_TOKEN";
+let TOKEN = localStorage.getItem(TOKEN_KEY) || null;
+
+function needAuth(){
+  if(!TOKEN){
+    $("#msg").textContent = "Debes iniciar sesión en la página principal.";
+    alert("Debes iniciar sesión (demo) primero.");
+    location.href = "/static/index.html";
+    return true;
+  }
+  return false;
+}
+
 async function fetchOrder(){
   const box = $("#orderBox");
   try{
     const r = await fetch(`/orders/${ORDER_ID}`, {
-      headers: { "Authorization":"Bearer "+TOKEN }
+      headers: { "Authorization":"Bearer " + TOKEN }
     });
-    if(!r.ok){ box.textContent = "No se pudo cargar la orden."; return null; }
+    if(!r.ok){
+      const t = await r.text().catch(()=>"(sin detalle)");
+      box.textContent = "No se pudo cargar la orden. " + t;
+      return null;
+    }
 
     const o = await r.json();
     box.innerHTML = `
@@ -72,7 +91,7 @@ async function fetchOrder(){
       <div class="row"><div class="muted">Monto</div><div>$59.00 <span class="muted">(demo)</span></div></div>
     `;
 
-    const dl = document.getElementById("btnDownload");
+    const dl = $("#btnDownload");
     if (o.status === "done" && o.download_ready){
       dl.style.display = "inline-block";
       dl.href = `/download/${o.id}`;
@@ -85,11 +104,13 @@ async function fetchOrder(){
     }
 
     return o;
-  }catch{
+  }catch(e){
     box.textContent = "Error de red.";
     return null;
   }
-  async function demoPay(){
+}
+
+async function demoPay(){
   $("#msg").textContent = "Procesando pago demo…";
 
   const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
@@ -98,7 +119,7 @@ async function fetchOrder(){
   });
 
   if(!r.ok){
-    const t = await r.text();
+    const t = await r.text().catch(()=>"(sin detalle)");
     $("#msg").textContent = "No se pudo confirmar el pago: " + t;
     return;
   }
@@ -106,14 +127,29 @@ async function fetchOrder(){
   const d = await r.json();
   $("#msg").textContent = "Pago confirmado. MOD listo ✅";
 
-  const dl = document.getElementById("btnDownload");
+  const dl = $("#btnDownload");
   dl.style.display = "inline-block";
-  dl.href = d.download_url;     // 👈 /download/{order_id}
+  dl.href = d.download_url; // /download/{order_id}
   dl.setAttribute("download", "");
   dl.textContent = "⬇️ Descargar .MOD";
 
   await fetchOrder();
 }
+
+function init(){
+  if(!ORDER_ID){
+    alert("Falta order_id en la URL");
+    $("#orderBox").textContent = "Falta order_id en la URL.";
+    return;
+  }
+  if(needAuth()) return;
+
+  $("#btnDemoPay").onclick = demoPay;
+  fetchOrder();
+}
+
+document.addEventListener("DOMContentLoaded", init);
 </script>
 </body>
 </html>
+
