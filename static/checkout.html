@@ -89,9 +89,31 @@ async function fetchOrder(){
     box.textContent = "Error de red.";
     return null;
   }
-}
+  async function demoPay(){
+  $("#msg").textContent = "Procesando pago demo…";
 
-document.addEventListener("DOMContentLoaded", fetchOrder);
+  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
+    method: "POST",
+    headers: { "Authorization": "Bearer " + TOKEN }
+  });
+
+  if(!r.ok){
+    const t = await r.text();
+    $("#msg").textContent = "No se pudo confirmar el pago: " + t;
+    return;
+  }
+
+  const d = await r.json();
+  $("#msg").textContent = "Pago confirmado. MOD listo ✅";
+
+  const dl = document.getElementById("btnDownload");
+  dl.style.display = "inline-block";
+  dl.href = d.download_url;     // 👈 /download/{order_id}
+  dl.setAttribute("download", "");
+  dl.textContent = "⬇️ Descargar .MOD";
+
+  await fetchOrder();
+}
 </script>
 </body>
 </html>
