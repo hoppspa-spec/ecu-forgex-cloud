@@ -14,9 +14,8 @@
   .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
   .row{display:grid;grid-template-columns:160px 1fr;gap:8px;margin:10px 0}
   .muted{color:var(--muted)}
-  .btn{background:var(--btn);border:0;color:#fff;padding:12px 16px;border-radius:10px;cursor:pointer}
+  .btn{background:var(--btn);border:0;color:#fff;padding:12px 16px;border-radius:10px;cursor:pointer;display:inline-block;text-align:center}
   .btn:hover{background:var(--btnh)}
-  .btn.gray{background:#374151}
   .btn.ok{background:var(--ok);color:#00150a}
   .actions{display:flex;flex-direction:column;gap:12px}
   .help li{margin:6px 0}
@@ -27,27 +26,26 @@
   <strong>ECU FORGE X</strong>
   <div class="grow"></div>
   <a href="/static/index.html">Subir BIN</a>
-  <a href="/static/usuarios.html">Mis órdenes</a>
 </header>
 
 <div class="wrap">
   <div class="card">
-    <h3>Checkout</h3>
+    <h3>Checkout (DEMO)</h3>
     <div id="orderBox" class="muted">Cargando orden…</div>
+
     <div class="actions" style="margin-top:14px">
-      <button id="btnPaypal" class="btn">Pagar con PayPal</button>
-      <button id="btnCard" class="btn gray">Tarjeta de débito o crédito</button>
-      <button id="btnDemo" class="btn ok">💳 Pago DEMO (confirmar sin PayPal)</button>
-      <a id="btnDownload" class="btn" style="display:none" download>⬇️ Descargar .MOD</a>
+      <a id="btnDownload" class="btn ok" style="display:none" download>⬇️ Descargar .MOD</a>
+      <a class="btn" href="/static/index.html">← Volver</a>
     </div>
+
     <div id="msg" class="muted" style="margin-top:10px"></div>
   </div>
 
   <div class="card">
     <h3>Ayuda</h3>
     <ul class="help">
-      <li>Si PayPal no carga en tu navegador, usa <b>Pago DEMO</b>.</li>
-      <li>La descarga requiere sesión iniciada.</li>
+      <li>Modo demo: la orden queda <b>paid</b> al tiro.</li>
+      <li>La descarga se hace desde <code>/download/&lt;order_id&gt;</code>.</li>
     </ul>
   </div>
 </div>
@@ -55,47 +53,43 @@
 <script>
 const $ = (q,el=document)=>el.querySelector(q);
 const params = new URLSearchParams(location.search);
-const ORDER_ID = Number(params.get("order_id") || "0");
-let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
-
-function needAuth(){
-  if(!TOKEN){
-    $("#msg").textContent = "Inicia sesión en la página principal para continuar.";
-    alert("Debes iniciar sesión para ver el checkout.");
-    location.href = "/static/index.html";
-    return true;
-  }
-  return false;
-}
+const ORDER_ID = (params.get("order_id") || "").trim(); // UUID string
 
 async function fetchOrder(){
   const box = $("#orderBox");
-  try{
-    const r = await fetch(`/orders/${ORDER_ID}`, {
-      headers: { "Authorization":"Bearer "+TOKEN }
-    });
-    if(!r.ok){ box.textContent = "No se pudo cargar la orden."; return null; }
+  const msg = $("#msg");
+  if(!ORDER_ID){
+    box.textContent = "Falta order_id en la URL.";
+    return null;
+  }
 
+  try{
+    const r = await fetch(`/orders/${encodeURIComponent(ORDER_ID)}`, { cache:"no-store" });
+    if(!r.ok){
+      const t = await r.text().catch(()=>"(sin detalle)");
+      box.textContent = "No se pudo cargar la orden: " + t;
+      return null;
+    }
     const o = await r.json();
+
     box.innerHTML = `
       <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
       <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
       <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
-      <div class="row"><div class="muted">Archivo</div><div>${o.original_filename || "—"}</div></div>
-      <div class="row"><div class="muted">Monto</div><div>$10.00 <span class="muted">(demo)</span></div></div>
+      <div class="row"><div class="muted">Analysis ID</div><div>${o.analysis_id}</div></div>
     `;
 
-    // si ya está listo, muestra descarga
-    const dl = document.getElementById("btnDownload");
-    if (o.status === "done" && o.mod_file_path){
+    // Demo: si está paid, habilitamos descarga inmediata
+    const dl = $("#btnDownload");
+    if(o.status === "paid"){
       dl.style.display = "inline-block";
-      dl.href = `/orders/${o.id}/download?access_token=${encodeURIComponent(TOKEN)}`;
-      dl.setAttribute("download", "");
-      dl.textContent = "⬇️ Descargar .MOD";
-    } else {
+      dl.href = `/download/${encodeURIComponent(o.id)}`;
+      dl.setAttribute("download","");
+      msg.textContent = "Pago demo OK. Descarga disponible.";
+    }else{
       dl.style.display = "none";
       dl.removeAttribute("href");
-      dl.removeAttribute("download");
+      msg.textContent = "Orden aún no pagada.";
     }
 
     return o;
@@ -105,47 +99,7 @@ async function fetchOrder(){
   }
 }
 
-
-async function demoPay(){
-  $("#msg").textContent = "Procesando pago demo…";
-
-  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
-    method: "POST",
-    headers: { "Authorization": "Bearer " + TOKEN }
-  });
-
-  if(!r.ok){
-    const t = await r.text();
-    $("#msg").textContent = "No se pudo confirmar el pago: " + t;
-    return;
-  }
-
-  const d = await r.json();
-  $("#msg").textContent = "Pago confirmado. MOD generado.";
-
-  // ACTIVAR BOTÓN DESCARGA
-  const dl = document.getElementById("btnDownload");
-  dl.style.display = "inline-block";
-  dl.href = d.download_url + `?access_token=${encodeURIComponent(TOKEN)}`;
-  dl.setAttribute("download", "");
-  dl.textContent = "⬇️ Descargar .MOD";
-
-  // refrescar panel por si quieres ver el estado "done"
-  await fetchOrder();
-  // (opcional) mini poll por latencias raras
-  setTimeout(fetchOrder, 600);
-}
-
-function wire(){
-  if(needAuth()) return;
-  if(!ORDER_ID){ alert("order_id faltante en la URL"); return; }
-  fetchOrder();
-  $("#btnDemo").onclick = demoPay;
-  // botones reales (colócale tu integración cuando la tengas):
-  $("#btnPaypal").onclick = ()=> alert("Integra PayPal aquí. Por ahora usa Pago DEMO.");
-  $("#btnCard").onclick   = ()=> alert("Integra tarjeta aquí. Por ahora usa Pago DEMO.");
-}
-document.addEventListener("DOMContentLoaded", wire);
+document.addEventListener("DOMContentLoaded", fetchOrder);
 </script>
 </body>
 </html>
