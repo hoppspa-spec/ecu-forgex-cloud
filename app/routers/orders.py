@@ -1,8 +1,8 @@
-# app/routers/orders.py
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import uuid
-from datetime import datetime
+import uuid, os, json, tempfile
+from app.routers.public import ANALYSIS_DB
+from app.services.patcher import apply_patch
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -10,78 +10,68 @@ class OrderCreate(BaseModel):
     analysis_id: str
     patch_option_id: str
 
-# ---- STORAGE DEMO (en memoria) ----
 ORDERS_DB = {}
 
-def _require_token(authorization: str | None):
-    # demo: basta con que exista algo como "Bearer xxx"
-    if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(status_code=401, detail="Missing token")
-    return authorization.split(" ", 1)[1].strip()
+RECIPES_BASE = os.path.join(os.path.dirname(__file__), "..", "recipes")
+
+def load_family(family: str):
+    path = os.path.join(RECIPES_BASE, f"{family}.json")
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Family recipe not found")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def find_patch(family_json: dict, patch_id: str):
+    for p in family_json.get("patches", []):
+        if p.get("id") == patch_id:
+            return p
+    return None
 
 @router.post("")
-def create_order(data: OrderCreate, authorization: str | None = Header(default=None)):
-    token = _require_token(authorization)
+def create_order(data: OrderCreate):
+    a = ANALYSIS_DB.get(data.analysis_id)
+    if not a:
+        raise HTTPException(status_code=404, detail="analysis_id not found")
+
+    family = a["ecu_type"]
+    fam = load_family(family)
+    patch = find_patch(fam, data.patch_option_id)
+    if not patch:
+        raise HTTPException(status_code=404, detail="patch_option_id not found for this family")
+
+    # reglas simples
+    size = a["bin_size"]
+    rules = patch.get("rules", {})
+    if rules.get("min_size") and size < int(rules["min_size"]):
+        raise HTTPException(status_code=400, detail="BIN too small for this patch")
+    if rules.get("max_size") and size > int(rules["max_size"]):
+        raise HTTPException(status_code=400, detail="BIN too large for this patch")
+
+    # aplicar patch real
+    mod_bytes = apply_patch(a["bytes"], patch)
+
+    # guardar mod temporal
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mod.bin")
+    tmp.write(mod_bytes)
+    tmp.close()
 
     order_id = str(uuid.uuid4())
     order = {
         "id": order_id,
         "analysis_id": data.analysis_id,
         "patch_option_id": data.patch_option_id,
-        "status": "pending_payment",
-        "created_at": datetime.utcnow().isoformat() + "Z",
-        "download_ready": False,
-        "token": token,  # 👈 para "mine" demo
+        "status": "done",                 # demo: queda listo
+        "download_ready": True,
+        "mod_file_path": tmp.name,
+        "original_filename": a["filename"],
+        "checkout_url": f"/static/checkout.html?order_id={order_id}"
     }
     ORDERS_DB[order_id] = order
-    return {
-        **order,
-        "checkout_url": f"/static/checkout.html?order_id={order_id}",
-    }
-
-@router.get("/mine")
-def my_orders(authorization: str | None = Header(default=None)):
-    token = _require_token(authorization)
-    orders = [o for o in ORDERS_DB.values() if o.get("token") == token]
-    return {"orders": orders}
+    return order
 
 @router.get("/{order_id}")
-def get_order(order_id: str, authorization: str | None = Header(default=None)):
-    token = _require_token(authorization)
+def get_order(order_id: str):
     o = ORDERS_DB.get(order_id)
     if not o:
         raise HTTPException(status_code=404, detail="Order not found")
-    if o.get("token") != token:
-        raise HTTPException(status_code=403, detail="Forbidden")
     return o
-
-@router.post("/{order_id}/confirm_payment")
-def confirm_payment(order_id: str, authorization: str | None = Header(default=None)):
-    token = _require_token(authorization)
-    o = ORDERS_DB.get(order_id)
-    if not o:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if o.get("token") != token:
-        raise HTTPException(status_code=403, detail="Forbidden")
-
-    o["status"] = "done"
-    o["download_ready"] = True
-
-    return {
-        "ok": True,
-        "order_id": order_id,
-        "download_url": f"/download/{order_id}"
-    }
-
-@router.get("/{order_id}/download")
-def download_link(order_id: str, authorization: str | None = Header(default=None)):
-    token = _require_token(authorization)
-    o = ORDERS_DB.get(order_id)
-    if not o:
-        raise HTTPException(status_code=404, detail="Order not found")
-    if o.get("token") != token:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    if not o.get("download_ready"):
-        raise HTTPException(status_code=409, detail="Not ready yet")
-    # redirige al router /download/{id}
-    return {"url": f"/download/{order_id}"}
