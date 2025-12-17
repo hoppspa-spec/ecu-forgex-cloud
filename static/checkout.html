@@ -57,43 +57,35 @@ const ORDER_ID = params.get("order_id") || "";
 
 async function fetchOrder(){
   const box = $("#orderBox");
-  const msg = $("#msg");
-  if(!ORDER_ID){
-    box.textContent = "Falta order_id en la URL.";
-    return null;
-  }
-
   try{
-    const r = await fetch(`/orders/${encodeURIComponent(ORDER_ID)}`, { cache:"no-store" });
-    if(!r.ok){
-      const t = await r.text().catch(()=>"(sin detalle)");
-      box.textContent = "No se pudo cargar la orden: " + t;
-      return null;
-    }
-    const o = await r.json();
+    const r = await fetch(`/orders/${ORDER_ID}`, {
+      headers: { "Authorization":"Bearer "+TOKEN }
+    });
+    if(!r.ok){ box.textContent = "No se pudo cargar la orden."; return null; }
 
+    const o = await r.json();
     box.innerHTML = `
       <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
       <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
       <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
-      <div class="row"><div class="muted">Analysis ID</div><div>${o.analysis_id}</div></div>
+      <div class="row"><div class="muted">Fecha</div><div>${o.created_at || "—"}</div></div>
+      <div class="row"><div class="muted">Monto</div><div>$59.00 <span class="muted">(demo)</span></div></div>
     `;
 
-    // Demo: si está paid, habilitamos descarga inmediata
-    const dl = $("#btnDownload");
-    if(o.status === "paid"){
+    const dl = document.getElementById("btnDownload");
+    if (o.status === "done" && o.download_ready){
       dl.style.display = "inline-block";
-      dl.href = `/download/${encodeURIComponent(o.id)}`;
-      dl.setAttribute("download","");
-      msg.textContent = "Pago demo OK. Descarga disponible.";
-    }else{
+      dl.href = `/download/${o.id}`;
+      dl.setAttribute("download", "");
+      dl.textContent = "⬇️ Descargar .MOD";
+    } else {
       dl.style.display = "none";
       dl.removeAttribute("href");
-      msg.textContent = "Orden aún no pagada.";
+      dl.removeAttribute("download");
     }
 
     return o;
-  }catch(e){
+  }catch{
     box.textContent = "Error de red.";
     return null;
   }
