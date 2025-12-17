@@ -1,11 +1,10 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.public import router as public_router
-from app.routers.admin import router as admin_router
+from app.routers.recipes import router as recipes_router
 from app.routers.orders import router as orders_router
 from app.routers.downloads import router as downloads_router
 
@@ -18,12 +17,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Routers
 app.include_router(public_router)
-app.include_router(admin_router)
+app.include_router(recipes_router)
 app.include_router(orders_router)
 app.include_router(downloads_router)
 
@@ -31,9 +28,6 @@ app.include_router(downloads_router)
 def root():
     return RedirectResponse("/static/index.html")
 
-@app.get("/admin", include_in_schema=False)
-def admin_root():
-    return RedirectResponse("/static/admin.html")
 
 @app.get("/healthz")
 def healthz():
