@@ -85,48 +85,40 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
     crc = zlib.crc32(data) & 0xFFFFFFFF
 
     ecu_type = "EDC17C81" if size > 2_000_000 else "UNKNOWN"
+    engine = "diesel"  # demo
     analysis_id = f"demo-{crc:08X}-{size}"
 
     ANALYSIS_DB[analysis_id] = {
         "bytes": data,
         "filename": bin_file.filename,
         "ecu_type": ecu_type,
+        "engine": engine,
         "bin_size": size,
-        "cvn_crc32": f"{crc:08X}"
+        "cvn_crc32": f"{crc:08X}",
     }
 
-    # 🔹 cargar parches desde global.json
-global_data = load_global_config()
-all_patches = global_data.get("patches", [])
+    # 🔹 cargar parches
+    global_data = load_global_config()
+    all_patches = global_data.get("patches", [])
 
-engine = "diesel"  # demo (luego se detecta real)
+    patches_out = []
+    for p in all_patches:
+        engines = p.get("engines")
+        if isinstance(engines, list):
+            if engine not in [e.lower() for e in engines]:
+                continue
 
-patches_out = []
-for p in all_patches:
-    # engine
-    engines = p.get("engines")
-    if isinstance(engines, list) and engine not in [e.lower() for e in engines]:
-        continue
+        if not ecu_matches(ecu_type, p.get("compatible_ecu", [])):
+            continue
 
-    # ecu match (EDC17C81)
-    if not ecu_matches(ecu_type, p.get("compatible_ecu", [])):
-        continue
+        patches_out.append(p)
 
-    patches_out.append(p)
-
-return {
-    "analysis_id": analysis_id,
-    "filename": bin_file.filename,
-    "bin_size": size,
-    "cvn_crc32": f"{crc:08X}",
-    "ecu_type": ecu_type,
-    "ecu_part_number": None,
-    "patches": patches_out
-}
-
+    return {
+        "analysis_id": analysis_id,
+        "filename": bin_file.filename,
+        "bin_size": size,
         "cvn_crc32": f"{crc:08X}",
         "ecu_type": ecu_type,
-        "ecu_part_number": None
+        "ecu_part_number": None,
+        "patches": patches_out
     }
-
-
