@@ -61,11 +61,22 @@
 </style>
 </head>
 <body>
-<header>
-  <strong>ECU FORGE X — Admin</strong>
-  <span class="badge">Recetas YAML</span>
-  <div class="grow"></div>
-  <a href="/static/index.html">← Volver</a>
+<header class="efx-topbar">
+  <div class="efx-title">ECU FORGE X</div>
+
+  <div class="efx-actions">
+    <button class="btn" onclick="location.href='/static/login.html'">
+      Iniciar sesión
+    </button>
+
+    <button class="btn" onclick="location.href='/static/register.html'">
+      Registro
+    </button>
+
+    <button class="btn" onclick="EFX.toggleTheme()" title="Dark / Light">
+      🌙 / ☀️
+    </button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -591,6 +602,7 @@ OFFSETS:
 
 </body>
 </html>
+
 
 
 
