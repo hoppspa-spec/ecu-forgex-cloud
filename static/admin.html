@@ -493,9 +493,159 @@ $("#btnGuardarYaml").onclick = async ()=>{
   ui.btn?.addEventListener("click", handleDiff);
 })();
 </script>
+<script>
+/* ===== Fingerprint local (SHA256 + CRC32 + size) para Stock/Mod ===== */
+(function(){
+  const $ = (q,el=document)=>el.querySelector(q);
+
+  // CRC32
+  function crc32(u8){
+    let c = 0xffffffff;
+    for (let i=0;i<u8.length;i++){
+      c ^= u8[i];
+      for (let k=0;k<8;k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    return ((c ^ 0xffffffff) >>> 0);
+  }
+  function hex8(n){ return n.toString(16).toUpperCase().padStart(8,"0"); }
+
+  // SHA-256 hex usando WebCrypto
+  async function sha256Hex(u8){
+    const hash = await crypto.subtle.digest("SHA-256", u8.buffer);
+    const b = new Uint8Array(hash);
+    return Array.from(b).map(x=>x.toString(16).padStart(2,"0")).join("").toUpperCase();
+  }
+
+  async function fileToU8(file){
+    return new Uint8Array(await file.arrayBuffer());
+  }
+
+  function parseOffsetLine(s){
+    // "10SW05263416 / $10001A" -> { value:"10SW...", offset:"$10001A" }
+    const raw = (s||"").trim();
+    if(!raw) return { value:null, offset:null };
+    const parts = raw.split("/").map(x=>x.trim());
+    if(parts.length === 1) return { value: parts[0] || null, offset: null };
+    return { value: parts[0] || null, offset: parts[1] || null };
+  }
+
+  async function buildFingerprintBlock(){
+    const fam = ($("#diff_ecu_family")?.value || "").trim().toUpperCase();
+    const pid = ($("#diff_patch_id")?.value || "").trim();
+
+    const stockFile = $("#diff_bin_stock")?.files?.[0] || null;
+    const modFile   = $("#diff_bin_mod")?.files?.[0] || null;
+
+    if(!stockFile || !modFile){
+      alert("Selecciona BIN Stock y BIN Modificado primero.");
+      return null;
+    }
+
+    const sw  = parseOffsetLine($("#fp_sw")?.value);
+    const mpc = parseOffsetLine($("#fp_mpc")?.value);
+    const ecu = parseOffsetLine($("#fp_ecu")?.value);
+
+    const stockU8 = await fileToU8(stockFile);
+    const modU8   = await fileToU8(modFile);
+
+    const stockSHA = await sha256Hex(stockU8);
+    const modSHA   = await sha256Hex(modU8);
+
+    const stockCVN = hex8(crc32(stockU8));
+    const modCVN   = hex8(crc32(modU8));
+
+    const block =
+`ECU_FAMILY=${fam || "—"}
+PATCH_ID=${pid || "—"}
+
+STOCK_FILE=${stockFile.name}
+STOCK_SIZE=${stockU8.length}
+STOCK_CVN_CRC32=${stockCVN}
+STOCK_SHA256=${stockSHA}
+
+MOD_FILE=${modFile.name}
+MOD_SIZE=${modU8.length}
+MOD_CVN_CRC32=${modCVN}
+MOD_SHA256=${modSHA}
+
+OFFSETS:
+  SW_NUMBER=${sw.value || "—"}
+  SW_OFFSET=${sw.offset || "—"}
+  MPC_TYPE=${mpc.value || "—"}
+  MPC_OFFSET=${mpc.offset || "—"}
+  ECU_LABEL=${ecu.value || "—"}
+  ECU_OFFSET=${ecu.offset || "—"}
+`;
+
+    return { block, stockSHA, stockCVN, stockSize: stockU8.length, modSHA, modCVN, modSize: modU8.length, offsets: {sw,mpc,ecu} };
+  }
+
+  // Botón calcular
+  $("#fp_calc")?.addEventListener("click", async ()=>{
+    try{
+      const out = await buildFingerprintBlock();
+      if(!out) return;
+      $("#fp_out").value = out.block;
+      alert("✅ Huellas calculadas (y listas para copiar).");
+    }catch(e){
+      alert("Error calculando huellas: " + (e?.message || e));
+    }
+  });
+
+  // Botón copiar
+  $("#fp_copy")?.addEventListener("click", async ()=>{
+    const text = ($("#fp_out")?.value || "").trim();
+    if(!text){ alert("Nada que copiar. Primero calcula huellas."); return; }
+    try{
+      await navigator.clipboard.writeText(text);
+      alert("📋 Copiado.");
+    }catch{
+      // fallback
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+      alert("📋 Copiado.");
+    }
+  });
+
+  // EXTRA: si quieres que diff2patch reciba offsets automáticamente,
+  // enganchamos el submit de diff2patch para adjuntar estos campos al FormData
+  // (NO rompe nada si tu backend no los usa todavía).
+  const origFetch = window.fetch;
+  window.fetch = async function(input, init){
+    try{
+      const url = typeof input === "string" ? input : (input?.url || "");
+      if(url.includes("/admin/diff2patch") && init?.body instanceof FormData){
+        // Adjuntamos campos si existen (sin pisar)
+        const fd = init.body;
+
+        const sw  = parseOffsetLine($("#fp_sw")?.value);
+        const mpc = parseOffsetLine($("#fp_mpc")?.value);
+        const ecu = parseOffsetLine($("#fp_ecu")?.value);
+
+        if(sw.value && !fd.has("sw_number")) fd.append("sw_number", sw.value);
+        if(sw.offset && !fd.has("sw_offset")) fd.append("sw_offset", sw.offset);
+        if(mpc.value && !fd.has("mpc_type")) fd.append("mpc_type", mpc.value);
+        if(mpc.offset && !fd.has("mpc_offset")) fd.append("mpc_offset", mpc.offset);
+        if(ecu.value && !fd.has("ecu_label")) fd.append("ecu_label", ecu.value);
+        if(ecu.offset && !fd.has("ecu_offset")) fd.append("ecu_offset", ecu.offset);
+
+        // (opcional) también adjunta las huellas si ya las calculaste
+        const fpTxt = ($("#fp_out")?.value || "").trim();
+        if(fpTxt && !fd.has("fingerprint_block")) fd.append("fingerprint_block", fpTxt);
+      }
+    } catch(_) {}
+    return origFetch.apply(this, arguments);
+  };
+})();
+</script>
 
 </body>
 </html>
+
 
 
 
