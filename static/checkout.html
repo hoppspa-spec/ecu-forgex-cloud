@@ -19,7 +19,8 @@
 <button class="btn" onclick="location.href='/static/usuarios.html#login'">Iniciar sesión</button>
 <button class="btn" onclick="location.href='/static/usuarios.html#register'">Registro</button>
 <button class="btn" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
-
+<button id="btnPay" class="btn">Confirmar pago DEMO</button>
+<a id="btnDownload" class="btn" href="#">Descargar .MOD</a>
   </div>
 </header>
 
@@ -189,6 +190,46 @@ document.addEventListener("DOMContentLoaded", init);
     }
 
     lockIfNeeded();
+  })();
+</script>
+<script>
+  (function () {
+    const payBtn = document.getElementById("btnPay");
+    const dlBtn  = document.getElementById("btnDownload");
+
+    // DEMO = true por ahora
+    const isDemo = true;
+
+    if (!isDemo) return;
+
+    const isLogged =
+      (localStorage.getItem("token") ||
+       localStorage.getItem("access_token") ||
+       localStorage.getItem("jwt") ||
+       sessionStorage.getItem("token") ||
+       sessionStorage.getItem("access_token"));
+
+    if (!isLogged) {
+      if (payBtn) {
+        payBtn.disabled = true;
+        payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
+      }
+      if (dlBtn) {
+        dlBtn.style.pointerEvents = "none";
+        dlBtn.style.opacity = "0.6";
+        dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
+      }
+
+      const box = document.createElement("div");
+      box.className = "card";
+      box.style.marginTop = "12px";
+      box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
+      (document.querySelector(".container") || document.body).appendChild(box);
+
+      const goLogin = () => location.href = "/static/usuarios.html#login?next=" + encodeURIComponent(location.href);
+      if (payBtn) payBtn.addEventListener("click", (e)=>{ e.preventDefault(); goLogin(); });
+      if (dlBtn)  dlBtn.addEventListener("click", (e)=>{ e.preventDefault(); goLogin(); });
+    }
   })();
 </script>
 </body>
