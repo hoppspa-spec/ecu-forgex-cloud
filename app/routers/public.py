@@ -95,12 +95,38 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "cvn_crc32": f"{crc:08X}"
     }
 
-    return {
-        "analysis_id": analysis_id,
-        "filename": bin_file.filename,
-        "bin_size": size,
+    # 🔹 cargar parches desde global.json
+global_data = load_global_config()
+all_patches = global_data.get("patches", [])
+
+engine = "diesel"  # demo (luego se detecta real)
+
+patches_out = []
+for p in all_patches:
+    # engine
+    engines = p.get("engines")
+    if isinstance(engines, list) and engine not in [e.lower() for e in engines]:
+        continue
+
+    # ecu match (EDC17C81)
+    if not ecu_matches(ecu_type, p.get("compatible_ecu", [])):
+        continue
+
+    patches_out.append(p)
+
+return {
+    "analysis_id": analysis_id,
+    "filename": bin_file.filename,
+    "bin_size": size,
+    "cvn_crc32": f"{crc:08X}",
+    "ecu_type": ecu_type,
+    "ecu_part_number": None,
+    "patches": patches_out
+}
+
         "cvn_crc32": f"{crc:08X}",
         "ecu_type": ecu_type,
         "ecu_part_number": None
     }
+
 
