@@ -1,17 +1,35 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from pathlib import Path
 from fastapi.responses import FileResponse
-from app.routers.orders import ORDERS_DB
+import tempfile
+
+from app.services.patch_engine import apply_patch
 
 router = APIRouter(prefix="/download", tags=["download"])
 
-@router.get("/{order_id}")
-def download_bin(order_id: str):
-    o = ORDERS_DB.get(order_id)
-    if not o or not o.get("download_ready"):
-        raise HTTPException(status_code=404, detail="Download not ready")
+@router.post("/{ecu_type}/{patch_id}")
+async def download_mod(
+    ecu_type: str,
+    patch_id: str,
+    stock: UploadFile = File(...)
+):
+    stock_bytes = await stock.read()
+    patch_dir = Path("app/data/patches") / ecu_type / patch_id
+
+    if not patch_dir.exists():
+        raise HTTPException(404, "Parche no existe")
+
+    try:
+        mod_bytes = apply_patch(stock_bytes, patch_dir)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mod.bin")
+    tmp.write(mod_bytes)
+    tmp.close()
 
     return FileResponse(
-        o["mod_file_path"],
-        filename=f"ecu_forgex_{order_id}.mod.bin",
+        tmp.name,
+        filename=f"{patch_id}.mod.bin",
         media_type="application/octet-stream"
     )
