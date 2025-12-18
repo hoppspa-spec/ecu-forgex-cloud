@@ -1,65 +1,16 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<link rel="stylesheet" href="/static/css/efx.css">
-<script src="/static/js/theme.js"></script>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ECU FORGE X — Admin de Recetas</title>
-<style>
-  :root{
-    --bg:#070b14; --card:#0c1222; --ink:#f1f5f9; --muted:#cbd5e1;
-    --stroke:#26334f; --brand:#0b1220; --btn:#1e40af; --btnh:#1d4ed8;
-    --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --focus:#93c5fd; --ink-strong:#ffffff;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
-  a{color:#a5b4fc;text-decoration:none}
-  header{background:var(--brand);color:var(--ink-strong);display:flex;align-items:center;gap:12px;padding:14px 18px}
-  header .grow{flex:1}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ECU FORGE X</title>
 
-  .wrap{padding:18px;display:grid;gap:18px}
-  .tabs{display:flex;gap:8px;flex-wrap:wrap}
-  .tab{padding:10px 12px;border:1px solid var(--stroke);border-bottom:none;border-radius:10px 10px 0 0;background:#0b1429;cursor:pointer;color:var(--ink)}
-  .tab.active{background:var(--card);font-weight:700;color:var(--ink-strong)}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/efx.css">
 
-  .grid{display:grid;gap:12px}
-  .g2{grid-template-columns:1fr 1fr}
-  label{font-size:13px;color:var(--muted)}
-  input,select,textarea,button{font:inherit}
-  input,select,textarea{
-    width:100%;padding:10px;border-radius:10px;border:1px solid var(--stroke);
-    background:#0b1429;color:var(--ink)
-  }
-  input:focus,select:focus,textarea:focus,.btn:focus{outline:2px solid var(--focus); outline-offset:2px;}
-  textarea{min-height:260px;font-family:ui-monospace,Consolas,Menlo}
-
-  .right{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-  .divider{height:1px;background:var(--stroke);margin:10px 0}
-  .badge{display:inline-block;padding:4px 10px;border-radius:999px;background:#182038;color:#eaf0ff;font-size:12px;border:1px solid #2a3b67}
-  .hide{display:none}
-
-  .btn{
-    background:var(--btn);color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;
-    letter-spacing:.3px;font-weight:700;box-shadow:0 0 0 1px #122a7a, 0 6px 16px rgba(0,0,0,.4);
-    transition:transform .05s ease, filter .12s ease, box-shadow .12s ease
-  }
-  .btn:hover{filter:brightness(1.12)}
-  .btn:active{transform:translateY(1px)}
-  .btn.secondary{background:#475569;box-shadow:0 0 0 1px #374151,0 6px 16px rgba(0,0,0,.4)}
-  .btn.success{background:var(--ok);box-shadow:0 0 0 1px #166534,0 6px 16px rgba(0,0,0,.4);color:#00150a}
-  .btn.warning{background:var(--warn);box-shadow:0 0 0 1px #b45309,0 6px 16px rgba(0,0,0,.4);color:#111827}
-  .btn.ghost{background:transparent;border:1px solid var(--stroke)}
-  .btn.small{padding:10px 14px;border-radius:10px}
-
-  .muted{color:var(--muted);font-size:13px}
-  .log{
-    background:#000;color:#e6fffa;font-family:ui-monospace,Menlo,Consolas;min-height:140px;
-    border-radius:10px;padding:12px;overflow:auto;border:1px solid #0b2830
-  }
-</style>
+  <script src="/static/js/theme.js"></script>
 </head>
+
 <body>
 <header class="efx-topbar">
   <div class="efx-title">ECU FORGE X</div>
@@ -602,6 +553,7 @@ OFFSETS:
 
 </body>
 </html>
+
 
 
 
