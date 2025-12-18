@@ -4,13 +4,9 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.routers.public import router as public_router
-from app.routers.recipes import router as recipes_router
+from app.routers.admin import router as admin_router
 from app.routers.orders import router as orders_router
 from app.routers.downloads import router as downloads_router
-from app.routers.diff2patch import router as diff2patch_router
-app.include_router(diff2patch_router)
-from app.routers.fingerprint import router as fingerprint_router
-app.include_router(fingerprint_router)
 
 app = FastAPI(title="ECU Forge X")
 
@@ -21,10 +17,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Routers (DESPUÉS de crear app)
 app.include_router(public_router)
-app.include_router(recipes_router)
+app.include_router(admin_router)
 app.include_router(orders_router)
 app.include_router(downloads_router)
 
@@ -32,6 +30,9 @@ app.include_router(downloads_router)
 def root():
     return RedirectResponse("/static/index.html")
 
+@app.get("/admin", include_in_schema=False)
+def admin_root():
+    return RedirectResponse("/static/admin.html")
 
 @app.get("/healthz")
 def healthz():
