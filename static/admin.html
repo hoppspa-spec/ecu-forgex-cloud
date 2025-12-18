@@ -175,7 +175,36 @@
         <input id="diff_bin_mod" type="file" />
       </div>
     </div>
+      <div class="divider"></div>
 
+  <!-- ======= Huellas / Fingerprint ======= -->
+  <div class="grid g2">
+    <div>
+      <label>SW number / offset</label>
+      <input id="fp_sw" placeholder='Ej: 10SW05263416 / $10001A' />
+    </div>
+    <div>
+      <label>MPC type / offset</label>
+      <input id="fp_mpc" placeholder='Ej: BASE_ECU TC1782 / $1000FD' />
+    </div>
+  </div>
+
+  <div class="grid g2">
+    <div>
+      <label>ECU type label / offset</label>
+      <input id="fp_ecu" placeholder='Ej: BOSCH EDC17C81 / $1000EE' />
+    </div>
+    <div class="right">
+      <button id="fp_calc" class="btn secondary small">🧬 Calcular huellas (Stock/Mod)</button>
+      <button id="fp_copy" class="btn small">📋 Copiar bloque</button>
+    </div>
+  </div>
+
+  <div>
+    <label>Bloque copiable (SHA256 / CVN / Size + Offsets)</label>
+    <textarea id="fp_out" spellcheck="false" placeholder="Aquí aparecerán las huellas…"></textarea>
+    <div class="muted">Tip: esto te evita las “3 vidas” porque te obliga a guardar el SHA-256 exacto del stock base.</div>
+  </div>
     <div class="grid g2">
       <label class="muted"><input type="checkbox" id="diff_auto" /> Guardar automáticamente en /storage/recipes</label>
       <div class="right"><button id="diff_go" class="btn small">Generar YAML</button></div>
@@ -467,5 +496,6 @@ $("#btnGuardarYaml").onclick = async ()=>{
 
 </body>
 </html>
+
 
 
