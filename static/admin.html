@@ -15,9 +15,12 @@
 <header class="efx-topbar">
   <div class="brand">ECU FORGE X</div>
 
-  <button class="btn" onclick="location.href='/static/usuarios.html#login'">Iniciar sesión</button>
-<button class="btn" onclick="location.href='/static/usuarios.html#register'">Registro</button>
-<button class="btn" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+<div class="efx-actions">
+  <button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
+  <button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
+  <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+  <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
+</div>
 
   </div>
 </header>
@@ -545,6 +548,7 @@ OFFSETS:
 
 </body>
 </html>
+
 
 
 
