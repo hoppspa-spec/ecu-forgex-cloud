@@ -23,24 +23,19 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-    <button id="btnLogin" class="btn"
-      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
-      Iniciar sesión
-    </button>
+  <button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
+  <button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
 
-    <button id="btnRegister" class="btn"
-      onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
-      Registro
-    </button>
+  <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
 
-    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+  <button id="btnPay" class="btn">Confirmar pago DEMO</button>
 
-    <!-- Estos 2 son “top shortcuts” (opcionales), el real es el de abajo -->
-    <button id="btnPayTop" class="btn" type="button">Confirmar pago DEMO</button>
-    <a id="btnDownloadTop" class="btn" href="#" style="display:none">Descargar .MOD</a>
+  <!-- IMPORTANTE: que sea botón visual, no link azul default -->
+  <a id="btnDownload" class="btn" href="#" style="display:none">Descargar .MOD</a>
 
-    <button id="btnLogout" class="btn" style="display:none" type="button">Cerrar sesión</button>
-  </div>
+  <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
+</div>
+
 </header>
 
 <div class="wrap">
