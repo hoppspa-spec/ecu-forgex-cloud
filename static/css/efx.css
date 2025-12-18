@@ -32,3 +32,51 @@
 .efx-actions .btn.icon {
   padding: 6px 8px;
 }
+/* Topbar layout */
+.efx-topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 16px;
+  border-bottom:2px solid var(--stroke, #2f3a4a);
+}
+
+.efx-topbar .brand{
+  font-weight:800;
+  letter-spacing:.3px;
+}
+
+/* Actions group */
+.efx-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+
+/* Button sizing (pro) */
+.efx-actions .btn{
+  width:auto;                 /* evita botones gigantes */
+  padding:8px 12px;
+  border-radius:10px;
+  font-size:14px;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  text-decoration:none;       /* por si es <a> */
+}
+
+.efx-actions .btn.icon{
+  padding:8px 10px;
+  min-width:46px;
+}
+
+/* evita que links se vean "azul subrayado" */
+.efx-actions a.btn{
+  color:inherit;
+}
+
