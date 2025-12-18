@@ -7,6 +7,9 @@ from app.routers.public import router as public_router
 from app.routers.recipes import router as recipes_router
 from app.routers.orders import router as orders_router
 from app.routers.downloads import router as downloads_router
+from app.routers.diff2patch import router as diff2patch_router
+app.include_router(diff2patch_router)
+
 
 app = FastAPI(title="ECU Forge X")
 
