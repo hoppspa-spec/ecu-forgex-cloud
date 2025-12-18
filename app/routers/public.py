@@ -75,36 +75,33 @@ import json
 from fastapi import HTTPException
 
 def load_global_config() -> dict:
-    # Raíz del repo (…/app/routers/public.py -> …/ )
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[2]  # .../src
 
     candidates = [
         repo_root / "static" / "global.json",
+        repo_root / "static" / "patches" / "global.json",  # 👈 TU CASO
         repo_root / "global.json",
         Path("static") / "global.json",
+        Path("static") / "patches" / "global.json",        # 👈 TU CASO
         Path("global.json"),
     ]
 
     path = next((p for p in candidates if p.exists()), None)
 
     if not path:
-        # No explotar: el sistema funciona pero sin parches
-        return {
-            "generated_at": None,
-            "patches": [],
-            "packs": [],
-            "_warning": "global.json not found in expected paths"
-        }
+        raise HTTPException(
+            status_code=500,
+            detail="global.json no encontrado. Esperado en static/global.json o static/patches/global.json"
+        )
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            cfg = json.load(f)
+        # log útil para Render
+        print(f"[ECU FORGE X] global.json loaded from: {path}")
+        return cfg
     except json.JSONDecodeError as e:
-        # Esto sí conviene gritarlo
-        raise HTTPException(
-            status_code=500,
-            detail=f"global.json JSON inválido ({path}): {e}"
-        )
+        raise HTTPException(status_code=500, detail=f"global.json inválido ({path}): {e}")
 
 @router.post("/analyze_bin")
 async def analyze_bin(bin_file: UploadFile = File(...)):
@@ -150,5 +147,6 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_part_number": None,
         "patches": patches_out
     }
+
 
 
