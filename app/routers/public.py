@@ -133,7 +133,7 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
     for p in all_patches:
         engines = p.get("engines")
         if isinstance(engines, list):
-            if engine not in [e.lower() for e in engines]:
+            if engine not in [str(e).lower() for e in engines]:
                 continue
 
         if not ecu_matches(ecu_type, p.get("compatible_ecu", [])):
@@ -150,4 +150,5 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_part_number": None,
         "patches": patches_out
     }
+
 
