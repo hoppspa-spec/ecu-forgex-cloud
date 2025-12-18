@@ -1,32 +1,34 @@
-/* Barra superior */
-.efx-topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
+/* ===== HEADER / TOPBAR ===== */
+.efx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 2px solid var(--stroke);
+  background: var(--card);
 }
 
-.efx-actions{
-  display:flex;
-  gap:8px;
+.efx-title,
+.brand {
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: .3px;
 }
 
-.efx-actions button{
-  width:auto;
-  padding:8px 12px;
+.efx-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-/* 🌙 DARK MODE */
-[data-theme="dark"]{
-  --bg:#0b1020;
-  --ink:#e6ebff;
-  --muted:#9aa4bf;
-  --stroke:#334155;
-  --card:#0f172a;
-  --chip:#111827;
+.efx-actions .btn {
+  padding: 6px 10px;
+  font-size: 13px;
+  border-radius: 6px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
-[data-theme="dark"] input,
-[data-theme="dark"] select{
-  background:#0b1020;
-  color:var(--ink);
+.efx-actions .btn.icon {
+  padding: 6px 8px;
 }
