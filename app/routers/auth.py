@@ -118,11 +118,24 @@ def login(data: LoginIn):
     token = make_token(row["email"])
     return {"access_token": token, "token_type": "bearer"}
 
+from fastapi import Request
+
 @router.get("/me")
-def me(authorization: str | None = None):
-    # Lee header Authorization: Bearer <token>
-    # FastAPI: lo tomamos desde request headers con dependency simple
-    from fastapi import Request
-    def _get_req(req: Request): return req
-    req = Depends(_get_req)  # placeholder; FastAPI no ejecuta esto aquí
-    raise HTTPException(500, "Misconfigured")  # se sobrescribe abajo
+def me(request: Request):
+    auth = request.headers.get("authorization") or ""
+    parts = auth.split()
+
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(401, "Missing bearer token")
+
+    token = parts[1]
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALG])
+        email = payload.get("sub")
+        if not email:
+            raise HTTPException(401, "Invalid token")
+        return {"email": email}
+    except JWTError:
+        raise HTTPException(401, "Invalid token")
+
+
