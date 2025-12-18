@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="/static/css/efx.css">
 
   <script src="/static/js/theme.js"></script>
+
+  <!-- ✅ Ajuste PRO para que los botones del header no queden gigantes -->
+  <style>
+    .efx-topbar .btn{ width:auto; padding:6px 12px; font-size:13px; }
+    .efx-topbar .btn.icon{ padding:6px 10px; }
+    .efx-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  </style>
 </head>
 
 <body>
@@ -16,11 +23,23 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-<button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
-<button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
-<button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button><button id="btnPay" class="btn">Confirmar pago DEMO</button>
-<a id="btnDownload" class="btn" href="#">Descargar .MOD</a>
-<button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
+    <button id="btnLogin" class="btn"
+      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
+      Iniciar sesión
+    </button>
+
+    <button id="btnRegister" class="btn"
+      onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
+      Registro
+    </button>
+
+    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+
+    <!-- Estos 2 son “top shortcuts” (opcionales), el real es el de abajo -->
+    <button id="btnPayTop" class="btn" type="button">Confirmar pago DEMO</button>
+    <a id="btnDownloadTop" class="btn" href="#" style="display:none">Descargar .MOD</a>
+
+    <button id="btnLogout" class="btn" style="display:none" type="button">Cerrar sesión</button>
   </div>
 </header>
 
@@ -30,8 +49,11 @@
     <div id="orderBox" class="muted">Cargando orden…</div>
 
     <div class="actions" style="margin-top:14px">
-      <button id="btnDemoPay" class="btn">✅ Confirmar pago DEMO</button>
-      <a id="btnDownload" class="btn ok" style="display:none" download>⬇️ Descargar .MOD</a>
+      <button id="btnDemoPay" class="btn" type="button">✅ Confirmar pago DEMO</button>
+
+      <!-- ✅ ESTE ES EL ÚNICO btnDownload REAL (antes tenías 2 con el mismo ID) -->
+      <a id="btnDownload" class="btn ok" href="#" style="display:none" download>⬇️ Descargar .MOD</a>
+
       <a class="btn gray" href="/static/index.html">← Volver</a>
     </div>
 
@@ -48,18 +70,123 @@
 </div>
 
 <script>
+/* =========================================================
+   ✅ auth.js INLINE (mínimo REAL) — NO rompe lo logrado
+   - Token en localStorage EFX_TOKEN (y compat keys)
+   - applyHeaderAuth(): muestra/oculta botones
+   - requireLogin(next): redirige con next
+   - logout(): borra tokens
+========================================================= */
+(function () {
+  const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
+
+  function getToken(){
+    for (const k of TOKEN_KEYS){
+      const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+      if (v && String(v).trim()) return String(v).trim();
+    }
+    return null;
+  }
+
+  function setToken(token, persist=true){
+    // guardamos en la key oficial
+    if (persist) localStorage.setItem("EFX_TOKEN", token);
+    else sessionStorage.setItem("EFX_TOKEN", token);
+  }
+
+  function clearToken(){
+    for (const k of TOKEN_KEYS){
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    }
+  }
+
+  function isLoggedIn(){
+    return !!getToken();
+  }
+
+  function requireLogin(nextUrl){
+    const next = encodeURIComponent(nextUrl || location.href);
+    location.href = "/static/usuarios.html#login?next=" + next;
+  }
+
+  function applyHeaderAuth(){
+    const btnLogin = document.getElementById("btnLogin");
+    const btnReg   = document.getElementById("btnRegister");
+    const btnOut   = document.getElementById("btnLogout");
+
+    const logged = isLoggedIn();
+
+    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-block";
+    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-block";
+    if (btnOut)   btnOut.style.display   = logged ? "inline-block" : "none";
+
+    // logout handler
+    if (btnOut && !btnOut.dataset.bound){
+      btnOut.dataset.bound = "1";
+      btnOut.addEventListener("click", () => {
+        clearToken();
+        // vuelve al index para que se note el estado
+        location.href = "/static/index.html";
+      });
+    }
+  }
+
+  // expone API global
+  window.EFX = window.EFX || {};
+  window.EFX.getToken = getToken;
+  window.EFX.setToken = setToken;
+  window.EFX.clearToken = clearToken;
+  window.EFX.isLoggedIn = isLoggedIn;
+  window.EFX.requireLogin = requireLogin;
+  window.EFX.applyHeaderAuth = applyHeaderAuth;
+
+  // theme.js puede definir toggleTheme; si no, evitamos crash
+  if (!window.EFX.toggleTheme){
+    window.EFX.toggleTheme = function(){
+      document.documentElement.classList.toggle("dark");
+    };
+  }
+})();
+</script>
+
+<script>
+/* =========================================================
+   Checkout lógica (orden + pago demo + descarga)
+========================================================= */
 const $ = (q,el=document)=>el.querySelector(q);
 const params = new URLSearchParams(location.search);
 const ORDER_ID = params.get("order_id") || "";
 
-const TOKEN_KEY = "EFX_TOKEN";
-let TOKEN = localStorage.getItem(TOKEN_KEY) || null;
+function lockForAuthIfNeeded(){
+  const isDemo = true;
+  if (!isDemo) return false;
 
-function needAuth(){
-  if(!TOKEN){
-    $("#msg").textContent = "Debes iniciar sesión en la página principal.";
-    alert("Debes iniciar sesión (demo) primero.");
-    location.href = "/static/index.html";
+  if (!EFX.isLoggedIn()){
+    // Bloquea botones de pago/descarga
+    const payBtns = [$("#btnDemoPay"), $("#btnPayTop")].filter(Boolean);
+    for (const b of payBtns){
+      b.disabled = true;
+      b.title = "Debes iniciar sesión para continuar (DEMO)";
+      b.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
+    }
+
+    const dls = [$("#btnDownload"), $("#btnDownloadTop")].filter(Boolean);
+    for (const a of dls){
+      a.style.pointerEvents = "none";
+      a.style.opacity = "0.6";
+      a.title = "Debes iniciar sesión para descargar (DEMO)";
+      a.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
+    }
+
+    // Mensaje claro
+    const box = document.createElement("div");
+    box.className = "card";
+    box.style.marginTop = "12px";
+    box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
+    (document.querySelector(".wrap") || document.body).appendChild(box);
+
+    $("#msg").textContent = "Debes iniciar sesión para continuar.";
     return true;
   }
   return false;
@@ -69,8 +196,9 @@ async function fetchOrder(){
   const box = $("#orderBox");
   try{
     const r = await fetch(`/orders/${ORDER_ID}`, {
-      headers: { "Authorization":"Bearer " + TOKEN }
+      headers: { "Authorization":"Bearer " + EFX.getToken() }
     });
+
     if(!r.ok){
       const t = await r.text().catch(()=>"(sin detalle)");
       box.textContent = "No se pudo cargar la orden. " + t;
@@ -83,19 +211,37 @@ async function fetchOrder(){
       <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
       <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
       <div class="row"><div class="muted">Fecha</div><div>${o.created_at || "—"}</div></div>
-      <div class="row"><div class="muted">Monto</div><div>$59.00 <span class="muted">(demo)</span></div></div>
+      <div class="row"><div class="muted">Monto</div><div>$${(o.price_usd ?? 59).toFixed ? (o.price_usd ?? 59).toFixed(2) : "59.00"} <span class="muted">(demo)</span></div></div>
     `;
 
-    const dl = $("#btnDownload");
-    if (o.status === "done" && o.download_ready){
-      dl.style.display = "inline-block";
-      dl.href = `/download/${o.id}`;
-      dl.setAttribute("download", "");
-      dl.textContent = "⬇️ Descargar .MOD";
+    // Si ya está paid/download_ready, habilita descarga
+    const canDownload = (o.status === "paid" || o.status === "done") && !!o.download_ready;
+
+    const dlMain = $("#btnDownload");
+    const dlTop  = $("#btnDownloadTop");
+
+    if (canDownload){
+      const url = `/download/${o.id}`;
+      if (dlMain){
+        dlMain.style.display = "inline-block";
+        dlMain.href = url;
+        dlMain.setAttribute("download", "");
+        dlMain.textContent = "⬇️ Descargar .MOD";
+      }
+      if (dlTop){
+        dlTop.style.display = "inline-block";
+        dlTop.href = url;
+      }
     } else {
-      dl.style.display = "none";
-      dl.removeAttribute("href");
-      dl.removeAttribute("download");
+      if (dlMain){
+        dlMain.style.display = "none";
+        dlMain.removeAttribute("href");
+        dlMain.removeAttribute("download");
+      }
+      if (dlTop){
+        dlTop.style.display = "none";
+        dlTop.removeAttribute("href");
+      }
     }
 
     return o;
@@ -110,7 +256,7 @@ async function demoPay(){
 
   const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
     method: "POST",
-    headers: { "Authorization": "Bearer " + TOKEN }
+    headers: { "Authorization": "Bearer " + EFX.getToken() }
   });
 
   if(!r.ok){
@@ -122,11 +268,22 @@ async function demoPay(){
   const d = await r.json();
   $("#msg").textContent = "Pago confirmado. MOD listo ✅";
 
-  const dl = $("#btnDownload");
-  dl.style.display = "inline-block";
-  dl.href = d.download_url; // /download/{order_id}
-  dl.setAttribute("download", "");
-  dl.textContent = "⬇️ Descargar .MOD";
+  // habilita descarga inmediata
+  const url = d.download_url || `/download/${ORDER_ID}`;
+
+  const dlMain = $("#btnDownload");
+  const dlTop  = $("#btnDownloadTop");
+
+  if (dlMain){
+    dlMain.style.display = "inline-block";
+    dlMain.href = url;
+    dlMain.setAttribute("download", "");
+    dlMain.textContent = "⬇️ Descargar .MOD";
+  }
+  if (dlTop){
+    dlTop.style.display = "inline-block";
+    dlTop.href = url;
+  }
 
   await fetchOrder();
 }
@@ -137,102 +294,25 @@ function init(){
     $("#orderBox").textContent = "Falta order_id en la URL.";
     return;
   }
-  if(needAuth()) return;
 
-  $("#btnDemoPay").onclick = demoPay;
+  // Ajusta header según auth
+  EFX.applyHeaderAuth();
+
+  // Si no hay login => bloquea y redirige con next
+  if (lockForAuthIfNeeded()) return;
+
+  // Bind botones
+  const btnDemo = $("#btnDemoPay");
+  const btnTopPay = $("#btnPayTop");
+
+  if (btnDemo) btnDemo.onclick = demoPay;
+  if (btnTopPay) btnTopPay.onclick = demoPay;
+
   fetchOrder();
 }
 
 document.addEventListener("DOMContentLoaded", init);
 </script>
-<script>
-  (function () {
-    // intenta pillar botones por texto o por ids comunes
-    const payBtn =
-      document.querySelector("#btnPay") ||
-      document.querySelector("#payBtn") ||
-      Array.from(document.querySelectorAll("button")).find(b => b.textContent.toLowerCase().includes("confirmar pago"));
 
-    const dlBtn =
-      document.querySelector("#btnDownload") ||
-      document.querySelector("#downloadBtn") ||
-      Array.from(document.querySelectorAll("a,button")).find(b => b.textContent.toLowerCase().includes("descargar"));
-
-    const isDemo = true; // en tu checkout dice DEMO, así que lo dejamos fijo por ahora
-
-    function lockIfNeeded() {
-      if (!isDemo) return;
-
-      if (!window.EFX || !EFX.isLoggedIn || !EFX.isLoggedIn()) {
-        if (payBtn) {
-          payBtn.disabled = true;
-          payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
-        }
-        if (dlBtn) {
-          // si es <a> lo deshabilitamos “a mano”
-          dlBtn.style.pointerEvents = "none";
-          dlBtn.style.opacity = "0.6";
-          dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
-        }
-
-        // mensaje claro
-        const box = document.createElement("div");
-        box.className = "card";
-        box.style.marginTop = "12px";
-        box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
-        const target = document.querySelector(".container") || document.body;
-        target.appendChild(box);
-
-        // si hacen click igual, mandamos a login
-        if (payBtn) payBtn.addEventListener("click", (e) => { e.preventDefault(); EFX.requireLogin(location.href); });
-        if (dlBtn) dlBtn.addEventListener("click", (e) => { e.preventDefault(); EFX.requireLogin(location.href); });
-      }
-    }
-
-    lockIfNeeded();
-  })();
-</script>
-<script>
-  (function () {
-    const payBtn = document.getElementById("btnPay");
-    const dlBtn  = document.getElementById("btnDownload");
-
-    // DEMO = true por ahora
-    const isDemo = true;
-
-    if (!isDemo) return;
-
-    const isLogged =
-      (localStorage.getItem("token") ||
-       localStorage.getItem("access_token") ||
-       localStorage.getItem("jwt") ||
-       sessionStorage.getItem("token") ||
-       sessionStorage.getItem("access_token"));
-
-    if (!isLogged) {
-      if (payBtn) {
-        payBtn.disabled = true;
-        payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
-      }
-      if (dlBtn) {
-        dlBtn.style.pointerEvents = "none";
-        dlBtn.style.opacity = "0.6";
-        dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
-      }
-
-      const box = document.createElement("div");
-      box.className = "card";
-      box.style.marginTop = "12px";
-      box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
-      (document.querySelector(".container") || document.body).appendChild(box);
-
-      const goLogin = () => location.href = "/static/usuarios.html#login?next=" + encodeURIComponent(location.href);
-      if (payBtn) payBtn.addEventListener("click", (e)=>{ e.preventDefault(); goLogin(); });
-      if (dlBtn)  dlBtn.addEventListener("click", (e)=>{ e.preventDefault(); goLogin(); });
-    }
-  })();
-</script>
 </body>
 </html>
-
-
