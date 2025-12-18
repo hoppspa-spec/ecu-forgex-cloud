@@ -5,23 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>ECU FORGE X — Admin de Recetas</title>
 <style>
-  /* ====== PALETA CON ALTO CONTRASTE ====== */
   :root{
-    --bg:#070b14;
-    --card:#0c1222;
-    --ink:#f1f5f9;
-    --muted:#cbd5e1;
-    --stroke:#26334f;
-    --brand:#0b1220;
-    --btn:#1e40af;
-    --btnh:#1d4ed8;
-    --ok:#16a34a;
-    --warn:#f59e0b;
-    --err:#ef4444;
-    --focus:#93c5fd;
-    --ink-strong:#ffffff;
+    --bg:#070b14; --card:#0c1222; --ink:#f1f5f9; --muted:#cbd5e1;
+    --stroke:#26334f; --brand:#0b1220; --btn:#1e40af; --btnh:#1d4ed8;
+    --ok:#16a34a; --warn:#f59e0b; --err:#ef4444; --focus:#93c5fd; --ink-strong:#ffffff;
   }
-
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
   a{color:#a5b4fc;text-decoration:none}
@@ -42,9 +30,7 @@
     width:100%;padding:10px;border-radius:10px;border:1px solid var(--stroke);
     background:#0b1429;color:var(--ink)
   }
-  input:focus,select:focus,textarea:focus,.btn:focus{
-    outline:2px solid var(--focus); outline-offset:2px;
-  }
+  input:focus,select:focus,textarea:focus,.btn:focus{outline:2px solid var(--focus); outline-offset:2px;}
   textarea{min-height:260px;font-family:ui-monospace,Consolas,Menlo}
 
   .right{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
@@ -52,7 +38,6 @@
   .badge{display:inline-block;padding:4px 10px;border-radius:999px;background:#182038;color:#eaf0ff;font-size:12px;border:1px solid #2a3b67}
   .hide{display:none}
 
-  /* ====== BOTONES ALTO CONTRASTE ====== */
   .btn{
     background:var(--btn);color:#fff;border:0;border-radius:12px;padding:12px 18px;cursor:pointer;
     letter-spacing:.3px;font-weight:700;box-shadow:0 0 0 1px #122a7a, 0 6px 16px rgba(0,0,0,.4);
@@ -92,7 +77,7 @@
     <div class="grid g2">
       <div>
         <label>ECU Family (carpeta)</label>
-        <input id="ecu_family" placeholder="Ej: EDC17CP45, MED17, MG1, MD1"/>
+        <input id="ecu_family" placeholder="Ej: EDC17C81, EDC17CP45, MED17, MG1, MD1"/>
       </div>
       <div>
         <label>Patch ID (nombre archivo)</label>
@@ -134,16 +119,14 @@
 
     <div class="right">
       <button class="btn" id="btnPlantilla">Cargar plantilla</button>
-      <button class="btn secondary" id="btnPlantilla2">Cargar plantilla</button>
+      <button class="btn secondary" id="btnPlantilla2">Cargar plantilla (archivo)</button>
       <button class="btn warning" id="btnValidar">Validar YAML</button>
       <button class="btn" id="btnGuardarYaml">Guardar sin catálogo</button>
       <button class="btn success" id="btnGuardar">Guardar receta + catálogo</button>
       <button class="btn ghost" id="btnExport">⬇️ Descargar recetas (.zip)</button>
     </div>
 
-    <!-- inputs de archivo ocultos -->
-    <input type="file" id="tplFile1" class="tpl-input" accept=".yml,.yaml,.json,.txt" style="display:none"/>
-    <input type="file" id="tplFile2" class="tpl-input" accept=".yml,.yaml,.json,.txt" style="display:none"/>
+    <input type="file" id="tplFile2" accept=".yml,.yaml,.json,.txt" style="display:none"/>
 
     <div class="divider"></div>
     <div>
@@ -157,7 +140,7 @@
     <div class="grid g2">
       <div>
         <label>ECU Family (validación)</label>
-        <input id="diff_ecu_family" placeholder="Ej: EDC17CP45, MEVD17, MD1CS004"/>
+        <input id="diff_ecu_family" placeholder="Ej: EDC17C81, EDC17CP45, MEVD17, MD1CS004"/>
       </div>
       <div>
         <label>Patch ID</label>
@@ -175,36 +158,38 @@
         <input id="diff_bin_mod" type="file" />
       </div>
     </div>
-      <div class="divider"></div>
 
-  <!-- ======= Huellas / Fingerprint ======= -->
-  <div class="grid g2">
-    <div>
-      <label>SW number / offset</label>
-      <input id="fp_sw" placeholder='Ej: 10SW05263416 / $10001A' />
-    </div>
-    <div>
-      <label>MPC type / offset</label>
-      <input id="fp_mpc" placeholder='Ej: BASE_ECU TC1782 / $1000FD' />
-    </div>
-  </div>
+    <div class="divider"></div>
 
-  <div class="grid g2">
-    <div>
-      <label>ECU type label / offset</label>
-      <input id="fp_ecu" placeholder='Ej: BOSCH EDC17C81 / $1000EE' />
+    <!-- Fingerprint -->
+    <div class="grid g2">
+      <div>
+        <label>SW number / offset</label>
+        <input id="fp_sw" placeholder='Ej: 10SW05263416 / $10001A' />
+      </div>
+      <div>
+        <label>MPC type / offset</label>
+        <input id="fp_mpc" placeholder='Ej: BASE_ECU TC1782 / $1000FD' />
+      </div>
     </div>
-    <div class="right">
-      <button id="fp_calc" class="btn secondary small">🧬 Calcular huellas (Stock/Mod)</button>
-      <button id="fp_copy" class="btn small">📋 Copiar bloque</button>
-    </div>
-  </div>
 
-  <div>
-    <label>Bloque copiable (SHA256 / CVN / Size + Offsets)</label>
-    <textarea id="fp_out" spellcheck="false" placeholder="Aquí aparecerán las huellas…"></textarea>
-    <div class="muted">Tip: esto te evita las “3 vidas” porque te obliga a guardar el SHA-256 exacto del stock base.</div>
-  </div>
+    <div class="grid g2">
+      <div>
+        <label>ECU type label / offset</label>
+        <input id="fp_ecu" placeholder='Ej: BOSCH EDC17C81 / $1000EE' />
+      </div>
+      <div class="right">
+        <button id="fp_calc" class="btn secondary small">🧬 Calcular huellas (Stock/Mod)</button>
+        <button id="fp_copy" class="btn small">📋 Copiar bloque</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Bloque copiable (SHA256 / CVN / Size + Offsets)</label>
+      <textarea id="fp_out" spellcheck="false" placeholder="Aquí aparecerán las huellas…"></textarea>
+      <div class="muted">Tip: esto te obliga a guardar el SHA-256 exacto del stock base.</div>
+    </div>
+
     <div class="grid g2">
       <label class="muted"><input type="checkbox" id="diff_auto" /> Guardar automáticamente en /storage/recipes</label>
       <div class="right"><button id="diff_go" class="btn small">Generar YAML</button></div>
@@ -224,9 +209,7 @@
   </section>
 </div>
 
-<!-- ========== SCRIPTS ========== -->
 <script>
-/* ===== Helpers / Estado común ===== */
 const $ = (q,el=document)=>el.querySelector(q);
 let TOKEN = localStorage.getItem("EFX_TOKEN") || null;
 
@@ -237,20 +220,125 @@ function needAuth(){
   }
   return false;
 }
-function elog(el, msg){
-  const box=$(el); if(!box) return;
+function elog(sel, msg){
+  const box=$(sel); if(!box) return;
   box.textContent += (box.textContent? "\n":"") + msg;
   box.scrollTop = box.scrollHeight;
 }
 </script>
 
 <script>
-/* ===== Exportar recetas (ZIP) =====
-   Usa el endpoint que tengas disponible:
-   - Opción A (la que te compartí primero): /admin/export_recipes_zip
-   - Opción B (si implementaste include_catalog): /admin/export_recipes?include_catalog=true
-   Debajo dejo B. Cambia la URL si usas A.
-*/
+/* Tabs */
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
+  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+  t.classList.add("active");
+  const id = t.dataset.tab;
+  document.querySelectorAll("section[id^='tab-']").forEach(s => s.classList.add("hide"));
+  $("#tab-"+id)?.classList.remove("hide");
+}));
+
+/* Plantilla YAML */
+const TEMPLATE = `meta:
+  name: <NAME> (<FAMILY>)
+  version: 1
+  author: <AUTHOR or TEAM>
+  notes: "Breve descripción del parche"
+
+ops:
+  - find:    "00 00 00 64"
+    replace: "00 00 00 C8"
+    max_hits: 1
+
+checksum:
+  type: none
+`;
+$("#btnPlantilla").onclick = ()=>{ $("#yaml_text").value = TEMPLATE; };
+
+$("#btnPlantilla2").onclick = (e)=>{ e.preventDefault(); $("#tplFile2").click(); };
+$("#tplFile2").addEventListener("change", async ()=>{
+  const f = $("#tplFile2").files?.[0]; if(!f) return;
+  $("#yaml_text").value = await f.text().catch(()=> "");
+});
+
+$("#btnValidar").onclick = ()=>{
+  const y = ($("#yaml_text").value || "").trim();
+  const ok = y && /(^|\n)\s*ops\s*:/i.test(y) && /(^|\n)\s*meta\s*:/i.test(y);
+  alert(ok ? "El YAML parece válido (básico)." : "YAML incompleto: falta 'meta:' u 'ops:'.");
+};
+
+$("#btnGuardar").onclick = async ()=>{
+  if(needAuth()) return;
+
+  const ecu_family = $("#ecu_family").value.trim();
+  const patch_id   = $("#patch_id").value.trim();
+  const label      = $("#label").value.trim() || patch_id;
+  const engines    = ($("#engines").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const compat     = ($("#compat").value||"").split(",").map(s=>s.trim()).filter(Boolean);
+  const price_raw  = $("#price").value.trim();
+  const price      = price_raw? Number(price_raw) : null;
+  const yaml_text  = $("#yaml_text").value;
+
+  if(!ecu_family || !patch_id || !yaml_text){
+    alert("Faltan ECU Family, Patch ID o YAML."); return;
+  }
+
+  const body = {
+    ecu_family, patch_id, label,
+    engines: engines.length? engines: null,
+    compatible_ecu: compat.length? compat: null,
+    price,
+    save_catalog: $("#save_catalog").checked,
+    yaml_text
+  };
+
+  $("#btnGuardar").disabled = true;
+  elog("#log1", "→ POST /admin/save_recipe …");
+  try{
+    const r = await fetch("/admin/save_recipe",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify(body)
+    });
+    const t = await r.text();
+    if(!r.ok){ elog("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
+    else { elog("#log1","OK: "+t); alert("Receta guardada ✅"); }
+  }catch(e){
+    elog("#log1","ERROR de red: "+(e?.message||e));
+  }finally{
+    $("#btnGuardar").disabled = false;
+  }
+};
+
+$("#btnGuardarYaml").onclick = async ()=>{
+  if(needAuth()) return;
+  const ecu_family = $("#ecu_family").value.trim();
+  const patch_id   = $("#patch_id").value.trim();
+  const yaml_text  = $("#yaml_text").value;
+  if(!ecu_family || !patch_id || !yaml_text){
+    alert("Faltan ECU Family, Patch ID y/o YAML."); return;
+  }
+
+  $("#btnGuardarYaml").disabled = true;
+  elog("#log1", "→ POST /admin/save_yaml …");
+  try{
+    const r = await fetch("/admin/save_yaml",{
+      method:"POST",
+      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
+      body: JSON.stringify({ ecu_family, patch_id, yaml_text })
+    });
+    const t = await r.text();
+    if(!r.ok){ elog("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
+    else { elog("#log1","OK: "+t); alert("YAML guardado ✅"); }
+  }catch(e){
+    elog("#log1","ERROR de red: "+(e?.message||e));
+  }finally{
+    $("#btnGuardarYaml").disabled = false;
+  }
+};
+</script>
+
+<script>
+/* Export ZIP */
 document.getElementById("btnExport")?.addEventListener("click", async ()=>{
   if(!TOKEN){ alert("Inicia sesión para descargar el backup."); return; }
   try{
@@ -278,125 +366,7 @@ document.getElementById("btnExport")?.addEventListener("click", async ()=>{
 </script>
 
 <script>
-/* ===== Tabs ===== */
-document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", ()=>{
-  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
-  t.classList.add("active");
-  const id = t.dataset.tab;
-  document.querySelectorAll("section[id^='tab-']").forEach(s => s.classList.add("hide"));
-  $("#tab-"+id)?.classList.remove("hide");
-}));
-
-/* ===== Plantilla YAML (rápida) ===== */
-const TEMPLATE = `meta:
-  name: <NAME> (<FAMILY>)
-  version: 1
-  author: <AUTHOR or TEAM>
-  notes: "Breve descripción del parche"
-
-ops:
-  - find:    "00 00 00 64"
-    replace: "00 00 00 C8"
-    max_hits: 1
-
-checksum:
-  type: none
-`;
-$("#btnPlantilla").onclick = ()=>{ $("#yaml_text").value = TEMPLATE; };
-
-/* ===== Cargar plantilla desde archivo (ambos botones) ===== */
-function wireTemplateButton(btnSel, fileSel){
-  const btn=$(btnSel), fin=$(fileSel); if(!btn||!fin) return;
-  btn.addEventListener("click", e => { e.preventDefault(); fin.click(); });
-  fin.addEventListener("change", async () => {
-    const f = fin.files?.[0]; if(!f) return;
-    const txt = await f.text().catch(()=> "");
-    $("#yaml_text").value = txt;
-  });
-}
-wireTemplateButton("#btnPlantilla2", "#tplFile2");
-
-/* ===== Validación simple YAML ===== */
-$("#btnValidar").onclick = ()=>{
-  const y = ($("#yaml_text").value || "").trim();
-  const ok = y && /(^|\n)\s*ops\s*:/i.test(y) && /(^|\n)\s*meta\s*:/i.test(y);
-  alert(ok ? "El YAML parece válido (básico)." : "YAML incompleto: falta 'meta:' u 'ops:'.");
-};
-
-/* ===== Guardar receta + catálogo ===== */
-$("#btnGuardar").onclick = async ()=>{
-  if(needAuth()) return;
-  const ecu_family = $("#ecu_family").value.trim();
-  const patch_id   = $("#patch_id").value.trim();
-  const label      = $("#label").value.trim() || patch_id;
-  const engines    = ($("#engines").value||"").split(",").map(s=>s.trim()).filter(Boolean);
-  const compat     = ($("#compat").value||"").split(",").map(s=>s.trim()).filter(Boolean);
-  const price_raw  = $("#price").value.trim();
-  const price      = price_raw? Number(price_raw) : undefined;
-  const yaml_text  = $("#yaml_text").value;
-
-  if(!ecu_family || !patch_id || !yaml_text){
-    alert("Faltan ECU Family, Patch ID o YAML."); return;
-  }
-
-  const body = {
-    ecu_family, patch_id, label,
-    engines: engines.length? engines: null,
-    compatible_ecu: compat.length? compat: null,
-    price: price ?? null,
-    save_catalog: $("#save_catalog").checked,
-    yaml_text
-  };
-
-  $("#btnGuardar").disabled = true;
-  elog("#log1", "→ POST /admin/save_recipe …");
-  try{
-    const r = await fetch("/admin/save_recipe",{
-      method:"POST",
-      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-      body: JSON.stringify(body)
-    });
-    const t = await r.text();
-    if(!r.ok){ elog("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
-    else { elog("#log1","OK: "+t); alert("Receta guardada (catálogo actualizado si marcaste la casilla)."); }
-  }catch(e){
-    elog("#log1","ERROR de red: "+(e?.message||e));
-  }finally{
-    $("#btnGuardar").disabled = false;
-  }
-};
-
-/* ===== Guardar solo YAML ===== */
-$("#btnGuardarYaml").onclick = async ()=>{
-  if(needAuth()) return;
-  const ecu_family = $("#ecu_family").value.trim();
-  const patch_id   = $("#patch_id").value.trim();
-  const yaml_text  = $("#yaml_text").value;
-  if(!ecu_family || !patch_id || !yaml_text){
-    alert("Faltan ECU Family, Patch ID y/o YAML."); return;
-  }
-
-  $("#btnGuardarYaml").disabled = true;
-  elog("#log1", "→ POST /admin/save_yaml …");
-  try{
-    const r = await fetch("/admin/save_yaml",{
-      method:"POST",
-      headers:{ "Authorization":"Bearer "+TOKEN, "Content-Type":"application/json" },
-      body: JSON.stringify({ ecu_family, patch_id, yaml_text })
-    });
-    const t = await r.text();
-    if(!r.ok){ elog("#log1","ERROR: "+t); alert("No se pudo guardar: "+t); }
-    else { elog("#log1","OK: "+t); alert("YAML guardado."); }
-  }catch(e){
-    elog("#log1","ERROR de red: "+(e?.message||e));
-  }finally{
-    $("#btnGuardarYaml").disabled = false;
-  }
-};
-</script>
-
-<script>
-/* ===== Diff → YAML (completo) ===== */
+/* Diff → YAML + adjuntar offsets/fingerprint_block SIN hackear fetch */
 (function(){
   const ui = {
     fam: $("#diff_ecu_family"),
@@ -417,7 +387,6 @@ $("#btnGuardarYaml").onclick = async ()=>{
   }
   const fileToArr = async (f)=> new Uint8Array(await f.arrayBuffer());
 
-  // Normalizador/validador de familia ECU
   function normalizeFamily(raw){
     const fam = (raw || "").trim().toUpperCase();
     const ok = /(MEVD?17|MED17|EDC17|MD1|MG1)/.test(fam);
@@ -425,6 +394,7 @@ $("#btnGuardarYaml").onclick = async ()=>{
   }
 
   let working=false;
+
   async function handleDiff(ev){
     try{
       ev?.preventDefault?.();
@@ -437,7 +407,7 @@ $("#btnGuardarYaml").onclick = async ()=>{
       let patchId = (ui.pid?.value || "").trim();
       const save = !!ui.autoSave?.checked;
 
-      if(!fam){ alert("ECU Family requerido (ej: EDC17CP45, MEVD17, MD1, MG1)."); return; }
+      if(!fam){ alert("ECU Family requerido (ej: EDC17C81, EDC17CP45, MEVD17, MD1, MG1)."); return; }
       if(!ok){ alert("ECU Family debe contener MEVD17 / MED17 / EDC17 / MD1 / MG1."); return; }
       if(!patchId){ alert("Patch ID requerido (ej: dpf_off)."); return; }
       patchId = patchId.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
@@ -458,6 +428,16 @@ $("#btnGuardarYaml").onclick = async ()=>{
       fd.append("save", String(save));
       fd.append("original_bin", file0, file0.name);
       fd.append("modified_bin", file1, file1.name);
+
+      // ✅ Adjuntar hints (si los llenaste)
+      const swLine  = ($("#fp_sw")?.value  || "").trim();
+      const mpcLine = ($("#fp_mpc")?.value || "").trim();
+      const ecuLine = ($("#fp_ecu")?.value || "").trim();
+      const fpBlock = ($("#fp_out")?.value || "").trim();
+      if(swLine)  fd.append("sw_line", swLine);
+      if(mpcLine) fd.append("mpc_line", mpcLine);
+      if(ecuLine) fd.append("ecu_line", ecuLine);
+      if(fpBlock) fd.append("fingerprint_block", fpBlock);
 
       log("POST /admin/diff2patch …");
       const r = await fetch("/admin/diff2patch", {
@@ -493,12 +473,12 @@ $("#btnGuardarYaml").onclick = async ()=>{
   ui.btn?.addEventListener("click", handleDiff);
 })();
 </script>
-<script>
-/* ===== Fingerprint local (SHA256 + CRC32 + size) para Stock/Mod ===== */
-(function(){
-  const $ = (q,el=document)=>el.querySelector(q);
 
-  // CRC32
+<script>
+/* Fingerprint local (SHA256 + CRC32 + size) */
+(function(){
+  const $$ = (q,el=document)=>el.querySelector(q);
+
   function crc32(u8){
     let c = 0xffffffff;
     for (let i=0;i<u8.length;i++){
@@ -509,7 +489,6 @@ $("#btnGuardarYaml").onclick = async ()=>{
   }
   function hex8(n){ return n.toString(16).toUpperCase().padStart(8,"0"); }
 
-  // SHA-256 hex usando WebCrypto
   async function sha256Hex(u8){
     const hash = await crypto.subtle.digest("SHA-256", u8.buffer);
     const b = new Uint8Array(hash);
@@ -521,7 +500,6 @@ $("#btnGuardarYaml").onclick = async ()=>{
   }
 
   function parseOffsetLine(s){
-    // "10SW05263416 / $10001A" -> { value:"10SW...", offset:"$10001A" }
     const raw = (s||"").trim();
     if(!raw) return { value:null, offset:null };
     const parts = raw.split("/").map(x=>x.trim());
@@ -530,20 +508,20 @@ $("#btnGuardarYaml").onclick = async ()=>{
   }
 
   async function buildFingerprintBlock(){
-    const fam = ($("#diff_ecu_family")?.value || "").trim().toUpperCase();
-    const pid = ($("#diff_patch_id")?.value || "").trim();
+    const fam = ($$("#diff_ecu_family")?.value || "").trim().toUpperCase();
+    const pid = ($$("#diff_patch_id")?.value || "").trim();
 
-    const stockFile = $("#diff_bin_stock")?.files?.[0] || null;
-    const modFile   = $("#diff_bin_mod")?.files?.[0] || null;
+    const stockFile = $$("#diff_bin_stock")?.files?.[0] || null;
+    const modFile   = $$("#diff_bin_mod")?.files?.[0] || null;
 
     if(!stockFile || !modFile){
       alert("Selecciona BIN Stock y BIN Modificado primero.");
       return null;
     }
 
-    const sw  = parseOffsetLine($("#fp_sw")?.value);
-    const mpc = parseOffsetLine($("#fp_mpc")?.value);
-    const ecu = parseOffsetLine($("#fp_ecu")?.value);
+    const sw  = parseOffsetLine($$("#fp_sw")?.value);
+    const mpc = parseOffsetLine($$("#fp_mpc")?.value);
+    const ecu = parseOffsetLine($$("#fp_ecu")?.value);
 
     const stockU8 = await fileToU8(stockFile);
     const modU8   = await fileToU8(modFile);
@@ -576,31 +554,27 @@ OFFSETS:
   ECU_LABEL=${ecu.value || "—"}
   ECU_OFFSET=${ecu.offset || "—"}
 `;
-
-    return { block, stockSHA, stockCVN, stockSize: stockU8.length, modSHA, modCVN, modSize: modU8.length, offsets: {sw,mpc,ecu} };
+    return { block };
   }
 
-  // Botón calcular
-  $("#fp_calc")?.addEventListener("click", async ()=>{
+  $$("#fp_calc")?.addEventListener("click", async ()=>{
     try{
       const out = await buildFingerprintBlock();
       if(!out) return;
-      $("#fp_out").value = out.block;
-      alert("✅ Huellas calculadas (y listas para copiar).");
+      $$("#fp_out").value = out.block;
+      alert("✅ Huellas calculadas.");
     }catch(e){
       alert("Error calculando huellas: " + (e?.message || e));
     }
   });
 
-  // Botón copiar
-  $("#fp_copy")?.addEventListener("click", async ()=>{
-    const text = ($("#fp_out")?.value || "").trim();
+  $$("#fp_copy")?.addEventListener("click", async ()=>{
+    const text = ($$("#fp_out")?.value || "").trim();
     if(!text){ alert("Nada que copiar. Primero calcula huellas."); return; }
     try{
       await navigator.clipboard.writeText(text);
       alert("📋 Copiado.");
     }catch{
-      // fallback
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
@@ -610,38 +584,10 @@ OFFSETS:
       alert("📋 Copiado.");
     }
   });
-
-  // EXTRA: si quieres que diff2patch reciba offsets automáticamente,
-  // enganchamos el submit de diff2patch para adjuntar estos campos al FormData
-  // (NO rompe nada si tu backend no los usa todavía).
-  const origFetch = window.fetch;
-  window.fetch = async function(input, init){
-    try{
-      const url = typeof input === "string" ? input : (input?.url || "");
-      if(url.includes("/admin/diff2patch") && init?.body instanceof FormData){
-        // Adjuntamos campos si existen (sin pisar)
-        const fd = init.body;
-
-        const sw  = parseOffsetLine($("#fp_sw")?.value);
-        const mpc = parseOffsetLine($("#fp_mpc")?.value);
-        const ecu = parseOffsetLine($("#fp_ecu")?.value);
-
-        if(sw.value && !fd.has("sw_number")) fd.append("sw_number", sw.value);
-        if(sw.offset && !fd.has("sw_offset")) fd.append("sw_offset", sw.offset);
-        if(mpc.value && !fd.has("mpc_type")) fd.append("mpc_type", mpc.value);
-        if(mpc.offset && !fd.has("mpc_offset")) fd.append("mpc_offset", mpc.offset);
-        if(ecu.value && !fd.has("ecu_label")) fd.append("ecu_label", ecu.value);
-        if(ecu.offset && !fd.has("ecu_offset")) fd.append("ecu_offset", ecu.offset);
-
-        // (opcional) también adjunta las huellas si ya las calculaste
-        const fpTxt = ($("#fp_out")?.value || "").trim();
-        if(fpTxt && !fd.has("fingerprint_block")) fd.append("fingerprint_block", fpTxt);
-      }
-    } catch(_) {}
-    return origFetch.apply(this, arguments);
-  };
 })();
 </script>
 
 </body>
 </html>
+
+
