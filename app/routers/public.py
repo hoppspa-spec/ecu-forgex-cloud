@@ -147,6 +147,16 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_part_number": None,
         "patches": patches_out
     }
+    @router.get("/debug/global")
+def debug_global():
+    cfg = load_global_config()
+    return {
+        "patches_count": len(cfg.get("patches", [])),
+        "generated_at": cfg.get("generated_at"),
+        "first_patch_id": (cfg.get("patches") or [{}])[0].get("id")
+    }
+
+
 
 
 
