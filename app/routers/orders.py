@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import uuid, os, json, tempfile
-from app.routers.public import ANALYSIS_DB
 from app.services.patcher import apply_patch
+from app.routers.public import ANALYSIS_DB, load_global_config, ecu_matches
+
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -21,10 +22,31 @@ def load_family(family: str):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def find_patch(family_json: dict, patch_id: str):
-    for p in family_json.get("patches", []):
-        if p.get("id") == patch_id:
-            return p
+def find_patch_for_family(family: str, engine: str, patch_id: str) -> dict | None:
+    cfg = load_global_config()
+    patches = cfg.get("patches", [])
+
+    fam = (family or "").strip()
+    eng = (engine or "auto").strip().lower()
+    if eng == "auto":
+        eng = "diesel"  # demo, igual que en /public/recipes
+
+    pid = (patch_id or "").strip()
+
+    for p in patches:
+        if p.get("id") != pid:
+            continue
+
+        engines = p.get("engines")
+        if isinstance(engines, list) and eng:
+            if eng not in [str(e).lower() for e in engines]:
+                continue
+
+        if not ecu_matches(fam, p.get("compatible_ecu", [])):
+            continue
+
+        return p
+
     return None
 
 @router.post("")
@@ -73,5 +95,23 @@ def create_order(data: OrderCreate):
 def get_order(order_id: str):
     o = ORDERS_DB.get(order_id)
     if not o:
-        raise HTTPException(status_code=404, detail="Order not found")
+        patch = find_patch_for_family(family, engine, patch_option_id)
+if not patch:
+    raise HTTPException(status_code=400, detail="patch_option_id not found for this family")
+
+# ✅ precio desde global.json
+price_usd = (patch.get("price") or {}).get("USD")
+
+# ✅ rutas de archivos (yml/diff) desde global.json
+files = patch.get("files") or {}
+yml_path = files.get("yml")
+diff_path = files.get("diff")
+
+# aquí guardas en tu Order lo que ya guardabas:
+# - patch_option_id
+# - price_usd
+# - yml_path/diff_path
+# etc
+
     return o
+
