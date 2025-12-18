@@ -35,11 +35,22 @@
 </style>
 </head>
 <body>
-<header>
-  <div class="brand">ECU FORGE X</div>
-  <div style="flex:1"></div>
-  <button id="btnLogin" class="btn" style="width:auto;background:var(--accent-2)">Iniciar sesión</button>
-  <button id="btnLogout" class="btn" style="width:auto;display:none">Cerrar sesión</button>
+<header class="efx-topbar">
+  <div class="efx-title">ECU FORGE X</div>
+
+  <div class="efx-actions">
+    <button class="btn" onclick="location.href='/static/login.html'">
+      Iniciar sesión
+    </button>
+
+    <button class="btn" onclick="location.href='/static/register.html'">
+      Registro
+    </button>
+
+    <button class="btn" onclick="EFX.toggleTheme()" title="Dark / Light">
+      🌙 / ☀️
+    </button>
+  </div>
 </header>
 
 <div class="container">
