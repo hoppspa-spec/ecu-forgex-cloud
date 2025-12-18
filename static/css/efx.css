@@ -1,0 +1,19 @@
+:root{
+  --bg: #0b1220;
+  --card: #0f1a2e;
+  --border: rgba(255,255,255,.10);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.65);
+  --primary: #2563eb;
+  --success: #22c55e;
+}
+
+[data-theme="light"]{
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --border: rgba(0,0,0,.10);
+  --text: rgba(0,0,0,.88);
+  --muted: rgba(0,0,0,.55);
+  --primary: #2563eb;
+  --success: #16a34a;
+}
