@@ -1,5 +1,5 @@
 # app/routers/public.py
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 import zlib
 
 router = APIRouter(prefix="", tags=["public"])
@@ -156,3 +156,37 @@ def debug_global():
         "generated_at": cfg.get("generated_at"),
         "first_patch_id": (cfg.get("patches") or [{}])[0].get("id")
     }
+
+@router.get("/public/recipes/{family}")
+def public_recipes(family: str, engine: str = Query("auto")):
+    """
+    Compat endpoint para el frontend (index.js) que espera:
+    GET /public/recipes/<family>?engine=...
+    Respuesta: { recipes: [...] }
+    """
+    global_data = load_global_config()
+    all_patches = global_data.get("patches", [])
+
+    fam = (family or "").strip()
+    eng = (engine or "auto").strip().lower()
+
+    # normaliza "auto" -> diesel (por ahora, demo)
+    if eng == "auto":
+        eng = "diesel"
+
+    out = []
+    for p in all_patches:
+        engines = p.get("engines")
+        if isinstance(engines, list) and eng:
+            if eng not in [str(e).lower() for e in engines]:
+                continue
+
+        if not ecu_matches(fam, p.get("compatible_ecu", [])):
+            continue
+
+        # devolvemos el objeto tal cual como "recipe"
+        out.append(p)
+
+    return {"recipes": out}
+
+
