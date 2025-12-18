@@ -1,111 +1,435 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>ECU FORGE X — Mis Órdenes</title>
-<style>
-  :root{
-    --bg:#0b0f19; --card:#0f1629; --ink:#e5e7eb; --muted:#94a3b8;
-    --brand:#0b1220; --btn:#2563eb; --btnh:#1d4ed8; --stroke:#1f2a44;
-  }
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,Arial}
-  header{background:var(--brand);color:#fff;display:flex;align-items:center;gap:12px;padding:14px 18px}
-  header .grow{flex:1}
-  header a{color:#cbd5e1;text-decoration:none}
-  .btn{background:var(--btn);color:#fff;border:0;border-radius:10px;padding:8px 12px;cursor:pointer}
-  .btn:hover{background:var(--btnh)}
-  .wrap{padding:18px}
-  .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:16px}
-  h2{margin:0 0 10px}
-  table{width:100%;border-collapse:collapse;margin-top:10px}
-  th,td{border-bottom:1px solid var(--stroke);padding:8px;text-align:left;font-size:14px}
-  .muted{color:var(--muted)}
-</style>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>ECU FORGE X — Usuarios</title>
+
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/efx.css">
+  <script src="/static/js/theme.js"></script>
+
+  <style>
+    /* Botones header chicos y pro (igual que checkout) */
+    .efx-topbar .btn{ width:auto; padding:6px 12px; font-size:13px; }
+    .efx-topbar .btn.icon{ padding:6px 10px; }
+    .efx-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .page{ max-width:1100px; margin:16px auto; padding:0 16px; }
+    .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
+    @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
+    .hidden{ display:none !important; }
+
+    .card h2{ margin:0 0 10px; }
+    .muted{ opacity:.8; }
+    .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    /* Formularios */
+    label{ display:block; font-size:13px; margin-top:10px; opacity:.8; }
+    input{ width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; }
+    .help{ margin:10px 0 0; padding-left:18px; }
+    .pill{ display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); font-size:12px; opacity:.9; }
+
+    /* Tabla órdenes */
+    table{ width:100%; border-collapse: collapse; margin-top:10px; }
+    th,td{ border-bottom:1px solid rgba(255,255,255,.12); padding:8px; text-align:left; font-size:14px; }
+    code{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  </style>
 </head>
-<body class="dark">
-<header>
-  <div style="font-weight:700;font-size:20px">ECU FORGE X</div>
-  <a href="/static/catalogo.html" style="margin-left:8px">Catálogo</a>
-  <div class="grow"></div>
-  <button class="btn" id="btnTheme">Tema</button>
-  <a href="/static/index.html" style="margin-left:12px">Subir BIN</a>
+
+<body>
+<header class="efx-topbar">
+  <div class="brand">ECU FORGE X</div>
+
+  <div class="efx-actions">
+    <button id="btnLogin" class="btn" type="button"
+      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.search?location.href:location.href)">
+      Iniciar sesión
+    </button>
+
+    <button id="btnRegister" class="btn" type="button"
+      onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
+      Registro
+    </button>
+
+    <button class="btn icon" type="button" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+
+    <button id="btnLogout" class="btn" type="button" style="display:none">Cerrar sesión</button>
+
+    <a class="btn" href="/static/index.html" style="text-decoration:none">Subir BIN</a>
+    <a class="btn" href="/static/catalogo.html" style="text-decoration:none">Catálogo</a>
+  </div>
 </header>
 
-<div class="wrap">
-  <div class="card">
-    <h2>Mis órdenes</h2>
-    <div class="muted" style="margin-bottom:10px">Filtrar:</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="btn" id="flt_all">Todas</button>
-      <button class="btn" id="flt_pending">Pendientes de pago</button>
-      <button class="btn" id="flt_done">Completadas</button>
+<div class="page">
+
+  <!-- ===== LOGIN ===== -->
+  <div id="viewLogin" class="card hidden">
+    <h2>Iniciar sesión</h2>
+    <div class="muted">Login mínimo real vía <code>POST /token</code> (FastAPI OAuth2).</div>
+
+    <label>Email</label>
+    <input id="loginEmail" type="email" placeholder="tu@correo.com" autocomplete="email"/>
+
+    <label>Contraseña</label>
+    <input id="loginPass" type="password" placeholder="••••••••" autocomplete="current-password"/>
+
+    <div class="row" style="margin-top:14px">
+      <button id="btnDoLogin" class="btn" type="button">Entrar</button>
+      <button class="btn" type="button" onclick="location.href='#register'">Crear cuenta</button>
+      <span id="loginMsg" class="muted"></span>
     </div>
 
-    <div id="status" class="muted">Cargando…</div>
+    <ul class="help">
+      <li>Si venías desde checkout, te devuelve automáticamente con <span class="pill">next</span>.</li>
+    </ul>
+  </div>
+
+  <!-- ===== REGISTER ===== -->
+  <div id="viewRegister" class="card hidden">
+    <h2>Registro</h2>
+    <div class="muted">
+      Intento de registro vía <code>POST /auth/register</code>.  
+      Si tu backend aún no lo tiene, no rompe nada: te avisa.
+    </div>
+
+    <label>Email</label>
+    <input id="regEmail" type="email" placeholder="tu@correo.com" autocomplete="email"/>
+
+    <label>Contraseña</label>
+    <input id="regPass" type="password" placeholder="mín. 6-8 caracteres" autocomplete="new-password"/>
+
+    <div class="row" style="margin-top:14px">
+      <button id="btnDoRegister" class="btn" type="button">Crear cuenta</button>
+      <button class="btn" type="button" onclick="location.href='#login'">Ya tengo cuenta</button>
+      <span id="regMsg" class="muted"></span>
+    </div>
+
+    <ul class="help">
+      <li>Para V1: registro + login directo (sin email confirm) suele convertir mejor.</li>
+    </ul>
+  </div>
+
+  <!-- ===== ÓRDENES ===== -->
+  <div id="viewOrders" class="card hidden">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Mis órdenes</h2>
+      <div class="row">
+        <button class="btn" id="flt_all" type="button">Todas</button>
+        <button class="btn" id="flt_pending" type="button">Pendientes</button>
+        <button class="btn" id="flt_done" type="button">Completadas</button>
+      </div>
+    </div>
+
+    <div id="ordersStatus" class="muted" style="margin-top:10px">Cargando…</div>
+
     <div style="overflow:auto">
-      <table id="tbl" style="display:none">
-        <thead><tr>
-          <th>ID</th><th>Estado</th><th>Parche</th><th>Archivo</th><th>Fecha</th><th>Descarga</th><th>Acciones</th>
-        </tr></thead>
+      <table id="tbl" class="hidden">
+        <thead>
+          <tr>
+            <th>ID</th><th>Estado</th><th>Parche</th><th>Archivo</th><th>Fecha</th><th>Descarga</th><th>Acción</th>
+          </tr>
+        </thead>
         <tbody id="tbody"></tbody>
       </table>
     </div>
+
+    <div class="muted" style="margin-top:10px">
+      Endpoint esperado: <code>GET /orders/mine</code> (Bearer token).
+    </div>
   </div>
+
 </div>
 
 <script>
-  const $=(q,el=document)=>el.querySelector(q);
-  const nf=new Intl.DateTimeFormat('es-CL',{dateStyle:'short',timeStyle:'short'});
-  let TOKEN=localStorage.getItem("EFX_TOKEN")||null;
-  let ORDERS_CACHE=[];
+/* =========================================================
+   ✅ AUTH INLINE (igual filosofía que checkout)
+========================================================= */
+(function () {
+  const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
 
-  (function(){
-    const KEY='EFX_THEME'; const saved=localStorage.getItem(KEY)||'dark';
-    document.body.classList.toggle('dark',saved==='dark');
-    $("#btnTheme").onclick=()=>{const nd=!document.body.classList.contains('dark');document.body.classList.toggle('dark',nd);localStorage.setItem(KEY,nd?'dark':'light');};
-  })();
+  function getToken(){
+    for (const k of TOKEN_KEYS){
+      const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+      if (v && String(v).trim()) return String(v).trim();
+    }
+    return null;
+  }
+  function setToken(token, persist=true){
+    if (persist) localStorage.setItem("EFX_TOKEN", token);
+    else sessionStorage.setItem("EFX_TOKEN", token);
+  }
+  function clearToken(){
+    for (const k of TOKEN_KEYS){
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    }
+  }
+  function isLoggedIn(){ return !!getToken(); }
 
-  function row(o){
-    const payBtn = o.status==="pending_payment" ? `<a class="btn" href="/static/checkout.html?order_id=${o.id}">Ir a pagar</a>` : '';
-    const dl = o.download_ready ? `<a class="btn" href="/orders/${o.id}/download">Descargar</a>` : '—';
-    return `<tr>
-      <td>${o.id}</td>
-      <td>${o.status}</td>
-      <td>${o.patch_option_id||'—'}</td>
-      <td>${o.original_filename||'—'}</td>
-      <td>${o.created_at? nf.format(new Date(o.created_at)):'—'}</td>
-      <td>${dl}</td>
-      <td>${payBtn}</td>
-    </tr>`;
+  function parseNextFromHash(){
+    // soporta #login?next=... y #register?next=...
+    const h = location.hash || "";
+    const qPos = h.indexOf("?");
+    if (qPos === -1) return null;
+    const qs = h.slice(qPos+1);
+    try{
+      const p = new URLSearchParams(qs);
+      return p.get("next");
+    }catch{return null;}
   }
 
-  function applyFilter(kind){
-    const tb=$("#tbody"); tb.innerHTML="";
-    const list=ORDERS_CACHE.filter(o=>{
-      if(kind==="pending") return o.status==="pending_payment";
-      if(kind==="done") return o.status==="done";
-      return true;
+  function requireLogin(nextUrl){
+    const next = encodeURIComponent(nextUrl || location.href);
+    location.href = "/static/usuarios.html#login?next=" + next;
+  }
+
+  function applyHeaderAuth(){
+    const btnLogin = document.getElementById("btnLogin");
+    const btnReg   = document.getElementById("btnRegister");
+    const btnOut   = document.getElementById("btnLogout");
+
+    const logged = isLoggedIn();
+    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-block";
+    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-block";
+    if (btnOut)   btnOut.style.display   = logged ? "inline-block" : "none";
+
+    if (btnOut && !btnOut.dataset.bound){
+      btnOut.dataset.bound = "1";
+      btnOut.addEventListener("click", () => {
+        clearToken();
+        route(); // refresca vista
+      });
+    }
+  }
+
+  window.EFX = window.EFX || {};
+  window.EFX.getToken = getToken;
+  window.EFX.setToken = setToken;
+  window.EFX.clearToken = clearToken;
+  window.EFX.isLoggedIn = isLoggedIn;
+  window.EFX.requireLogin = requireLogin;
+  window.EFX.applyHeaderAuth = applyHeaderAuth;
+  if (!window.EFX.toggleTheme){
+    window.EFX.toggleTheme = function(){ document.documentElement.classList.toggle("dark"); };
+  }
+})();
+</script>
+
+<script>
+/* =========================================================
+   Router simple por hash + órdenes
+========================================================= */
+const $ = (q,el=document)=>el.querySelector(q);
+const nf = new Intl.DateTimeFormat('es-CL',{dateStyle:'short',timeStyle:'short'});
+let ORDERS_CACHE = [];
+
+function show(id){
+  ["viewLogin","viewRegister","viewOrders"].forEach(v=>{
+    const el = document.getElementById(v);
+    if(!el) return;
+    el.classList.toggle("hidden", v !== id);
+  });
+}
+
+function hashBase(){
+  const h = (location.hash || "#orders").replace("#","");
+  return h.split("?")[0].toLowerCase();
+}
+
+function row(o){
+  const st = (o.status || "").toLowerCase();
+
+  const canDownload = !!o.download_ready && (st==="paid" || st==="done");
+  const dl = canDownload ? `<a class="btn" href="/download/${o.id}" style="text-decoration:none">Descargar</a>` : "—";
+
+  const goPay = (st==="pending_payment" || st==="pending") ? `<a class="btn" href="/static/checkout.html?order_id=${o.id}" style="text-decoration:none">Ir a pagar</a>` : "—";
+
+  const when = o.created_at ? nf.format(new Date(o.created_at)) : "—";
+
+  return `<tr>
+    <td>${o.id}</td>
+    <td>${o.status || "—"}</td>
+    <td>${o.patch_option_id || "—"}</td>
+    <td>${o.original_filename || "—"}</td>
+    <td>${when}</td>
+    <td>${dl}</td>
+    <td>${goPay}</td>
+  </tr>`;
+}
+
+function applyFilter(kind){
+  const tb=$("#tbody"); tb.innerHTML="";
+  const list = ORDERS_CACHE.filter(o=>{
+    const st=(o.status||"").toLowerCase();
+    if(kind==="pending") return (st==="pending_payment" || st==="pending");
+    if(kind==="done") return (st==="paid" || st==="done");
+    return true;
+  });
+  list.forEach(o=>tb.insertAdjacentHTML("beforeend", row(o)));
+  $("#ordersStatus").textContent = list.length ? "" : "Sin resultados.";
+}
+
+async function loadOrders(){
+  $("#ordersStatus").textContent = "Cargando…";
+  $("#tbl").classList.add("hidden");
+
+  if(!EFX.isLoggedIn()){
+    $("#ordersStatus").textContent = "Debes iniciar sesión para ver tus órdenes.";
+    return;
+  }
+
+  try{
+    const r = await fetch("/orders/mine", {
+      headers: { "Authorization": "Bearer " + EFX.getToken() }
     });
-    list.forEach(o=>tb.insertAdjacentHTML("beforeend", row(o)));
-    $("#status").textContent = list.length ? "" : "Sin resultados.";
+
+    if(!r.ok){
+      const t = await r.text().catch(()=>"(sin detalle)");
+      $("#ordersStatus").textContent =
+        "No se pudieron cargar las órdenes. " +
+        (r.status===404 ? "Endpoint /orders/mine no existe aún." : t);
+      return;
+    }
+
+    const d = await r.json();
+    ORDERS_CACHE = d.orders || [];
+    $("#tbl").classList.remove("hidden");
+    applyFilter("all");
+  }catch{
+    $("#ordersStatus").textContent = "Error de red cargando órdenes.";
   }
+}
+
+async function doLogin(){
+  const email = ($("#loginEmail").value || "").trim();
+  const pass  = ($("#loginPass").value || "").trim();
+  const msg = $("#loginMsg");
+  msg.textContent = "";
+
+  if(!email || !pass){
+    msg.textContent = "Completa email y contraseña.";
+    return;
+  }
+
+  msg.textContent = "Ingresando…";
+
+  try{
+    // FastAPI OAuth2PasswordRequestForm => x-www-form-urlencoded
+    const body = new URLSearchParams();
+    body.set("username", email);
+    body.set("password", pass);
+
+    const r = await fetch("/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
+
+    if(!r.ok){
+      const t = await r.text().catch(()=>"(sin detalle)");
+      msg.textContent = "Login falló: " + t;
+      return;
+    }
+
+    const d = await r.json();
+    const token = d.access_token || d.token || d.jwt;
+    if(!token){
+      msg.textContent = "Login OK, pero no llegó access_token.";
+      return;
+    }
+
+    EFX.setToken(token, true);
+    EFX.applyHeaderAuth();
+
+    // vuelve a next si existe
+    const next = (function(){
+      const h = location.hash || "";
+      const qPos = h.indexOf("?");
+      if(qPos === -1) return null;
+      const p = new URLSearchParams(h.slice(qPos+1));
+      return p.get("next");
+    })();
+
+    if(next){
+      location.href = next;
+      return;
+    }
+
+    location.hash = "#orders";
+    route();
+  }catch{
+    msg.textContent = "Error de red en login.";
+  }
+}
+
+async function doRegister(){
+  const email = ($("#regEmail").value || "").trim();
+  const pass  = ($("#regPass").value || "").trim();
+  const msg = $("#regMsg");
+  msg.textContent = "";
+
+  if(!email || !pass){
+    msg.textContent = "Completa email y contraseña.";
+    return;
+  }
+
+  msg.textContent = "Creando cuenta…";
+
+  try{
+    const r = await fetch("/auth/register", {
+      method: "POST",
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ email, password: pass })
+    });
+
+    if(!r.ok){
+      const t = await r.text().catch(()=>"(sin detalle)");
+      msg.textContent = (r.status===404)
+        ? "Backend aún no tiene /auth/register. (Lo implementamos en 5 min cuando quieras)."
+        : ("Registro falló: " + t);
+      return;
+    }
+
+    msg.textContent = "Cuenta creada ✅ Ahora inicia sesión.";
+    location.hash = "#login";
+    route();
+  }catch{
+    msg.textContent = "Error de red en registro.";
+  }
+}
+
+function route(){
+  EFX.applyHeaderAuth();
+
+  const h = hashBase();
+
+  if(h === "register"){
+    show("viewRegister");
+    return;
+  }
+
+  if(h === "login"){
+    show("viewLogin");
+    return;
+  }
+
+  // default: orders
+  show("viewOrders");
+  loadOrders();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("#btnDoLogin").onclick = doLogin;
+  $("#btnDoRegister").onclick = doRegister;
 
   $("#flt_all").onclick = ()=>applyFilter("all");
   $("#flt_pending").onclick = ()=>applyFilter("pending");
   $("#flt_done").onclick = ()=>applyFilter("done");
 
-  async function init(){
-    if(!TOKEN){ $("#status").textContent="Inicia sesión en la página principal."; return; }
-    $("#status").textContent="Cargando…";
-    try{
-      const r=await fetch("/orders/mine",{headers:{Authorization:"Bearer "+TOKEN}});
-      if(!r.ok){ $("#status").textContent="No se pudieron cargar las órdenes"; return; }
-      const d=await r.json(); ORDERS_CACHE=d.orders||[];
-      $("#tbl").style.display=""; applyFilter("all");
-    }catch{ $("#status").textContent="Error cargando."; }
-  }
-  init();
+  window.addEventListener("hashchange", route);
+  route();
+});
 </script>
 </body>
 </html>
