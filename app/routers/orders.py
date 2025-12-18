@@ -128,4 +128,17 @@ def confirm_payment_demo(order_id: str):
         "status": o["status"]
     }
 
+@router.post("/{order_id}/confirm_payment")
+def confirm_payment_demo(order_id: str):
+    o = ORDERS_DB.get(order_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="order_id not found")
+
+    o["status"] = "paid"
+    o["paid"] = True
+    o["download_ready"] = True
+    return {"ok": True, "order_id": order_id, "status": o["status"]}
+
+
+
 
