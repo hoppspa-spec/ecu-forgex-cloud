@@ -7,6 +7,8 @@ from app.routers.public import router as public_router
 from app.routers.admin import router as admin_router
 from app.routers.orders import router as orders_router
 from app.routers.downloads import router as downloads_router
+from app.routers.auth import router as auth_router
+app.include_router(auth_router)
 
 app = FastAPI(title="ECU Forge X")
 
