@@ -144,6 +144,53 @@ function init(){
 
 document.addEventListener("DOMContentLoaded", init);
 </script>
+<script>
+  (function () {
+    // intenta pillar botones por texto o por ids comunes
+    const payBtn =
+      document.querySelector("#btnPay") ||
+      document.querySelector("#payBtn") ||
+      Array.from(document.querySelectorAll("button")).find(b => b.textContent.toLowerCase().includes("confirmar pago"));
+
+    const dlBtn =
+      document.querySelector("#btnDownload") ||
+      document.querySelector("#downloadBtn") ||
+      Array.from(document.querySelectorAll("a,button")).find(b => b.textContent.toLowerCase().includes("descargar"));
+
+    const isDemo = true; // en tu checkout dice DEMO, así que lo dejamos fijo por ahora
+
+    function lockIfNeeded() {
+      if (!isDemo) return;
+
+      if (!window.EFX || !EFX.isLoggedIn || !EFX.isLoggedIn()) {
+        if (payBtn) {
+          payBtn.disabled = true;
+          payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
+        }
+        if (dlBtn) {
+          // si es <a> lo deshabilitamos “a mano”
+          dlBtn.style.pointerEvents = "none";
+          dlBtn.style.opacity = "0.6";
+          dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
+        }
+
+        // mensaje claro
+        const box = document.createElement("div");
+        box.className = "card";
+        box.style.marginTop = "12px";
+        box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
+        const target = document.querySelector(".container") || document.body;
+        target.appendChild(box);
+
+        // si hacen click igual, mandamos a login
+        if (payBtn) payBtn.addEventListener("click", (e) => { e.preventDefault(); EFX.requireLogin(location.href); });
+        if (dlBtn) dlBtn.addEventListener("click", (e) => { e.preventDefault(); EFX.requireLogin(location.href); });
+      }
+    }
+
+    lockIfNeeded();
+  })();
+</script>
 </body>
 </html>
 
