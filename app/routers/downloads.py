@@ -10,6 +10,30 @@ from app.routers.orders import ORDERS_DB
 
 router = APIRouter(prefix="/download", tags=["download"])
 
+@router.get("/{order_id}")
+def download_by_order(order_id: str):
+    o = ORDERS_DB.get(order_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="order_id not found")
+
+    if not o.get("download_ready"):
+        raise HTTPException(status_code=403, detail="download not ready")
+
+    path = o.get("mod_file_path")
+    if not path:
+        raise HTTPException(status_code=404, detail="mod file not found")
+
+    family = o.get("family") or "ECU"
+    patch_id = o.get("patch_option_id") or "patch"
+    filename = f"EFX_{family}_{patch_id}.mod.bin"
+
+    return FileResponse(
+        path,
+        filename=filename,
+        media_type="application/octet-stream"
+    )
+
+
 
 # -------------------------------------------------------------------
 # 1) NUEVO: Descarga por order_id (lo que tu checkout está llamando)
@@ -70,3 +94,4 @@ async def download_mod(
         filename=f"EFX_{patch_id}.mod.bin",
         media_type="application/octet-stream"
     )
+
