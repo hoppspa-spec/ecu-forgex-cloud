@@ -70,13 +70,41 @@ def ecu_matches(ecu_detected: str, compatible_list: list) -> bool:
     return False
 
 
+from pathlib import Path
+import json
+from fastapi import HTTPException
+
 def load_global_config() -> dict:
-    # ajusta la ruta si tu global.json vive en otro lado
-    path = Path("static") / "global.json"
-    if not path.exists():
-        path = Path("global.json")
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    # Raíz del repo (…/app/routers/public.py -> …/ )
+    repo_root = Path(__file__).resolve().parents[2]
+
+    candidates = [
+        repo_root / "static" / "global.json",
+        repo_root / "global.json",
+        Path("static") / "global.json",
+        Path("global.json"),
+    ]
+
+    path = next((p for p in candidates if p.exists()), None)
+
+    if not path:
+        # No explotar: el sistema funciona pero sin parches
+        return {
+            "generated_at": None,
+            "patches": [],
+            "packs": [],
+            "_warning": "global.json not found in expected paths"
+        }
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        # Esto sí conviene gritarlo
+        raise HTTPException(
+            status_code=500,
+            detail=f"global.json JSON inválido ({path}): {e}"
+        )
 
 @router.post("/analyze_bin")
 async def analyze_bin(bin_file: UploadFile = File(...)):
@@ -122,3 +150,4 @@ async def analyze_bin(bin_file: UploadFile = File(...)):
         "ecu_part_number": None,
         "patches": patches_out
     }
+
