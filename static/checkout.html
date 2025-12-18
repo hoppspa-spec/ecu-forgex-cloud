@@ -16,10 +16,9 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-<button class="btn" onclick="location.href='/static/usuarios.html#login'">Iniciar sesión</button>
-<button class="btn" onclick="location.href='/static/usuarios.html#register'">Registro</button>
-<button class="btn" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
-<button id="btnPay" class="btn">Confirmar pago DEMO</button>
+<button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
+<button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
+<button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button><button id="btnPay" class="btn">Confirmar pago DEMO</button>
 <a id="btnDownload" class="btn" href="#">Descargar .MOD</a>
   </div>
 </header>
