@@ -8,10 +8,11 @@ from app.routers.admin import router as admin_router
 from app.routers.orders import router as orders_router
 from app.routers.downloads import router as downloads_router
 from app.routers.auth import router as auth_router
-app.include_router(auth_router)
 
+# ✅ PRIMERO crear app
 app = FastAPI(title="ECU Forge X")
 
+# ✅ Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,15 +20,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Static
+# ✅ Static
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Routers (DESPUÉS de crear app)
+# ✅ DESPUÉS incluir routers
 app.include_router(public_router)
 app.include_router(admin_router)
 app.include_router(orders_router)
 app.include_router(downloads_router)
+app.include_router(auth_router)
 
+# ✅ Rutas base
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/static/index.html")
