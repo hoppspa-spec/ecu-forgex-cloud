@@ -14,11 +14,22 @@
 <header class="efx-topbar">
   <div class="brand">ECU FORGE X</div>
 
-<div class="efx-actions">
-  <button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
-  <button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
-  <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
-  <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
+  <div class="efx-actions">
+    <button id="btnLogin" class="btn"
+      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
+      Iniciar sesión
+    </button>
+
+    <button id="btnRegister" class="btn"
+      onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
+      Registro
+    </button>
+
+    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+
+    <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">
+      Cerrar sesión
+    </button>
   </div>
 </header>
 
@@ -37,9 +48,11 @@
     <input id="binfile" type="file" />
 
     <div style="margin-top:10px">
-      <button id="btnAnalizar" class="btn">Analizar BIN</button>
+      <button id="btnAnalizar" class="btn" type="button">Analizar BIN</button>
     </div>
-    <div id="formNote" style="margin-top:8px"><small class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</small></div>
+    <div id="formNote" style="margin-top:8px">
+      <small class="muted">Formatos: .bin, .mpc, .org, .e2p, .101</small>
+    </div>
   </div>
 
   <!-- CENTRO: ECU INFO -->
@@ -64,9 +77,64 @@
 
     <h3 style="margin-top:12px">Resumen YAML</h3>
     <pre id="yamlBox" class="yaml"># Aún sin datos…</pre>
-    <button id="btnCopyYaml" class="btn" style="margin-top:8px">Copiar YAML</button>
+    <button id="btnCopyYaml" class="btn" style="margin-top:8px" type="button">Copiar YAML</button>
   </div>
 </div>
+
+<!-- ✅ auth mínimo REAL (igual que checkout, sin duplicar acciones) -->
+<script>
+(function () {
+  const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
+
+  function getToken(){
+    for (const k of TOKEN_KEYS){
+      const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+      if (v && String(v).trim()) return String(v).trim();
+    }
+    return null;
+  }
+
+  function clearToken(){
+    for (const k of TOKEN_KEYS){
+      localStorage.removeItem(k);
+      sessionStorage.removeItem(k);
+    }
+  }
+
+  function isLoggedIn(){ return !!getToken(); }
+
+  function applyHeaderAuth(){
+    const btnLogin = document.getElementById("btnLogin");
+    const btnReg   = document.getElementById("btnRegister");
+    const btnOut   = document.getElementById("btnLogout");
+    const logged = isLoggedIn();
+
+    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-flex";
+    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-flex";
+    if (btnOut)   btnOut.style.display   = logged ? "inline-flex" : "none";
+  }
+
+  function logout(){
+    clearToken();
+    location.href = "/static/index.html";
+  }
+
+  window.EFX = window.EFX || {};
+  window.EFX.getToken = getToken;
+  window.EFX.clearToken = clearToken;
+  window.EFX.isLoggedIn = isLoggedIn;
+  window.EFX.applyHeaderAuth = applyHeaderAuth;
+  window.EFX.logout = logout;
+
+  if (!window.EFX.toggleTheme){
+    window.EFX.toggleTheme = function(){
+      document.documentElement.classList.toggle("dark");
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded", applyHeaderAuth);
+})();
+</script>
 
 <script src="/static/js/index.js"></script>
 </body>
