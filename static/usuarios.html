@@ -10,29 +10,18 @@
   <script src="/static/js/theme.js"></script>
 
   <style>
-    /* Botones header chicos y pro (igual que checkout) */
-    .efx-topbar .btn{ width:auto; padding:6px 12px; font-size:13px; }
-    .efx-topbar .btn.icon{ padding:6px 10px; }
-    .efx-actions{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-
+    /* Solo layout de la página, sin pelear con base.css */
     .page{ max-width:1100px; margin:16px auto; padding:0 16px; }
     .grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; }
     @media (max-width: 900px){ .grid{ grid-template-columns:1fr; } }
     .hidden{ display:none !important; }
-
-    .card h2{ margin:0 0 10px; }
-    .muted{ opacity:.8; }
     .row{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-
-    /* Formularios */
-    label{ display:block; font-size:13px; margin-top:10px; opacity:.8; }
-    input{ width:100%; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.06); color: inherit; }
+    .muted{ color:var(--muted); }
     .help{ margin:10px 0 0; padding-left:18px; }
-    .pill{ display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid rgba(255,255,255,.18); font-size:12px; opacity:.9; }
+    .pill{ display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid rgba(0,0,0,.15); font-size:12px; opacity:.9; }
 
-    /* Tabla órdenes */
     table{ width:100%; border-collapse: collapse; margin-top:10px; }
-    th,td{ border-bottom:1px solid rgba(255,255,255,.12); padding:8px; text-align:left; font-size:14px; }
+    th,td{ border-bottom:1px solid rgba(0,0,0,.12); padding:8px; text-align:left; font-size:14px; }
     code{ font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
   </style>
 </head>
@@ -43,7 +32,7 @@
 
   <div class="efx-actions">
     <button id="btnLogin" class="btn" type="button"
-      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.search?location.href:location.href)">
+      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
       Iniciar sesión
     </button>
 
@@ -65,8 +54,8 @@
 
   <!-- ===== LOGIN ===== -->
   <div id="viewLogin" class="card hidden">
-    <h2>Iniciar sesión</h2>
-    <div class="muted">Login mínimo real vía <code>POST /token</code> (FastAPI OAuth2).</div>
+    <h2 style="margin:0 0 10px">Iniciar sesión</h2>
+    <div class="muted">Login real vía <code>POST /auth/login</code>.</div>
 
     <label>Email</label>
     <input id="loginEmail" type="email" placeholder="tu@correo.com" autocomplete="email"/>
@@ -81,23 +70,20 @@
     </div>
 
     <ul class="help">
-      <li>Si venías desde checkout, te devuelve automáticamente con <span class="pill">next</span>.</li>
+      <li>Si venías desde checkout, te devuelve con <span class="pill">next</span>.</li>
     </ul>
   </div>
 
   <!-- ===== REGISTER ===== -->
   <div id="viewRegister" class="card hidden">
-    <h2>Registro</h2>
-    <div class="muted">
-      Intento de registro vía <code>POST /auth/register</code>.  
-      Si tu backend aún no lo tiene, no rompe nada: te avisa.
-    </div>
+    <h2 style="margin:0 0 10px">Registro</h2>
+    <div class="muted">Registro real vía <code>POST /auth/register</code> (y te deja listo para entrar).</div>
 
     <label>Email</label>
     <input id="regEmail" type="email" placeholder="tu@correo.com" autocomplete="email"/>
 
     <label>Contraseña</label>
-    <input id="regPass" type="password" placeholder="mín. 6-8 caracteres" autocomplete="new-password"/>
+    <input id="regPass" type="password" placeholder="mín. 6 caracteres" autocomplete="new-password"/>
 
     <div class="row" style="margin-top:14px">
       <button id="btnDoRegister" class="btn" type="button">Crear cuenta</button>
@@ -106,7 +92,7 @@
     </div>
 
     <ul class="help">
-      <li>Para V1: registro + login directo (sin email confirm) suele convertir mejor.</li>
+      <li>V1 recomendado: registro + login directo (sin confirmación de email) convierte más.</li>
     </ul>
   </div>
 
@@ -143,7 +129,7 @@
 
 <script>
 /* =========================================================
-   ✅ AUTH INLINE (igual filosofía que checkout)
+   ✅ AUTH INLINE — misma lógica que checkout
 ========================================================= */
 (function () {
   const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
@@ -167,18 +153,6 @@
   }
   function isLoggedIn(){ return !!getToken(); }
 
-  function parseNextFromHash(){
-    // soporta #login?next=... y #register?next=...
-    const h = location.hash || "";
-    const qPos = h.indexOf("?");
-    if (qPos === -1) return null;
-    const qs = h.slice(qPos+1);
-    try{
-      const p = new URLSearchParams(qs);
-      return p.get("next");
-    }catch{return null;}
-  }
-
   function requireLogin(nextUrl){
     const next = encodeURIComponent(nextUrl || location.href);
     location.href = "/static/usuarios.html#login?next=" + next;
@@ -190,15 +164,15 @@
     const btnOut   = document.getElementById("btnLogout");
 
     const logged = isLoggedIn();
-    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-block";
-    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-block";
-    if (btnOut)   btnOut.style.display   = logged ? "inline-block" : "none";
+    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-flex";
+    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-flex";
+    if (btnOut)   btnOut.style.display   = logged ? "inline-flex" : "none";
 
     if (btnOut && !btnOut.dataset.bound){
       btnOut.dataset.bound = "1";
       btnOut.addEventListener("click", () => {
         clearToken();
-        route(); // refresca vista
+        route();
       });
     }
   }
@@ -210,6 +184,7 @@
   window.EFX.isLoggedIn = isLoggedIn;
   window.EFX.requireLogin = requireLogin;
   window.EFX.applyHeaderAuth = applyHeaderAuth;
+
   if (!window.EFX.toggleTheme){
     window.EFX.toggleTheme = function(){ document.documentElement.classList.toggle("dark"); };
   }
@@ -218,7 +193,7 @@
 
 <script>
 /* =========================================================
-   Router simple por hash + órdenes
+   Router por hash + login/register + órdenes
 ========================================================= */
 const $ = (q,el=document)=>el.querySelector(q);
 const nf = new Intl.DateTimeFormat('es-CL',{dateStyle:'short',timeStyle:'short'});
@@ -237,13 +212,28 @@ function hashBase(){
   return h.split("?")[0].toLowerCase();
 }
 
+function nextFromHash(){
+  const h = location.hash || "";
+  const qPos = h.indexOf("?");
+  if(qPos === -1) return null;
+  try{
+    const p = new URLSearchParams(h.slice(qPos+1));
+    return p.get("next");
+  }catch{
+    return null;
+  }
+}
+
 function row(o){
   const st = (o.status || "").toLowerCase();
-
   const canDownload = !!o.download_ready && (st==="paid" || st==="done");
-  const dl = canDownload ? `<a class="btn" href="/download/${o.id}" style="text-decoration:none">Descargar</a>` : "—";
+  const dl = canDownload
+    ? `<a class="btn" href="/download/${o.id}" style="text-decoration:none">Descargar</a>`
+    : "—";
 
-  const goPay = (st==="pending_payment" || st==="pending") ? `<a class="btn" href="/static/checkout.html?order_id=${o.id}" style="text-decoration:none">Ir a pagar</a>` : "—";
+  const goPay = (st==="pending_payment" || st==="pending")
+    ? `<a class="btn" href="/static/checkout.html?order_id=${o.id}" style="text-decoration:none">Ir a pagar</a>`
+    : "—";
 
   const when = o.created_at ? nf.format(new Date(o.created_at)) : "—";
 
@@ -286,9 +276,7 @@ async function loadOrders(){
 
     if(!r.ok){
       const t = await r.text().catch(()=>"(sin detalle)");
-      $("#ordersStatus").textContent =
-        "No se pudieron cargar las órdenes. " +
-        (r.status===404 ? "Endpoint /orders/mine no existe aún." : t);
+      $("#ordersStatus").textContent = "No se pudieron cargar las órdenes: " + t;
       return;
     }
 
@@ -315,15 +303,11 @@ async function doLogin(){
   msg.textContent = "Ingresando…";
 
   try{
-    // FastAPI OAuth2PasswordRequestForm => x-www-form-urlencoded
-    const body = new URLSearchParams();
-    body.set("username", email);
-    body.set("password", pass);
-
-    const r = await fetch("/token", {
+    // ✅ TU BACKEND REAL
+    const r = await fetch("/auth/login", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body
+      headers: { "Content-Type":"application/json" },
+      body: JSON.stringify({ email, password: pass })
     });
 
     if(!r.ok){
@@ -333,7 +317,7 @@ async function doLogin(){
     }
 
     const d = await r.json();
-    const token = d.access_token || d.token || d.jwt;
+    const token = d.access_token;
     if(!token){
       msg.textContent = "Login OK, pero no llegó access_token.";
       return;
@@ -342,15 +326,7 @@ async function doLogin(){
     EFX.setToken(token, true);
     EFX.applyHeaderAuth();
 
-    // vuelve a next si existe
-    const next = (function(){
-      const h = location.hash || "";
-      const qPos = h.indexOf("?");
-      if(qPos === -1) return null;
-      const p = new URLSearchParams(h.slice(qPos+1));
-      return p.get("next");
-    })();
-
+    const next = nextFromHash();
     if(next){
       location.href = next;
       return;
@@ -385,12 +361,30 @@ async function doRegister(){
 
     if(!r.ok){
       const t = await r.text().catch(()=>"(sin detalle)");
-      msg.textContent = (r.status===404)
-        ? "Backend aún no tiene /auth/register. (Lo implementamos en 5 min cuando quieras)."
-        : ("Registro falló: " + t);
+      msg.textContent = "Registro falló: " + t;
       return;
     }
 
+    const d = await r.json();
+    const token = d.access_token;
+
+    // ✅ tu backend devuelve token al registrar => te deja logueado directo
+    if(token){
+      EFX.setToken(token, true);
+      EFX.applyHeaderAuth();
+
+      const next = nextFromHash();
+      if(next){
+        location.href = next;
+        return;
+      }
+
+      location.hash = "#orders";
+      route();
+      return;
+    }
+
+    // fallback: si no viniera token, mandamos a login
     msg.textContent = "Cuenta creada ✅ Ahora inicia sesión.";
     location.hash = "#login";
     route();
@@ -401,20 +395,11 @@ async function doRegister(){
 
 function route(){
   EFX.applyHeaderAuth();
-
   const h = hashBase();
 
-  if(h === "register"){
-    show("viewRegister");
-    return;
-  }
+  if(h === "register"){ show("viewRegister"); return; }
+  if(h === "login"){ show("viewLogin"); return; }
 
-  if(h === "login"){
-    show("viewLogin");
-    return;
-  }
-
-  // default: orders
   show("viewOrders");
   loadOrders();
 }
