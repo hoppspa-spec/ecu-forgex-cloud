@@ -1,16 +1,27 @@
 // static/js/index.js
 (() => {
-  // ====== AUTH (REAL mínimo) ======
-const TOKEN = (window.EFX && EFX.getToken) ? EFX.getToken() : null;
-if (window.EFX && EFX.applyHeaderAuth) {
-  document.addEventListener("DOMContentLoaded", () => EFX.applyHeaderAuth());
-}
+  "use strict";
 
-  btnLogout?.addEventListener("click", () => {
-    TOKEN = null;
-    localStorage.removeItem(TOKEN_KEY);
-    alert("👋 Sesión cerrada");
-    setAuthUi();
+  // Helpers
+  const $ = (q, el = document) => el.querySelector(q);
+
+  // ====== AUTH (REAL mínimo) ======
+  function getAuthToken() {
+    return (window.EFX && typeof EFX.getToken === "function") ? EFX.getToken() : null;
+  }
+
+  // Aplica UI del header (lo hace el inline auth también, pero no molesta repetir)
+  document.addEventListener("DOMContentLoaded", () => {
+    if (window.EFX && typeof EFX.applyHeaderAuth === "function") EFX.applyHeaderAuth();
+
+    // Si existe botón logout y no hay inline handler por onclick (por si acaso)
+    const btnLogout = $("#btnLogout");
+    if (btnLogout && !btnLogout.dataset.bound) {
+      btnLogout.dataset.bound = "1";
+      btnLogout.addEventListener("click", () => {
+        if (window.EFX && typeof EFX.logout === "function") EFX.logout();
+      });
+    }
   });
 
   // ====== ESTADO ======
@@ -59,7 +70,7 @@ if (window.EFX && EFX.applyHeaderAuth) {
 
       if (!brand) {
         selModel.disabled = true;
-        updateYaml(); // refresca YAML
+        updateYaml();
         return;
       }
 
@@ -102,10 +113,14 @@ if (window.EFX && EFX.applyHeaderAuth) {
   function toYaml(obj, indent = 0) {
     const pad = "  ".repeat(indent);
     if (obj === null || obj === undefined) return "null";
+
     if (Array.isArray(obj)) {
       if (!obj.length) return "[]";
-      return obj.map(x => `${pad}- ${typeof x === "object" ? "\n" + toYaml(x, indent + 1) : String(x)}`).join("\n");
+      return obj
+        .map(x => `${pad}- ${typeof x === "object" ? "\n" + toYaml(x, indent + 1) : String(x)}`)
+        .join("\n");
     }
+
     if (typeof obj !== "object") return String(obj);
 
     const out = [];
@@ -124,11 +139,7 @@ if (window.EFX && EFX.applyHeaderAuth) {
   function updateYaml(patch) {
     const veh = getVehicleSelection();
     const data = {
-      vehicle: {
-        brand: veh.brand,
-        model: veh.model,
-        year: veh.year,
-      },
+      vehicle: { brand: veh.brand, model: veh.model, year: veh.year },
       ecu: {
         type: lastAnalysis?.ecu_type || null,
         part_number: lastAnalysis?.ecu_part_number || null,
@@ -140,16 +151,19 @@ if (window.EFX && EFX.applyHeaderAuth) {
       },
       patch: patch || { status: "not_selected" },
     };
+
     if (yamlBox) yamlBox.textContent = toYaml(data);
   }
 
   // ====== ECU INFO ======
   function renderEcuInfo() {
     if (!ecuInfo) return;
+
     if (!lastAnalysis) {
       ecuInfo.innerHTML = `<div>Esperando análisis…</div>`;
       return;
     }
+
     ecuInfo.innerHTML = `
       <div><strong>ECU Type:</strong> ${lastAnalysis.ecu_type || "—"}</div>
       <div><strong>Motor:</strong> ${engineDetected || "—"}</div>
@@ -158,7 +172,7 @@ if (window.EFX && EFX.applyHeaderAuth) {
     `;
   }
 
-  // ====== PATCHES (REAL: vienen desde backend) ======
+  // ====== PATCHES (REAL: backend) ======
   function renderPatches(recipes) {
     if (!patchList) return;
 
@@ -175,11 +189,10 @@ if (window.EFX && EFX.applyHeaderAuth) {
       el.innerHTML = `
         <div class="title">${p.label || p.id}${price}</div>
         <div class="kv"><small class="muted">ID:</small> ${p.id}</div>
-        <button class="btn" style="margin-top:6px">Aplicar / Comprar</button>
+        <button class="btn" style="margin-top:6px" type="button">Aplicar / Comprar</button>
       `;
 
       el.querySelector("button").addEventListener("click", async () => {
-        // YAML “selected”
         updateYaml({
           status: "selected",
           id: p.id,
@@ -187,7 +200,6 @@ if (window.EFX && EFX.applyHeaderAuth) {
           price_usd: typeof p.price === "number" ? p.price : null,
         });
 
-        // Crear orden y mandar a checkout
         await createOrderAndGo(p.id);
       });
 
@@ -197,7 +209,9 @@ if (window.EFX && EFX.applyHeaderAuth) {
 
   async function loadFamilyPatches(family, engine) {
     if (!patchList) return;
+
     patchList.innerHTML = `<div class="patch"><div class="title">Cargando parches…</div></div>`;
+
     try {
       const url = `/public/recipes/${encodeURIComponent(family)}?engine=${encodeURIComponent(engine || "auto")}`;
       const r = await fetch(url, { cache: "no-store" });
@@ -219,13 +233,14 @@ if (window.EFX && EFX.applyHeaderAuth) {
       return;
     }
 
+    const token = getAuthToken();
+
     try {
       const r = await fetch("/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          // DEMO: si el backend ignora auth, esto no estorba
-          "Authorization": "Bearer " + (TOKEN || "")
+          ...(token ? { "Authorization": "Bearer " + token } : {}),
         },
         body: JSON.stringify({
           analysis_id: lastAnalysis.analysis_id,
@@ -244,6 +259,7 @@ if (window.EFX && EFX.applyHeaderAuth) {
         alert("Orden creada, pero no llegó checkout_url");
         return;
       }
+
       location.href = o.checkout_url;
     } catch {
       alert("Error de red creando orden.");
@@ -255,7 +271,7 @@ if (window.EFX && EFX.applyHeaderAuth) {
     let c = 0xffffffff;
     for (let i = 0; i < buf.length; i++) {
       c ^= buf[i];
-      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
     }
     return (c ^ 0xffffffff) >>> 0;
   }
@@ -263,9 +279,10 @@ if (window.EFX && EFX.applyHeaderAuth) {
   $("#binfile")?.addEventListener("change", async (e) => {
     lastFile = e.target.files?.[0] || null;
     if (!lastFile) return;
+
     const buf = new Uint8Array(await lastFile.arrayBuffer());
     lastCvn = crc32(buf).toString(16).toUpperCase().padStart(8, "0");
-    updateYaml(); // refresca YAML con file/cvn
+    updateYaml();
   });
 
   // ====== ANALIZAR BIN ======
@@ -298,7 +315,6 @@ if (window.EFX && EFX.applyHeaderAuth) {
     renderEcuInfo();
     updateYaml({ status: "not_selected" });
 
-    // ✅ CARGA PATCHES REALES DESDE BACKEND
     await loadFamilyPatches(lastAnalysis.ecu_type || "EDC17C81", engineDetected);
   });
 
@@ -314,8 +330,6 @@ if (window.EFX && EFX.applyHeaderAuth) {
 
   // ====== INIT ======
   fillBrands();
-  setAuthUi();
   renderEcuInfo();
   updateYaml();
 })();
-
