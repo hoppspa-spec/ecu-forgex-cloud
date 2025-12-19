@@ -5,43 +5,24 @@
   // Helpers
   const $ = (q, el = document) => el.querySelector(q);
 
-  // ====== AUTH (REAL mínimo) ======
-  function getAuthToken() {
+  // ====== AUTH (usa EFX inline si existe) ======
+  function token() {
     return (window.EFX && typeof EFX.getToken === "function") ? EFX.getToken() : null;
   }
 
-  function isLoggedIn() {
-    return (window.EFX && typeof EFX.isLoggedIn === "function")
-      ? EFX.isLoggedIn()
-      : !!getAuthToken();
+  function applyHeader() {
+    if (window.EFX && typeof EFX.applyHeaderAuth === "function") EFX.applyHeaderAuth();
   }
 
-  function requireLogin(nextUrl) {
-    if (window.EFX && typeof EFX.requireLogin === "function") {
-      EFX.requireLogin(nextUrl || location.href);
-      return;
-    }
-    const next = encodeURIComponent(nextUrl || location.href);
-    location.href = "/static/usuarios.html#login?next=" + next;
-  }
-
-  // Aplica UI del header (lo hace el inline auth también, pero no molesta repetir)
+  // Aplica UI header + asegura logout (por si el onclick cambia)
   document.addEventListener("DOMContentLoaded", () => {
-    if (window.EFX && typeof EFX.applyHeaderAuth === "function") {
-      EFX.applyHeaderAuth();
-    }
+    applyHeader();
 
-    // Logout seguro (por si el onclick no existe o cambiaste HTML)
     const btnLogout = $("#btnLogout");
     if (btnLogout && !btnLogout.dataset.bound) {
       btnLogout.dataset.bound = "1";
-      btnLogout.addEventListener("click", (e) => {
-        e.preventDefault();
+      btnLogout.addEventListener("click", () => {
         if (window.EFX && typeof EFX.logout === "function") EFX.logout();
-        else {
-          localStorage.removeItem("EFX_TOKEN");
-          location.href = "/static/index.html";
-        }
       });
     }
   });
@@ -52,14 +33,14 @@
   let lastAnalysis = null;
   let engineDetected = "auto";
 
-  const yamlBox   = $("#yamlBox");
-  const ecuInfo   = $("#ecuInfo");
+  const yamlBox = $("#yamlBox");
+  const ecuInfo = $("#ecuInfo");
   const patchList = $("#patchList");
 
   // selects
   const selBrand = $("#selBrand");
   const selModel = $("#selModel");
-  const selYear  = $("#selYear");
+  const selYear = $("#selYear");
 
   // ====== VEHÍCULOS (DEMO) ======
   const VEH = {
@@ -79,15 +60,15 @@
     VEH.brands.forEach((b) => selBrand.append(new Option(b.label, b.key)));
 
     selModel.innerHTML = `<option value="">— Selecciona —</option>`;
-    selYear.innerHTML  = `<option value="">— Selecciona —</option>`;
+    selYear.innerHTML = `<option value="">— Selecciona —</option>`;
     selModel.disabled = true;
-    selYear.disabled  = true;
+    selYear.disabled = true;
 
     selBrand.onchange = () => {
       const brand = VEH.brands.find((b) => b.key === selBrand.value);
 
       selModel.innerHTML = `<option value="">— Selecciona —</option>`;
-      selYear.innerHTML  = `<option value="">— Selecciona —</option>`;
+      selYear.innerHTML = `<option value="">— Selecciona —</option>`;
       selYear.disabled = true;
 
       if (!brand) {
@@ -122,8 +103,8 @@
   }
 
   function getVehicleSelection() {
-    const brandObj = VEH.brands.find(b => b.key === (selBrand?.value || ""));
-    const modelObj = brandObj?.models?.find(m => m.key === (selModel?.value || ""));
+    const brandObj = VEH.brands.find((b) => b.key === (selBrand?.value || ""));
+    const modelObj = brandObj?.models?.find((m) => m.key === (selModel?.value || ""));
     return {
       brand: brandObj?.label || null,
       model: modelObj?.label || null,
@@ -139,7 +120,7 @@
     if (Array.isArray(obj)) {
       if (!obj.length) return "[]";
       return obj
-        .map(x => `${pad}- ${typeof x === "object" ? "\n" + toYaml(x, indent + 1) : String(x)}`)
+        .map((x) => `${pad}- ${typeof x === "object" ? "\n" + toYaml(x, indent + 1) : String(x)}`)
         .join("\n");
     }
 
@@ -205,7 +186,7 @@
 
     patchList.innerHTML = "";
     recipes.forEach((p) => {
-      const price = (typeof p.price === "number") ? ` — $${p.price}` : "";
+      const price = typeof p.price === "number" ? ` — $${p.price}` : "";
       const el = document.createElement("div");
       el.className = "patch";
       el.innerHTML = `
@@ -248,27 +229,30 @@
     }
   }
 
-  // ====== ORDER -> CHECKOUT ======
+  // ====== ORDER -> CHECKOUT (requiere login SOLO aquí) ======
   async function createOrderAndGo(patchId) {
     if (!lastAnalysis?.analysis_id) {
       alert("Analiza un BIN primero.");
       return;
     }
 
-    // ✅ aquí va el check de login (NO afuera)
-    if (!isLoggedIn()) {
-      requireLogin(location.href);
+    // 🔒 Si no hay token, mandamos a login con next
+    const t = token();
+    if (!t) {
+      if (window.EFX && typeof EFX.requireLogin === "function") {
+        EFX.requireLogin(location.href);
+        return;
+      }
+      alert("Debes iniciar sesión para continuar.");
       return;
     }
-
-    const token = getAuthToken();
 
     try {
       const r = await fetch("/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { "Authorization": "Bearer " + token } : {}),
+          "Authorization": "Bearer " + t,
         },
         body: JSON.stringify({
           analysis_id: lastAnalysis.analysis_id,
@@ -277,8 +261,8 @@
       });
 
       if (!r.ok) {
-        const t = await r.text().catch(() => "(sin detalle)");
-        alert("No se pudo crear la orden:\n" + t);
+        const msg = await r.text().catch(() => "(sin detalle)");
+        alert("No se pudo crear la orden:\n" + msg);
         return;
       }
 
@@ -329,16 +313,14 @@
     }
 
     if (!r.ok) {
-      const t = await r.text().catch(()=>"(sin detalle)");
+      const t = await r.text().catch(() => "(sin detalle)");
       alert("No se pudo analizar el BIN:\n" + t);
       return;
     }
 
     lastAnalysis = await r.json();
 
-    engineDetected = /EDC|DCM|MD1/i.test(lastAnalysis.ecu_type || "")
-      ? "diesel"
-      : "petrol";
+    engineDetected = /EDC|DCM|MD1/i.test(lastAnalysis.ecu_type || "") ? "diesel" : "petrol";
 
     renderEcuInfo();
     updateYaml({ status: "not_selected" });
