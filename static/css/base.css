@@ -112,3 +112,9 @@ button.btn:disabled{
 }
 
 small.muted{ color:var(--muted) }
+
+/* Evita que reglas globales rompan el header */
+.efx-topbar button,
+.efx-topbar .btn{
+  width:auto !important;
+}
