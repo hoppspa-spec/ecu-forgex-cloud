@@ -28,30 +28,11 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-  <button id="btnLogin" class="btn"
-    onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
-    Iniciar sesión
-  </button>
-
-  <button id="btnRegister" class="btn"
-    onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
-    Registro
-  </button>
-
   <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">
     🌙 / ☀️
   </button>
 
-  <button id="btnPayTop" class="btn">
-    Confirmar pago DEMO
-  </button>
-
-  <!-- ✅ ESTE ES EL ÚNICO DOWNLOAD DEL HEADER -->
-  <a id="btnDownloadTop" class="btn" href="#" style="display:none">
-    Descargar .MOD
-  </a>
-
-  <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">
+  <button id="btnLogout" class="btn" onclick="EFX.logout()">
     Cerrar sesión
   </button>
 </div>
