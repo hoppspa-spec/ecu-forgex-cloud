@@ -58,7 +58,16 @@ label{
   margin-top:6px;
 }
 
-input,select,button{
+/* Formularios / contenido (NO header) */
+.container input,
+.container select,
+.container button,
+.wrap input,
+.wrap select,
+.wrap button,
+.card input,
+.card select,
+.card button{
   width:100%;
   padding:10px;
   border:2px solid var(--stroke);
@@ -118,3 +127,4 @@ small.muted{ color:var(--muted) }
 .efx-topbar .btn{
   width:auto !important;
 }
+
