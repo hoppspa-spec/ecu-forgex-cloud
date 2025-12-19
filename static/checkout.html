@@ -9,18 +9,6 @@
   <link rel="stylesheet" href="/static/css/efx.css">
 
   <script src="/static/js/theme.js"></script>
-
-  <!-- ✅ Ajuste PRO para que los botones del header no queden gigantes -->
-  <style>
-    .efx-topbar .btn{ width:auto; padding:6px 12px; font-size:13px; }
-    .efx-topbar .btn.icon{ padding:6px 10px; }
-    <style>
-  .efx-topbar .btn{ width:auto; padding:6px 12px; font-size:13px; }
-  .efx-topbar .btn.icon{ padding:6px 10px; }
-  .efx-actions{ display:flex; gap:10px; align-items:center; flex-wrap:nowrap; }
-  </style>
-
-  </style>
 </head>
 
 <body>
@@ -28,15 +16,9 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-  <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">
-    🌙 / ☀️
-  </button>
-
-  <button id="btnLogout" class="btn" onclick="EFX.logout()">
-    Cerrar sesión
-  </button>
-</div>
-
+    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+    <button id="btnLogout" class="btn" onclick="EFX.logout()">Cerrar sesión</button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -67,11 +49,7 @@
 
 <script>
 /* =========================================================
-   ✅ auth.js INLINE (mínimo REAL) — NO rompe lo logrado
-   - Token en localStorage EFX_TOKEN (y compat keys)
-   - applyHeaderAuth(): muestra/oculta botones
-   - requireLogin(next): redirige con next
-   - logout(): borra tokens
+   ✅ auth.js INLINE (mínimo REAL) — limpio
 ========================================================= */
 (function () {
   const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
@@ -84,11 +62,6 @@
     return null;
   }
 
-  function setToken(token, persist=true){
-    if (persist) localStorage.setItem("EFX_TOKEN", token);
-    else sessionStorage.setItem("EFX_TOKEN", token);
-  }
-
   function clearToken(){
     for (const k of TOKEN_KEYS){
       localStorage.removeItem(k);
@@ -96,9 +69,7 @@
     }
   }
 
-  function isLoggedIn(){
-    return !!getToken();
-  }
+  function isLoggedIn(){ return !!getToken(); }
 
   function requireLogin(nextUrl){
     const next = encodeURIComponent(nextUrl || location.href);
@@ -110,28 +81,13 @@
     location.href = "/static/index.html";
   }
 
-  function applyHeaderAuth(){
-    const btnLogin = document.getElementById("btnLogin");
-    const btnReg   = document.getElementById("btnRegister");
-    const btnOut   = document.getElementById("btnLogout");
-
-    const logged = isLoggedIn();
-
-    if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-block";
-    if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-block";
-    if (btnOut)   btnOut.style.display   = logged ? "inline-block" : "none";
-  }
-
   window.EFX = window.EFX || {};
   window.EFX.getToken = getToken;
-  window.EFX.setToken = setToken;
   window.EFX.clearToken = clearToken;
   window.EFX.isLoggedIn = isLoggedIn;
   window.EFX.requireLogin = requireLogin;
-  window.EFX.applyHeaderAuth = applyHeaderAuth;
   window.EFX.logout = logout;
 
-  // theme.js puede definir toggleTheme; si no, evitamos crash
   if (!window.EFX.toggleTheme){
     window.EFX.toggleTheme = function(){
       document.documentElement.classList.toggle("dark");
@@ -153,23 +109,22 @@ function lockForAuthIfNeeded(){
   if (!isDemo) return false;
 
   if (!EFX.isLoggedIn()){
-    // Bloquea botones de pago/descarga
-    const payBtns = [$("#btnDemoPay"), $("#btnPayTop")].filter(Boolean);
-    for (const b of payBtns){
-      b.disabled = true;
-      b.title = "Debes iniciar sesión para continuar (DEMO)";
-      b.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
+    const payBtn = $("#btnDemoPay");
+    const dlBtn  = $("#btnDownloadMain");
+
+    if (payBtn){
+      payBtn.disabled = true;
+      payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
+      payBtn.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
     }
 
-    const dls = [$("#btnDownloadMain"), $("#btnDownloadTop")].filter(Boolean);
-    for (const a of dls){
-      a.style.pointerEvents = "none";
-      a.style.opacity = "0.6";
-      a.title = "Debes iniciar sesión para descargar (DEMO)";
-      a.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
+    if (dlBtn){
+      dlBtn.style.pointerEvents = "none";
+      dlBtn.style.opacity = "0.6";
+      dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
+      dlBtn.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
     }
 
-    // Mensaje claro
     const box = document.createElement("div");
     box.className = "card";
     box.style.marginTop = "12px";
@@ -207,36 +162,19 @@ async function fetchOrder(){
       <div class="row"><div class="muted">Monto</div><div>$${priceTxt} <span class="muted">(demo)</span></div></div>
     `;
 
-    // Si ya está paid/download_ready, habilita descarga
     const canDownload = (o.status === "paid" || o.status === "done") && !!o.download_ready;
-
     const dlMain = $("#btnDownloadMain");
-    const dlTop  = $("#btnDownloadTop");
 
-    if (canDownload){
+    if (canDownload && dlMain){
       const url = `/download/${o.id}`;
-
-      if (dlMain){
-        dlMain.style.display = "inline-flex";
-        dlMain.href = url;
-        dlMain.setAttribute("download", "");
-        dlMain.textContent = "⬇️ Descargar .MOD";
-      }
-
-      if (dlTop){
-        dlTop.style.display = "inline-flex";
-        dlTop.href = url;
-      }
-    } else {
-      if (dlMain){
-        dlMain.style.display = "none";
-        dlMain.removeAttribute("href");
-        dlMain.removeAttribute("download");
-      }
-      if (dlTop){
-        dlTop.style.display = "none";
-        dlTop.removeAttribute("href");
-      }
+      dlMain.style.display = "inline-flex";
+      dlMain.href = url;
+      dlMain.setAttribute("download", "");
+      dlMain.textContent = "⬇️ Descargar .MOD";
+    } else if (dlMain){
+      dlMain.style.display = "none";
+      dlMain.removeAttribute("href");
+      dlMain.removeAttribute("download");
     }
 
     return o;
@@ -263,20 +201,12 @@ async function demoPay(){
   const d = await r.json();
   $("#msg").textContent = "Pago confirmado. MOD listo ✅";
 
-  // 🔽 Botón de descarga principal (body)
-  const dl = document.getElementById("btnDownloadMain");
-  if (dl) {
+  const dl = $("#btnDownloadMain");
+  if (dl){
     dl.style.display = "inline-flex";
-    dl.href = d.download_url; // /download/{order_id}
+    dl.href = d.download_url;
     dl.setAttribute("download", "");
     dl.textContent = "⬇️ Descargar .MOD";
-  }
-
-  // 🔝 Botón de descarga del HEADER (mini-regla)
-  const topDl = document.getElementById("btnDownloadTop");
-  if (topDl) {
-    topDl.style.display = "inline-flex";
-    topDl.href = d.download_url;
   }
 
   await fetchOrder();
@@ -289,19 +219,9 @@ function init(){
     return;
   }
 
-  // Ajusta header según auth
-  EFX.applyHeaderAuth();
-
-  // Si no hay login => bloquea y redirige con next
   if (lockForAuthIfNeeded()) return;
 
-  // Bind botones
-  const btnDemo = $("#btnDemoPay");
-  const btnTopPay = $("#btnPayTop");
-
-  if (btnDemo) btnDemo.onclick = demoPay;
-  if (btnTopPay) btnTopPay.onclick = demoPay;
-
+  $("#btnDemoPay").onclick = demoPay;
   fetchOrder();
 }
 
