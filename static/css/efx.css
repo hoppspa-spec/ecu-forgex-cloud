@@ -55,6 +55,20 @@
 /* descarga header (el JS lo prende) */
 #btnDownloadTop{ display:none; }
 
+/* Si no cabe, no hacemos wrap feo: scrollea horizontal */
+.efx-actions{
+  overflow-x:auto;
+  scrollbar-width:none; /* Firefox */
+}
+
+.efx-actions::-webkit-scrollbar{ display:none; } /* Chrome/Edge */
+
+.efx-topbar{
+  position:sticky;
+  top:0;
+  z-index:50;
+}
+
 
 
 
