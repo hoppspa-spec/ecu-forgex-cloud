@@ -1,3 +1,6 @@
+/* Evita que aparezca/desaparezca el scrollbar y mueva el header */
+html { overflow-y: scroll; }
+
 :root{
   --bg:#ffffff;
   --ink:#2b2f38;
@@ -127,4 +130,5 @@ small.muted{ color:var(--muted) }
 .efx-topbar .btn{
   width:auto !important;
 }
+
 
