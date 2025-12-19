@@ -23,19 +23,26 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-  <button id="btnLogin" class="btn" onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">Iniciar sesión</button>
-  <button id="btnRegister" class="btn" onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">Registro</button>
+    <button id="btnLogin" class="btn"
+      onclick="location.href='/static/usuarios.html#login?next='+encodeURIComponent(location.href)">
+      Iniciar sesión
+    </button>
 
-  <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
+    <button id="btnRegister" class="btn"
+      onclick="location.href='/static/usuarios.html#register?next='+encodeURIComponent(location.href)">
+      Registro
+    </button>
 
-  <button id="btnPay" class="btn">Confirmar pago DEMO</button>
+    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
 
-  <!-- IMPORTANTE: que sea botón visual, no link azul default -->
-  <a id="btnDownload" class="btn" href="#" style="display:none">Descargar .MOD</a>
+    <!-- ✅ Pago arriba (opcional) -->
+    <button id="btnPayTop" class="btn">Confirmar pago DEMO</button>
 
-  <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
-</div>
+    <!-- ✅ Descarga arriba (oculta hasta que toque) -->
+    <a id="btnDownloadTop" class="btn" href="#" style="display:none">Descargar .MOD</a>
 
+    <button id="btnLogout" class="btn" style="display:none" onclick="EFX.logout()">Cerrar sesión</button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -46,8 +53,8 @@
     <div class="actions" style="margin-top:14px">
       <button id="btnDemoPay" class="btn" type="button">✅ Confirmar pago DEMO</button>
 
-      <!-- ✅ ESTE ES EL ÚNICO btnDownload REAL (antes tenías 2 con el mismo ID) -->
-      <a id="btnDownload" class="btn ok" href="#" style="display:none" download>⬇️ Descargar .MOD</a>
+      <!-- ✅ ÚNICO botón de descarga REAL (body) -->
+      <a id="btnDownloadMain" class="btn ok" href="#" style="display:none" download>⬇️ Descargar .MOD</a>
 
       <a class="btn gray" href="/static/index.html">← Volver</a>
     </div>
@@ -84,7 +91,6 @@
   }
 
   function setToken(token, persist=true){
-    // guardamos en la key oficial
     if (persist) localStorage.setItem("EFX_TOKEN", token);
     else sessionStorage.setItem("EFX_TOKEN", token);
   }
@@ -105,6 +111,11 @@
     location.href = "/static/usuarios.html#login?next=" + next;
   }
 
+  function logout(){
+    clearToken();
+    location.href = "/static/index.html";
+  }
+
   function applyHeaderAuth(){
     const btnLogin = document.getElementById("btnLogin");
     const btnReg   = document.getElementById("btnRegister");
@@ -115,19 +126,8 @@
     if (btnLogin) btnLogin.style.display = logged ? "none" : "inline-block";
     if (btnReg)   btnReg.style.display   = logged ? "none" : "inline-block";
     if (btnOut)   btnOut.style.display   = logged ? "inline-block" : "none";
-
-    // logout handler
-    if (btnOut && !btnOut.dataset.bound){
-      btnOut.dataset.bound = "1";
-      btnOut.addEventListener("click", () => {
-        clearToken();
-        // vuelve al index para que se note el estado
-        location.href = "/static/index.html";
-      });
-    }
   }
 
-  // expone API global
   window.EFX = window.EFX || {};
   window.EFX.getToken = getToken;
   window.EFX.setToken = setToken;
@@ -135,6 +135,7 @@
   window.EFX.isLoggedIn = isLoggedIn;
   window.EFX.requireLogin = requireLogin;
   window.EFX.applyHeaderAuth = applyHeaderAuth;
+  window.EFX.logout = logout;
 
   // theme.js puede definir toggleTheme; si no, evitamos crash
   if (!window.EFX.toggleTheme){
@@ -166,7 +167,7 @@ function lockForAuthIfNeeded(){
       b.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
     }
 
-    const dls = [$("#btnDownload"), $("#btnDownloadTop")].filter(Boolean);
+    const dls = [$("#btnDownloadMain"), $("#btnDownloadTop")].filter(Boolean);
     for (const a of dls){
       a.style.pointerEvents = "none";
       a.style.opacity = "0.6";
@@ -201,30 +202,35 @@ async function fetchOrder(){
     }
 
     const o = await r.json();
+    const price = (o.price_usd ?? 59);
+    const priceTxt = (typeof price === "number") ? price.toFixed(2) : "59.00";
+
     box.innerHTML = `
       <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
       <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
       <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
       <div class="row"><div class="muted">Fecha</div><div>${o.created_at || "—"}</div></div>
-      <div class="row"><div class="muted">Monto</div><div>$${(o.price_usd ?? 59).toFixed ? (o.price_usd ?? 59).toFixed(2) : "59.00"} <span class="muted">(demo)</span></div></div>
+      <div class="row"><div class="muted">Monto</div><div>$${priceTxt} <span class="muted">(demo)</span></div></div>
     `;
 
     // Si ya está paid/download_ready, habilita descarga
     const canDownload = (o.status === "paid" || o.status === "done") && !!o.download_ready;
 
-    const dlMain = $("#btnDownload");
+    const dlMain = $("#btnDownloadMain");
     const dlTop  = $("#btnDownloadTop");
 
     if (canDownload){
       const url = `/download/${o.id}`;
+
       if (dlMain){
-        dlMain.style.display = "inline-block";
+        dlMain.style.display = "inline-flex";
         dlMain.href = url;
         dlMain.setAttribute("download", "");
         dlMain.textContent = "⬇️ Descargar .MOD";
       }
+
       if (dlTop){
-        dlTop.style.display = "inline-block";
+        dlTop.style.display = "inline-flex";
         dlTop.href = url;
       }
     } else {
@@ -246,13 +252,12 @@ async function fetchOrder(){
   }
 }
 
-<script>
 async function demoPay(){
   $("#msg").textContent = "Procesando pago demo…";
 
   const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
     method: "POST",
-    headers: { "Authorization": "Bearer " + TOKEN }
+    headers: { "Authorization": "Bearer " + EFX.getToken() }
   });
 
   if(!r.ok){
@@ -265,7 +270,7 @@ async function demoPay(){
   $("#msg").textContent = "Pago confirmado. MOD listo ✅";
 
   // 🔽 Botón de descarga principal (body)
-  const dl = document.getElementById("btnDownload");
+  const dl = document.getElementById("btnDownloadMain");
   if (dl) {
     dl.style.display = "inline-flex";
     dl.href = d.download_url; // /download/{order_id}
@@ -274,7 +279,7 @@ async function demoPay(){
   }
 
   // 🔝 Botón de descarga del HEADER (mini-regla)
-  const topDl = document.getElementById("btnDownload");
+  const topDl = document.getElementById("btnDownloadTop");
   if (topDl) {
     topDl.style.display = "inline-flex";
     topDl.href = d.download_url;
@@ -282,8 +287,6 @@ async function demoPay(){
 
   await fetchOrder();
 }
-</script>
-
 
 function init(){
   if(!ORDER_ID){
