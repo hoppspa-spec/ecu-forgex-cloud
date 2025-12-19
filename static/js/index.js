@@ -1,27 +1,10 @@
 // static/js/index.js
 (() => {
-  // ====== AUTH (DEMO) ======
-  const TOKEN_KEY = "EFX_TOKEN";
-  let TOKEN = localStorage.getItem(TOKEN_KEY) || null;
-
-  const $ = (q, el = document) => el.querySelector(q);
-
-  const btnLogin  = $("#btnLogin");
-  const btnLogout = $("#btnLogout");
-
-  function setAuthUi() {
-    if (!btnLogin || !btnLogout) return;
-    btnLogin.style.display  = TOKEN ? "none" : "inline-block";
-    btnLogout.style.display = TOKEN ? "inline-block" : "none";
-  }
-
-  // Login DEMO: guarda un token cualquiera para destrabar "modo sesión"
-  btnLogin?.addEventListener("click", () => {
-    TOKEN = "demo-token-" + Date.now();
-    localStorage.setItem(TOKEN_KEY, TOKEN);
-    alert("✅ Sesión DEMO iniciada");
-    setAuthUi();
-  });
+  // ====== AUTH (REAL mínimo) ======
+const TOKEN = (window.EFX && EFX.getToken) ? EFX.getToken() : null;
+if (window.EFX && EFX.applyHeaderAuth) {
+  document.addEventListener("DOMContentLoaded", () => EFX.applyHeaderAuth());
+}
 
   btnLogout?.addEventListener("click", () => {
     TOKEN = null;
@@ -335,3 +318,4 @@
   renderEcuInfo();
   updateYaml();
 })();
+
