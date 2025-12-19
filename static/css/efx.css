@@ -1,38 +1,7 @@
-/* ===== HEADER / TOPBAR ===== */
-.efx-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px;
-  border-bottom: 2px solid var(--stroke);
-  background: var(--card);
-}
+/* =====================================================
+   EFX TOPBAR — FIX DEFINITIVO (anti CSS global)
+===================================================== */
 
-.efx-title,
-.brand {
-  font-weight: 800;
-  font-size: 16px;
-  letter-spacing: .3px;
-}
-
-.efx-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.efx-actions .btn {
-  padding: 6px 10px;
-  font-size: 13px;
-  border-radius: 6px;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.efx-actions .btn.icon {
-  padding: 6px 8px;
-}
-/* Topbar layout */
 .efx-topbar{
   display:flex;
   align-items:center;
@@ -40,98 +9,53 @@
   gap:12px;
   padding:10px 16px;
   border-bottom:2px solid var(--stroke, #2f3a4a);
+  background:var(--card, #fff);
 }
 
-.efx-topbar .brand{
+.efx-topbar .brand,
+.efx-topbar .efx-title{
   font-weight:800;
+  font-size:16px;
   letter-spacing:.3px;
+  white-space:nowrap;
 }
 
-/* Actions group */
 .efx-actions{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-  justify-content:flex-end;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:10px !important;
+  flex-wrap:nowrap !important;
+  white-space:nowrap;
 }
 
-/* Button sizing (pro) */
-.efx-actions .btn{
-  width:auto;                 /* evita botones gigantes */
-  padding:8px 12px;
-  border-radius:10px;
-  font-size:14px;
-  line-height:1;
-  display:inline-flex;
+/* 🔥 clave: le ganamos a cualquier "button{width:100%}" o ".btn{width:100%}" */
+.efx-topbar .btn{
+  width:auto !important;
+  display:inline-flex !important;
   align-items:center;
   justify-content:center;
-  gap:8px;
-  text-decoration:none;       /* por si es <a> */
+  padding:6px 12px !important;
+  font-size:13px !important;
+  line-height:1;
+  border-radius:8px !important;
+  white-space:nowrap;
 }
 
-.efx-actions .btn.icon{
-  padding:8px 10px;
-  min-width:46px;
+.efx-topbar .btn.icon{
+  padding:6px 10px !important;
+  min-width:44px;
 }
 
-/* evita que links se vean "azul subrayado" */
-.efx-actions a.btn{
-  color:inherit;
+.efx-topbar a.btn{
+  text-decoration:none !important;
+  color:inherit !important;
 }
 
-/* =====================================================
-   EFX TOPBAR — BOTONES PRO (fix definitivo)
-===================================================== */
+/* descarga header (el JS lo prende) */
+#btnDownloadTop{ display:none; }
 
-.efx-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
 
-.efx-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
-
-/* Botón base */
-.efx-topbar .btn {
-  width: auto;
-  padding: 6px 12px;
-  font-size: 13px;
-  line-height: 1;
-  border-radius: 8px;
-  white-space: nowrap;
-}
-
-/* Botón ícono (🌙☀️) */
-.efx-topbar .btn.icon {
-  padding: 6px 9px;
-  font-size: 14px;
-}
-
-/* Botón primario (pago) */
-.efx-topbar .btn.primary {
-  background: var(--accent);
-}
-
-/* Botón descarga (header) */
-#btnDownloadTop {
-  display: none; /* JS lo habilita */
-}
-
-/* Evita que <a> se vea como link */
-.efx-topbar a.btn {
-  text-decoration: none;
-  color: inherit;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
 
 
 
