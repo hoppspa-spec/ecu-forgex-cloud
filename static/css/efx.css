@@ -80,3 +80,58 @@
   color:inherit;
 }
 
+/* =====================================================
+   EFX TOPBAR — BOTONES PRO (fix definitivo)
+===================================================== */
+
+.efx-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.efx-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* Botón base */
+.efx-topbar .btn {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* Botón ícono (🌙☀️) */
+.efx-topbar .btn.icon {
+  padding: 6px 9px;
+  font-size: 14px;
+}
+
+/* Botón primario (pago) */
+.efx-topbar .btn.primary {
+  background: var(--accent);
+}
+
+/* Botón descarga (header) */
+#btnDownloadTop {
+  display: none; /* JS lo habilita */
+}
+
+/* Evita que <a> se vea como link */
+.efx-topbar a.btn {
+  text-decoration: none;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+
+
