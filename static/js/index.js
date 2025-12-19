@@ -10,16 +10,38 @@
     return (window.EFX && typeof EFX.getToken === "function") ? EFX.getToken() : null;
   }
 
+  function isLoggedIn() {
+    return (window.EFX && typeof EFX.isLoggedIn === "function")
+      ? EFX.isLoggedIn()
+      : !!getAuthToken();
+  }
+
+  function requireLogin(nextUrl) {
+    if (window.EFX && typeof EFX.requireLogin === "function") {
+      EFX.requireLogin(nextUrl || location.href);
+      return;
+    }
+    const next = encodeURIComponent(nextUrl || location.href);
+    location.href = "/static/usuarios.html#login?next=" + next;
+  }
+
   // Aplica UI del header (lo hace el inline auth también, pero no molesta repetir)
   document.addEventListener("DOMContentLoaded", () => {
-    if (window.EFX && typeof EFX.applyHeaderAuth === "function") EFX.applyHeaderAuth();
+    if (window.EFX && typeof EFX.applyHeaderAuth === "function") {
+      EFX.applyHeaderAuth();
+    }
 
-    // Si existe botón logout y no hay inline handler por onclick (por si acaso)
+    // Logout seguro (por si el onclick no existe o cambiaste HTML)
     const btnLogout = $("#btnLogout");
     if (btnLogout && !btnLogout.dataset.bound) {
       btnLogout.dataset.bound = "1";
-      btnLogout.addEventListener("click", () => {
+      btnLogout.addEventListener("click", (e) => {
+        e.preventDefault();
         if (window.EFX && typeof EFX.logout === "function") EFX.logout();
+        else {
+          localStorage.removeItem("EFX_TOKEN");
+          location.href = "/static/index.html";
+        }
       });
     }
   });
@@ -230,6 +252,12 @@
   async function createOrderAndGo(patchId) {
     if (!lastAnalysis?.analysis_id) {
       alert("Analiza un BIN primero.");
+      return;
+    }
+
+    // ✅ aquí va el check de login (NO afuera)
+    if (!isLoggedIn()) {
+      requireLogin(location.href);
       return;
     }
 
