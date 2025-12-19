@@ -246,12 +246,13 @@ async function fetchOrder(){
   }
 }
 
+<script>
 async function demoPay(){
   $("#msg").textContent = "Procesando pago demo…";
 
   const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
     method: "POST",
-    headers: { "Authorization": "Bearer " + EFX.getToken() }
+    headers: { "Authorization": "Bearer " + TOKEN }
   });
 
   if(!r.ok){
@@ -263,25 +264,26 @@ async function demoPay(){
   const d = await r.json();
   $("#msg").textContent = "Pago confirmado. MOD listo ✅";
 
-  // habilita descarga inmediata
-  const url = d.download_url || `/download/${ORDER_ID}`;
-
-  const dlMain = $("#btnDownload");
-  const dlTop  = $("#btnDownloadTop");
-
-  if (dlMain){
-    dlMain.style.display = "inline-block";
-    dlMain.href = url;
-    dlMain.setAttribute("download", "");
-    dlMain.textContent = "⬇️ Descargar .MOD";
+  // 🔽 Botón de descarga principal (body)
+  const dl = document.getElementById("btnDownload");
+  if (dl) {
+    dl.style.display = "inline-flex";
+    dl.href = d.download_url; // /download/{order_id}
+    dl.setAttribute("download", "");
+    dl.textContent = "⬇️ Descargar .MOD";
   }
-  if (dlTop){
-    dlTop.style.display = "inline-block";
-    dlTop.href = url;
+
+  // 🔝 Botón de descarga del HEADER (mini-regla)
+  const topDl = document.getElementById("btnDownload");
+  if (topDl) {
+    topDl.style.display = "inline-flex";
+    topDl.href = d.download_url;
   }
 
   await fetchOrder();
 }
+</script>
+
 
 function init(){
   if(!ORDER_ID){
