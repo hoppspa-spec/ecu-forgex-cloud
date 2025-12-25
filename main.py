@@ -371,6 +371,23 @@ sendBtn.addEventListener("click", async () => {{
   const wixAnalyze = "https://www.hopp.cl/analyze";
   window.location.href = `${{wixAnalyze}}?orderId=${{encodeURIComponent(data.orderId)}}`;
 }});
+@app.get("/api/order/{order_id}")
+def get_order(order_id: str):
+    workdir = os.path.join(TMP_DIR, order_id)
+    if not os.path.isdir(workdir):
+        raise HTTPException(404, "Order not found")
+
+    meta = {
+        "orderId": order_id,
+        "status": "ready",
+        "detectedEcu": "EDC17",
+        "availablePatches": [
+            {"id":"speed_limiter","name":"Speed Limiter OFF","price":49},
+            {"id":"dtc_off","name":"DTC OFF","price":39},
+            {"id":"dpf_off","name":"DPF OFF","price":99},
+        ]
+    }
+    return meta
 </script>
 </body>
 </html>
