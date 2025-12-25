@@ -349,6 +349,67 @@ sendBtn.addEventListener("click", async () => {{
   // vuelve a Wix con orderId
   const wixAnalyze = "https://www.hopp.cl/analyze";
   window.location.href = `${{wixAnalyze}}?orderId=${{encodeURIComponent(data.orderId)}}`;
+from fastapi import Form
+
+@app.post("/api/ingest-multipart")
+async def ingest_multipart(
+    file: UploadFile = File(...),
+    brand: str = Form(""),
+    model: str = Form(""),
+    year: str = Form(""),
+    engine: str = Form(""),
+    ecu: str = Form("")
+):
+    order_id = str(uuid.uuid4())
+    workdir = os.path.join(TMP_DIR, order_id)
+    os.makedirs(workdir, exist_ok=True)
+
+    raw_path = os.path.join(workdir, file.filename or "upload.bin")
+    with open(raw_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+
+    extract_dir = os.path.join(workdir, "extract")
+    os.makedirs(extract_dir, exist_ok=True)
+
+    # si es zip, extrae. si no, raw_path es el ecu_file
+    ecu_file = raw_path
+    if (file.filename or "").lower().endswith(".zip"):
+        try:
+            with zipfile.ZipFile(raw_path, "r") as z:
+                z.extractall(extract_dir)
+        except zipfile.BadZipFile:
+            raise HTTPException(400, "Invalid ZIP file")
+
+        ecu_file = pick_ecu_file(extract_dir)
+        if not ecu_file:
+            raise HTTPException(400, "No ECU file found inside ZIP")
+
+    size = os.path.getsize(ecu_file)
+    if size < MIN_BYTES:
+        raise HTTPException(400, f"ECU file too small: {size} bytes")
+    if size > MAX_BYTES:
+        raise HTTPException(400, f"ECU file too large: {size} bytes")
+
+    detected_ecu = ecu or "UNKNOWN"
+
+    available_patches = [
+        {"id":"speed_limiter", "name":"Speed Limiter OFF", "desc":"Remove or raise speed limiter.", "price":49, "tag":"Popular"},
+        {"id":"dtc_off", "name":"DTC OFF", "desc":"Deactivate selected DTCs.", "price":39, "tag":"Fast"},
+        {"id":"dpf_off", "name":"DPF OFF (off-road)", "desc":"Disable DPF (off-road only).", "price":99, "tag":"Diesel"},
+    ]
+
+    return {
+        "orderId": order_id,
+        "detectedEcu": detected_ecu,
+        "sourceFileName": os.path.basename(ecu_file),
+        "sourceFileBytes": size,
+        "vehicle": {"brand":brand,"model":model,"year":year,"engine":engine,"ecu":ecu},
+        "availablePatches": available_patches
+    }
 }});
 </script>
 </body>
