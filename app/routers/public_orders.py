@@ -1,6 +1,5 @@
-# app/routers/public_orders.py
 from fastapi import APIRouter, HTTPException
-from app.routers.orders import ORDERS_DB  # reutilizamos en memoria
+from app.routers.orders import ORDERS_DB
 
 router = APIRouter(prefix="/public", tags=["public"])
 
@@ -10,7 +9,6 @@ def public_get_order(order_id: str):
     if not o:
         raise HTTPException(status_code=404, detail="order_id not found")
 
-    # ✅ solo devolvemos campos seguros (sin owner_email, mod_file_path, etc.)
     return {
         "id": o.get("id"),
         "status": o.get("status"),
