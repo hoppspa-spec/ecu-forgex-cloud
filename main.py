@@ -1,16 +1,23 @@
-import zipfile
+from __future__ import annotations
+
+import os, uuid, zipfile, shutil
+from pathlib import Path
+from typing import Optional, List, Tuple
+
 import requests
-from fastapi import UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
-from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import requests, zipfile, uuid, os
 
+
+# -----------------------------------------------------------------------------
+# App
+# -----------------------------------------------------------------------------
 app = FastAPI()
 
-# ✅ CORS: permite llamadas desde tu Wix
-# Si quieres ultra estricto, reemplaza "*" por tu dominio exacto de Wix.
+# ✅ CORS: permite llamadas desde Wix
+# Si quieres estricto: ["https://www.hopp.cl", "https://*.wixsite.com", ...]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,77 +32,42 @@ os.makedirs(TMP_DIR, exist_ok=True)
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
 
+
+# -----------------------------------------------------------------------------
+# Models
+# -----------------------------------------------------------------------------
 class IngestPayload(BaseModel):
     vehicle: dict
     file: dict  # {originalName, sizeBytes, wixFileUrl}
     createdAt: str | None = None
 
-def pick_ecu_file(extract_dir: str) -> str | None:
-    preferred_ext = (".bin", ".ori", ".mpc", ".e2p", ".dat", ".hex")
-    best = None
-    best_size = -1
 
-    for root, _, files in os.walk(extract_dir):
-        for name in files:
-            p = os.path.join(root, name)
-            lname = name.lower()
-            size = os.path.getsize(p)
-
-            # prioriza extensiones típicas, pero si no hay, igual podría servir
-            if lname.endswith(preferred_ext):
-                if size > best_size:
-                    best = p
-                    best_size = size
-
-    if best:
-        return best
-
-    # fallback: cualquier archivo no vacío (por si viene sin extensión)
-    for root, _, files in os.walk(extract_dir):
-        for name in files:
-            p = os.path.join(root, name)
-            if os.path.getsize(p) > 0:
-                return p
-
-    return None
-
-import os, uuid, zipfile, shutil, mimetypes
-from pathlib import Path
-from typing import Optional, List, Tuple
-
-import requests
-from fastapi import HTTPException
-
-# Ajusta si quieres
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 ALLOWED_EXTS = {".bin", ".ori", ".mod", ".mpc", ".hex", ".s19", ".srec", ".e2p", ".eep", ".rom", ".frf"}
 IGNORE_EXTS  = {".txt", ".nfo", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".xml", ".json", ".csv", ".ini", ".log"}
 
-def _safe_name(name: str) -> str:
-    # Evita paths raros dentro del zip
-    return os.path.basename(name).replace("\\", "_").replace("/", "_").strip() or "file"
-
 def _looks_like_zip(head: bytes, content_type: str = "") -> bool:
-    # ZIP magic: PK\x03\x04 or PK\x05\x06 (empty zip) or PK\x07\x08
+    # ZIP magic: PK\x03\x04 or PK\x05\x06 (empty) or PK\x07\x08
     if head.startswith(b"PK\x03\x04") or head.startswith(b"PK\x05\x06") or head.startswith(b"PK\x07\x08"):
         return True
-    # fallback por content-type
     ct = (content_type or "").lower()
     return "zip" in ct
 
 def _iter_files(root: str) -> List[str]:
-    files = []
+    out = []
     for dirpath, _, filenames in os.walk(root):
         for fn in filenames:
-            full = os.path.join(dirpath, fn)
-            files.append(full)
-    return files
+            out.append(os.path.join(dirpath, fn))
+    return out
 
 def pick_ecu_file(extract_dir: str) -> Optional[str]:
     """
     Elige el candidato ECU más probable:
     1) ignora basura por extensión típica
     2) prioriza extensiones conocidas
-    3) prioriza el archivo más grande (normalmente el dump real)
+    3) prioriza el archivo más grande
     """
     candidates: List[Tuple[int, int, str]] = []  # (ext_score, size, path)
 
@@ -103,7 +75,6 @@ def pick_ecu_file(extract_dir: str) -> Optional[str]:
         name = os.path.basename(p)
         ext = Path(name).suffix.lower()
 
-        # ignora archivos vacíos o minúsculos
         try:
             size = os.path.getsize(p)
         except OSError:
@@ -111,22 +82,17 @@ def pick_ecu_file(extract_dir: str) -> Optional[str]:
         if size <= 0:
             continue
 
-        # ignora basura conocida
         if ext in IGNORE_EXTS:
             continue
 
-        # score por extensión
         ext_score = 0
         if ext in ALLOWED_EXTS:
             ext_score = 2
         elif ext == ".zip":
-            # zip dentro de zip? lo ignoramos por ahora (si quieres, lo soportamos después)
             ext_score = -5
         else:
-            # sin extensión o extensión rara: igual puede ser ECU (Trasdata, etc.)
-            ext_score = 1
+            ext_score = 1  # sin extensión o rara: puede ser Trasdata
 
-        # penaliza nombres típicos de metadata
         low = name.lower()
         if any(k in low for k in ["readme", "info", "license", "metadata", "checksum", "md5", "sha", "project"]):
             ext_score -= 2
@@ -136,17 +102,36 @@ def pick_ecu_file(extract_dir: str) -> Optional[str]:
     if not candidates:
         return None
 
-    # orden: mayor score, mayor tamaño
     candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
     return candidates[0][2]
 
-def _save_response_content(r: requests.Response, dst_path: str) -> None:
-    # stream a disco para no reventar RAM si el archivo crece
+def _save_stream_to_file(r: requests.Response, dst_path: str, head: bytes = b"") -> None:
     with open(dst_path, "wb") as f:
+        if head:
+            f.write(head)
         for chunk in r.iter_content(chunk_size=1024 * 1024):
             if chunk:
                 f.write(chunk)
 
+def _validate_size(path: str) -> int:
+    size = os.path.getsize(path)
+    if size < MIN_BYTES:
+        raise HTTPException(400, f"ECU file too small: {size} bytes")
+    if size > MAX_BYTES:
+        raise HTTPException(400, f"ECU file too large: {size} bytes")
+    return size
+
+def _patches_placeholder():
+    return [
+        {"id":"speed_limiter", "name":"Speed Limiter OFF", "desc":"Remove or raise speed limiter.", "price":49, "tag":"Popular"},
+        {"id":"dtc_off", "name":"DTC OFF", "desc":"Deactivate selected DTCs.", "price":39, "tag":"Fast"},
+        {"id":"dpf_off", "name":"DPF OFF (off-road)", "desc":"Disable DPF (off-road only).", "price":99, "tag":"Diesel"},
+    ]
+
+
+# -----------------------------------------------------------------------------
+# API: ingest from Wix file URL
+# -----------------------------------------------------------------------------
 @app.post("/api/ingest")
 def ingest(payload: IngestPayload):
     wix_url = payload.file.get("wixFileUrl")
@@ -157,13 +142,12 @@ def ingest(payload: IngestPayload):
     workdir = os.path.join(TMP_DIR, order_id)
     os.makedirs(workdir, exist_ok=True)
 
-    # Paths
-    raw_path     = os.path.join(workdir, "upload.raw")
-    zip_path     = os.path.join(workdir, "upload.zip")
-    extract_dir  = os.path.join(workdir, "extract")
+    raw_path    = os.path.join(workdir, "upload.raw")
+    zip_path    = os.path.join(workdir, "upload.zip")
+    extract_dir = os.path.join(workdir, "extract")
     os.makedirs(extract_dir, exist_ok=True)
 
-    # 1) Descargar (mejor con stream)
+    # 1) Descargar stream
     try:
         r = requests.get(wix_url, timeout=60, stream=True, allow_redirects=True)
     except Exception as e:
@@ -172,67 +156,36 @@ def ingest(payload: IngestPayload):
     if r.status_code != 200:
         raise HTTPException(400, f"Failed to download from Wix (status {r.status_code})")
 
-    # Peek de cabecera para detectar ZIP de verdad
-    head = b""
+    # Peek
     try:
         head = next(r.iter_content(chunk_size=8))
     except StopIteration:
         head = b""
 
     content_type = r.headers.get("content-type", "")
+    _save_stream_to_file(r, raw_path, head=head)
 
-    # Guardamos todo el archivo (incluyendo el head que ya leímos)
-    with open(raw_path, "wb") as f:
-        if head:
-            f.write(head)
-        for chunk in r.iter_content(chunk_size=1024 * 1024):
-            if chunk:
-                f.write(chunk)
-
-    # 2) Decidir si es ZIP o archivo directo
     is_zip = _looks_like_zip(head, content_type=content_type)
 
     ecu_file: Optional[str] = None
-
     if is_zip:
-        # renombrar raw -> zip
         shutil.copyfile(raw_path, zip_path)
-
-        # unzip
         try:
             with zipfile.ZipFile(zip_path, "r") as z:
                 z.extractall(extract_dir)
         except zipfile.BadZipFile:
-            # a veces Wix devuelve HTML aunque el content-type diga zip
-            # deja un error más explícito
             raise HTTPException(400, "Invalid ZIP file (downloaded file is not a real ZIP)")
 
-        # 3) encontrar archivo interno
         ecu_file = pick_ecu_file(extract_dir)
         if not ecu_file:
             raise HTTPException(400, "No ECU file found inside ZIP")
     else:
-        # Archivo directo (BIN/MPC/sin extensión)
-        # lo movemos a un nombre estable
         ecu_file = os.path.join(workdir, "ecu_input.bin")
         shutil.copyfile(raw_path, ecu_file)
 
-    # 4) Validación tamaño
-    size = os.path.getsize(ecu_file)
-    if size < MIN_BYTES:
-        raise HTTPException(400, f"ECU file too small: {size} bytes")
-    if size > MAX_BYTES:
-        raise HTTPException(400, f"ECU file too large: {size} bytes")
+    size = _validate_size(ecu_file)
 
-    # 5) detección placeholder (V1: usar ecu del formulario)
     detected_ecu = payload.vehicle.get("ecu") or "UNKNOWN"
-
-    # 6) patches placeholder (V1)
-    available_patches = [
-        {"id":"speed_limiter", "name":"Speed Limiter OFF", "desc":"Remove or raise speed limiter.", "price":49, "tag":"Popular"},
-        {"id":"dtc_off", "name":"DTC OFF", "desc":"Deactivate selected DTCs.", "price":39, "tag":"Fast"},
-        {"id":"dpf_off", "name":"DPF OFF (off-road)", "desc":"Disable DPF (off-road only).", "price":99, "tag":"Diesel"},
-    ]
 
     return {
         "orderId": order_id,
@@ -241,11 +194,80 @@ def ingest(payload: IngestPayload):
         "sourceFileBytes": size,
         "isZip": bool(is_zip),
         "contentType": content_type,
-        "availablePatches": available_patches
+        "availablePatches": _patches_placeholder(),
     }
+
+
+# -----------------------------------------------------------------------------
+# API: ingest multipart (direct upload to backend)
+# -----------------------------------------------------------------------------
+@app.post("/api/ingest-multipart")
+async def ingest_multipart(
+    file: UploadFile = File(...),
+    brand: str = Form(""),
+    model: str = Form(""),
+    year: str = Form(""),
+    engine: str = Form(""),
+    ecu: str = Form(""),
+):
+    order_id = str(uuid.uuid4())
+    workdir = os.path.join(TMP_DIR, order_id)
+    os.makedirs(workdir, exist_ok=True)
+
+    raw_path    = os.path.join(workdir, file.filename or "upload.bin")
+    zip_path    = os.path.join(workdir, "upload.zip")
+    extract_dir = os.path.join(workdir, "extract")
+    os.makedirs(extract_dir, exist_ok=True)
+
+    # Guardar upload a disco
+    with open(raw_path, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
+
+    # Detectar ZIP por magic bytes (no por extensión)
+    with open(raw_path, "rb") as f:
+        head = f.read(8)
+
+    content_type = (file.content_type or "")
+    is_zip = _looks_like_zip(head, content_type=content_type)
+
+    ecu_file: Optional[str] = None
+    if is_zip:
+        shutil.copyfile(raw_path, zip_path)
+        try:
+            with zipfile.ZipFile(zip_path, "r") as z:
+                z.extractall(extract_dir)
+        except zipfile.BadZipFile:
+            raise HTTPException(400, "Invalid ZIP file")
+
+        ecu_file = pick_ecu_file(extract_dir)
+        if not ecu_file:
+            raise HTTPException(400, "No ECU file found inside ZIP")
+    else:
+        ecu_file = raw_path
+
+    size = _validate_size(ecu_file)
+
+    return {
+        "orderId": order_id,
+        "detectedEcu": ecu or "UNKNOWN",
+        "sourceFileName": os.path.basename(ecu_file),
+        "sourceFileBytes": size,
+        "isZip": bool(is_zip),
+        "contentType": content_type,
+        "vehicle": {"brand":brand,"model":model,"year":year,"engine":engine,"ecu":ecu},
+        "availablePatches": _patches_placeholder(),
+    }
+
+
+# -----------------------------------------------------------------------------
+# UI: /upload page (drag & drop -> /api/ingest-multipart)
+# -----------------------------------------------------------------------------
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(brand: str = "", model: str = "", year: str = "", engine: str = "", ecu: str = ""):
-    # 🔥 ultra simple: pagina que sube directo al backend (multipart)
     return f"""
 <!doctype html>
 <html>
@@ -328,7 +350,6 @@ sendBtn.addEventListener("click", async () => {{
   const fd = new FormData();
   fd.append("file", selectedFile);
 
-  // vehicle info (lo mandamos como campos simples)
   fd.append("brand", "{brand}");
   fd.append("model", "{model}");
   fd.append("year", "{year}");
@@ -349,71 +370,8 @@ sendBtn.addEventListener("click", async () => {{
   // vuelve a Wix con orderId
   const wixAnalyze = "https://www.hopp.cl/analyze";
   window.location.href = `${{wixAnalyze}}?orderId=${{encodeURIComponent(data.orderId)}}`;
-from fastapi import Form
-
-@app.post("/api/ingest-multipart")
-async def ingest_multipart(
-    file: UploadFile = File(...),
-    brand: str = Form(""),
-    model: str = Form(""),
-    year: str = Form(""),
-    engine: str = Form(""),
-    ecu: str = Form("")
-):
-    order_id = str(uuid.uuid4())
-    workdir = os.path.join(TMP_DIR, order_id)
-    os.makedirs(workdir, exist_ok=True)
-
-    raw_path = os.path.join(workdir, file.filename or "upload.bin")
-    with open(raw_path, "wb") as f:
-        while True:
-            chunk = await file.read(1024 * 1024)
-            if not chunk:
-                break
-            f.write(chunk)
-
-    extract_dir = os.path.join(workdir, "extract")
-    os.makedirs(extract_dir, exist_ok=True)
-
-    # si es zip, extrae. si no, raw_path es el ecu_file
-    ecu_file = raw_path
-    if (file.filename or "").lower().endswith(".zip"):
-        try:
-            with zipfile.ZipFile(raw_path, "r") as z:
-                z.extractall(extract_dir)
-        except zipfile.BadZipFile:
-            raise HTTPException(400, "Invalid ZIP file")
-
-        ecu_file = pick_ecu_file(extract_dir)
-        if not ecu_file:
-            raise HTTPException(400, "No ECU file found inside ZIP")
-
-    size = os.path.getsize(ecu_file)
-    if size < MIN_BYTES:
-        raise HTTPException(400, f"ECU file too small: {size} bytes")
-    if size > MAX_BYTES:
-        raise HTTPException(400, f"ECU file too large: {size} bytes")
-
-    detected_ecu = ecu or "UNKNOWN"
-
-    available_patches = [
-        {"id":"speed_limiter", "name":"Speed Limiter OFF", "desc":"Remove or raise speed limiter.", "price":49, "tag":"Popular"},
-        {"id":"dtc_off", "name":"DTC OFF", "desc":"Deactivate selected DTCs.", "price":39, "tag":"Fast"},
-        {"id":"dpf_off", "name":"DPF OFF (off-road)", "desc":"Disable DPF (off-road only).", "price":99, "tag":"Diesel"},
-    ]
-
-    return {
-        "orderId": order_id,
-        "detectedEcu": detected_ecu,
-        "sourceFileName": os.path.basename(ecu_file),
-        "sourceFileBytes": size,
-        "vehicle": {"brand":brand,"model":model,"year":year,"engine":engine,"ecu":ecu},
-        "availablePatches": available_patches
-    }
 }});
 </script>
 </body>
 </html>
 """
-
-
