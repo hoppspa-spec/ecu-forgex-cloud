@@ -1,15 +1,14 @@
 from __future__ import annotations
-
 import os, uuid, zipfile, shutil
 from pathlib import Path
 from typing import Optional, List, Tuple
-
 import requests
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-
+from app.routers import public_orders
+app.include_router(public_orders.router)
 
 # -----------------------------------------------------------------------------
 # App
