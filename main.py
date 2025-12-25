@@ -1,14 +1,11 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# routers
-from app.routers import orders
-from app.routers import public_orders  # 👈 tu nuevo archivo
+from app.routers import upload
+from app.routers import ingest
 
 app = FastAPI()
 
-# CORS (ajusta si quieres)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,9 +14,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ monta routers DESPUÉS de app
-app.include_router(orders.router)          # /orders/...
-app.include_router(public_orders.router)   # /public/order/...
+app.include_router(upload.router)     # GET /upload
+app.include_router(ingest.router)     # POST /api/ingest-multipart + GET /api/public/order/...
 
 @app.get("/health")
 def health():
