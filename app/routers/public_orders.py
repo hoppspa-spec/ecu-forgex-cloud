@@ -1,22 +1,16 @@
 from fastapi import APIRouter, HTTPException
-from app.routers.orders import ORDERS_DB
 
-router = APIRouter(prefix="/public", tags=["public"])
+router = APIRouter(
+    prefix="/public/order",
+    tags=["public-orders"]
+)
 
-@router.get("/order/{order_id}")
-def public_get_order(order_id: str):
-    o = ORDERS_DB.get(order_id)
-    if not o:
-        raise HTTPException(status_code=404, detail="order_id not found")
+# mock temporal (después lo conectamos a DB real)
+PUBLIC_ORDERS_DB = {}
 
-    return {
-        "id": o.get("id"),
-        "status": o.get("status"),
-        "paid": o.get("paid"),
-        "download_ready": o.get("download_ready"),
-        "patch_label": o.get("patch_label"),
-        "price_usd": o.get("price_usd"),
-        "family": o.get("family"),
-        "engine": o.get("engine"),
-        "checkout_url": o.get("checkout_url"),
-    }
+@router.get("/{order_id}")
+def get_public_order(order_id: str):
+    order = PUBLIC_ORDERS_DB.get(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
