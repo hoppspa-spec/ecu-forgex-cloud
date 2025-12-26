@@ -1,10 +1,21 @@
 # main.py
-from fastapi import FastAPI
+from __future__ import annotations
+
+import os, uuid, zipfile
+from pathlib import Path
+from typing import Optional
+
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+# ✅ tus routers existentes
 from app.routers import orders
 from app.routers import public_orders
 
+# -------------------------------------------------------------------
+# APP (SOLO 1)
+# -------------------------------------------------------------------
 app = FastAPI()
 
 app.add_middleware(
@@ -15,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ monta routers (se mantienen vivos)
 app.include_router(orders.router)
 app.include_router(public_orders.router)
 
@@ -22,23 +34,14 @@ app.include_router(public_orders.router)
 def health():
     return {"ok": True}
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.responses import HTMLResponse
-from fastapi.middleware.cors import CORSMiddleware
-import os, uuid, zipfile, shutil
+# -------------------------------------------------------------------
+# STORAGE (Render Disk)
+# -------------------------------------------------------------------
+DATA_DIR = Path(os.getenv("DATA_DIR", "/storage/efx"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI()
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-TMP_DIR = os.getenv("EFX_TMP", "/tmp/efx")
-os.makedirs(TMP_DIR, exist_ok=True)
+TMP_DIR = DATA_DIR / "tmp"
+TMP_DIR.mkdir(parents=True, exist_ok=True)
 
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
@@ -46,7 +49,7 @@ MAX_BYTES = 64 * 1024 * 1024
 ALLOWED_EXTS = {".bin", ".ori", ".mod", ".mpc", ".hex", ".s19", ".srec", ".e2p", ".eep", ".rom", ".frf"}
 IGNORE_EXTS  = {".txt", ".nfo", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".xml", ".json", ".csv", ".ini", ".log"}
 
-def pick_ecu_file(extract_dir: str):
+def pick_ecu_file(extract_dir: str) -> Optional[str]:
     best = None
     best_score = -999
     best_size = -1
@@ -65,7 +68,7 @@ def pick_ecu_file(extract_dir: str):
             if ext in IGNORE_EXTS:
                 continue
 
-            score = 1  # raro/sin extensión igual sirve
+            score = 1
             if ext in ALLOWED_EXTS:
                 score = 3
             if ext == ".zip":
@@ -82,8 +85,13 @@ def pick_ecu_file(extract_dir: str):
 
     return best
 
+# -------------------------------------------------------------------
+# DRAG & DROP UPLOAD PAGE (Option B)
+# -------------------------------------------------------------------
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(brand: str = "", model: str = "", year: str = "", engine: str = "", ecu: str = ""):
+    # ✅ IMPORTANTE: el POST va a https://ecu-forgex-cloud.onrender.com/api/ingest-multipart
+    # pero como está en el mismo dominio, usamos relativo /api/ingest-multipart
     return f"""
 <!doctype html>
 <html>
@@ -184,7 +192,7 @@ sendBtn.addEventListener("click", async () => {{
   const data = JSON.parse(txt);
   setStatus("OK ✅ Redirecting…\\nOrder: " + data.orderId);
 
-  // vuelve a Wix
+  // ✅ vuelve a Wix Analyze con orderId
   window.location.href = `https://hopp.cl/analyze?orderId=${{encodeURIComponent(data.orderId)}}`;
 }});
 </script>
@@ -192,6 +200,9 @@ sendBtn.addEventListener("click", async () => {{
 </html>
 """
 
+# -------------------------------------------------------------------
+# INGEST MULTIPART (receives real file)
+# -------------------------------------------------------------------
 @app.post("/api/ingest-multipart")
 async def ingest_multipart(
     file: UploadFile = File(...),
@@ -202,10 +213,12 @@ async def ingest_multipart(
     ecu: str = Form("")
 ):
     order_id = str(uuid.uuid4())
-    workdir = os.path.join(TMP_DIR, order_id)
-    os.makedirs(workdir, exist_ok=True)
+    workdir = TMP_DIR / order_id
+    workdir.mkdir(parents=True, exist_ok=True)
 
-    raw_path = os.path.join(workdir, file.filename or "upload.bin")
+    filename = file.filename or "upload.bin"
+    raw_path = workdir / filename
+
     with open(raw_path, "wb") as f:
         while True:
             chunk = await file.read(1024 * 1024)
@@ -213,20 +226,23 @@ async def ingest_multipart(
                 break
             f.write(chunk)
 
-    extract_dir = os.path.join(workdir, "extract")
-    os.makedirs(extract_dir, exist_ok=True)
+    extract_dir = workdir / "extract"
+    extract_dir.mkdir(parents=True, exist_ok=True)
 
-    ecu_file = raw_path
-    if (file.filename or "").lower().endswith(".zip"):
+    ecu_file = str(raw_path)
+
+    # Si es zip: extrae y elige mejor candidato
+    if filename.lower().endswith(".zip"):
         try:
-            with zipfile.ZipFile(raw_path, "r") as z:
-                z.extractall(extract_dir)
+            with zipfile.ZipFile(str(raw_path), "r") as z:
+                z.extractall(str(extract_dir))
         except zipfile.BadZipFile:
             raise HTTPException(400, "Invalid ZIP file")
 
-        ecu_file = pick_ecu_file(extract_dir)
-        if not ecu_file:
+        chosen = pick_ecu_file(str(extract_dir))
+        if not chosen:
             raise HTTPException(400, "No ECU file found inside ZIP")
+        ecu_file = chosen
 
     size = os.path.getsize(ecu_file)
     if size < MIN_BYTES:
@@ -236,7 +252,7 @@ async def ingest_multipart(
 
     detected_ecu = ecu or "UNKNOWN"
 
-    # TODO: aquí guardas order a DB real (por ahora demo)
+    # TODO: aquí idealmente creas Order real en tu DB (por ahora demo)
     return {
         "orderId": order_id,
         "detectedEcu": detected_ecu,
