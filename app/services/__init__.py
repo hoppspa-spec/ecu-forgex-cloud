@@ -1,3 +1,2 @@
-from . import orders
-from . import public_orders
-from . import downloads
+# app/services/__init__.py
+# (empty on purpose to avoid circular imports)
