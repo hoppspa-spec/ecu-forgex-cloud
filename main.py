@@ -238,11 +238,12 @@ async def ingest_multipart(
     ecu: str = Form("")
 ):
     order_id = str(uuid.uuid4())
-    workdir = TMP_DIR / order_id
+    workdir = order_dir(order_id)
     workdir.mkdir(parents=True, exist_ok=True)
 
     filename = file.filename or "upload.bin"
-    raw_path = workdir / filename
+    filename = (file.filename or "upload.bin").replace("/", "_").replace("\\", "_")
+
 
     with open(raw_path, "wb") as f:
         while True:
@@ -277,16 +278,76 @@ async def ingest_multipart(
 
     detected_ecu = ecu or "UNKNOWN"
 
-    # TODO: aquí idealmente creas Order real en tu DB (por ahora demo)
+        # ✅ Order REAL (persistente en /storage/efx)
+    order = {
+        "id": order_id,
+        "created_at": datetime.utcnow().isoformat(),
+
+        "status": "uploaded",
+        "paid": False,
+        "download_ready": False,
+
+        "vehicle": {"brand": brand, "model": model, "year": year, "engine": engine, "ecu": ecu},
+        "detectedEcu": detected_ecu,
+
+        "sourceFileName": os.path.basename(ecu_file),
+        "sourceFileBytes": size,
+
+        "availablePatches": [
+            {"id": "speed_limiter", "name": "Speed Limiter OFF", "price": 49},
+            {"id": "dtc_off", "name": "DTC OFF", "price": 39},
+            {"id": "dpf_off", "name": "DPF OFF (off-road)", "price": 99},
+        ],
+
+        # ✅ rutas internas (no las expongas en public)
+        "paths": {
+            "workdir": str(workdir),
+            "raw_upload": str(raw_path),
+            "extract_dir": str(extract_dir),
+            "chosen_ecu_file": str(ecu_file),
+        }
+    }
+
+    save_order(order_id, order)
+
+    # ✅ Respuesta para el front (compatible con tu JS actual)
     return {
         "orderId": order_id,
         "detectedEcu": detected_ecu,
-        "sourceFileName": os.path.basename(ecu_file),
-        "sourceFileBytes": size,
-        "vehicle": {"brand":brand,"model":model,"year":year,"engine":engine,"ecu":ecu},
-        "availablePatches": [
-            {"id":"speed_limiter", "name":"Speed Limiter OFF", "price":49},
-            {"id":"dtc_off", "name":"DTC OFF", "price":39},
-            {"id":"dpf_off", "name":"DPF OFF (off-road)", "price":99},
-        ]
+        "sourceFileName": order["sourceFileName"],
+        "sourceFileBytes": order["sourceFileBytes"],
+        "vehicle": order["vehicle"],
+        "availablePatches": order["availablePatches"],
+    }
+@app.get("/api/order/{order_id}")
+def api_get_order(order_id: str):
+    o = load_order(order_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="order_id not found")
+    return o
+
+
+@app.get("/public/order/{order_id}")
+def public_get_order(order_id: str):
+    o = load_order(order_id)
+    if not o:
+        raise HTTPException(status_code=404, detail="order_id not found")
+
+    # ✅ público sanitizado
+    return {
+        "id": o.get("id"),
+        "created_at": o.get("created_at"),
+        "status": o.get("status"),
+        "paid": o.get("paid"),
+        "download_ready": o.get("download_ready"),
+
+        "vehicle": o.get("vehicle"),
+        "detectedEcu": o.get("detectedEcu"),
+        "sourceFileName": o.get("sourceFileName"),
+        "sourceFileBytes": o.get("sourceFileBytes"),
+        "availablePatches": o.get("availablePatches"),
+
+        # si luego metes pagos:
+        "checkout_url": o.get("checkout_url"),
+        "download_url": o.get("download_url") if o.get("download_ready") else None,
     }
