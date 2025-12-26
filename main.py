@@ -1,4 +1,7 @@
 from __future__ import annotations
+from app.routers.ingest import router as ingest_router
+
+app.include_router(ingest_router)
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
