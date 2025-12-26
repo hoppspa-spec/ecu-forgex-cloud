@@ -1,74 +1,61 @@
-import os, uuid, shutil, zipfile
+from __future__ import annotations
+
+import os, uuid, zipfile
 from pathlib import Path
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional
+from datetime import datetime
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
-from fastapi.responses import JSONResponse
+
+from app.services.storage import save_order
 
 router = APIRouter(prefix="/api", tags=["ingest"])
-
-# ------- Storage simple (V1 en memoria) -------
-ORDERS_DB: Dict[str, Dict[str, Any]] = {}
-
-TMP_DIR = os.getenv("EFX_TMP", "/tmp/efx")
-os.makedirs(TMP_DIR, exist_ok=True)
 
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
 
-ALLOWED_EXTS = {".bin", ".ori", ".mod", ".mpc", ".hex", ".s19", ".srec", ".e2p", ".eep", ".rom", ".frf", ".dat"}
+ALLOWED_EXTS = {".bin", ".ori", ".mod", ".mpc", ".hex", ".s19", ".srec", ".e2p", ".eep", ".rom", ".frf"}
 IGNORE_EXTS  = {".txt", ".nfo", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".xml", ".json", ".csv", ".ini", ".log"}
 
-def _iter_files(root: str) -> List[str]:
-    out = []
-    for dirpath, _, filenames in os.walk(root):
-        for fn in filenames:
-            out.append(os.path.join(dirpath, fn))
-    return out
+DATA_DIR = Path(os.getenv("DATA_DIR", "/storage/efx"))
+ORDERS_DIR = DATA_DIR / "orders"
+ORDERS_DIR.mkdir(parents=True, exist_ok=True)
 
-def pick_ecu_file(extract_dir: str) -> Optional[str]:
-    candidates: List[Tuple[int, int, str]] = []  # (score, size, path)
-    for p in _iter_files(extract_dir):
-        name = os.path.basename(p)
-        ext = Path(name).suffix.lower()
 
-        try:
-            size = os.path.getsize(p)
-        except OSError:
+def pick_ecu_file(extract_dir: Path) -> Optional[Path]:
+    best = None
+    best_score = -999
+    best_size = -1
+
+    for p in extract_dir.rglob("*"):
+        if not p.is_file():
             continue
+
+        size = p.stat().st_size
         if size <= 0:
             continue
+
+        ext = p.suffix.lower()
         if ext in IGNORE_EXTS:
             continue
 
-        score = 0
+        score = 1
         if ext in ALLOWED_EXTS:
-            score = 2
-        elif ext == ".zip":
+            score = 3
+        if ext == ".zip":
             score = -5
-        else:
-            score = 1
 
-        low = name.lower()
-        if any(k in low for k in ["readme", "info", "license", "metadata", "checksum", "md5", "sha", "project"]):
+        low = p.name.lower()
+        if any(k in low for k in ["readme", "info", "license", "checksum", "md5", "sha"]):
             score -= 2
 
-        candidates.append((score, size, p))
+        if score > best_score or (score == best_score and size > best_size):
+            best = p
+            best_score = score
+            best_size = size
 
-    if not candidates:
-        return None
+    return best
 
-    candidates.sort(key=lambda t: (t[0], t[1]), reverse=True)
-    return candidates[0][2]
-
-def _looks_like_zip(path: str) -> bool:
-    # ZIP magic bytes
-    try:
-        with open(path, "rb") as f:
-            head = f.read(4)
-        return head in (b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")
-    except Exception:
-        return False
 
 @router.post("/ingest-multipart")
 async def ingest_multipart(
@@ -80,92 +67,60 @@ async def ingest_multipart(
     ecu: str = Form("")
 ):
     order_id = str(uuid.uuid4())
-    workdir = os.path.join(TMP_DIR, order_id)
-    extract_dir = os.path.join(workdir, "extract")
-    os.makedirs(extract_dir, exist_ok=True)
+    workdir = ORDERS_DIR / order_id
+    workdir.mkdir(parents=True, exist_ok=True)
 
-    # guardamos el archivo tal cual (sin depender del nombre)
-    safe_name = os.path.basename(file.filename or "upload.bin")
-    raw_path = os.path.join(workdir, safe_name)
+    raw_path = workdir / (file.filename or "upload.bin")
 
-    try:
-        with open(raw_path, "wb") as f:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                f.write(chunk)
-    except Exception as e:
-        raise HTTPException(500, f"Failed to save upload: {e}")
-
-    # ¿Es ZIP real? (por magic bytes, no por extensión)
-    is_zip = _looks_like_zip(raw_path)
+    with open(raw_path, "wb") as f:
+        while chunk := await file.read(1024 * 1024):
+            f.write(chunk)
 
     ecu_file = raw_path
-    if is_zip:
+
+    if raw_path.suffix.lower() == ".zip":
+        extract_dir = workdir / "extract"
+        extract_dir.mkdir()
         try:
-            with zipfile.ZipFile(raw_path, "r") as z:
+            with zipfile.ZipFile(raw_path) as z:
                 z.extractall(extract_dir)
         except zipfile.BadZipFile:
-            raise HTTPException(400, "Invalid ZIP file")
+            raise HTTPException(400, "Invalid ZIP")
 
-        ecu_pick = pick_ecu_file(extract_dir)
-        if not ecu_pick:
-            raise HTTPException(400, "No ECU file found inside ZIP")
-        ecu_file = ecu_pick
+        picked = pick_ecu_file(extract_dir)
+        if not picked:
+            raise HTTPException(400, "No ECU file found in ZIP")
+        ecu_file = picked
 
-    size = os.path.getsize(ecu_file)
+    size = ecu_file.stat().st_size
     if size < MIN_BYTES:
-        raise HTTPException(400, f"ECU file too small: {size} bytes")
+        raise HTTPException(400, "File too small")
     if size > MAX_BYTES:
-        raise HTTPException(400, f"ECU file too large: {size} bytes")
+        raise HTTPException(400, "File too large")
 
-    detected_ecu = ecu or "UNKNOWN"
-
-    # Parches demo (V1)
-    available_patches = [
-        {"id":"speed_limiter", "name":"Speed Limiter OFF", "desc":"Remove or raise speed limiter.", "price":49, "tag":"Popular"},
-        {"id":"dtc_off", "name":"DTC OFF", "desc":"Deactivate selected DTCs.", "price":39, "tag":"Fast"},
-        {"id":"dpf_off", "name":"DPF OFF (off-road)", "desc":"Disable DPF (off-road only).", "price":99, "tag":"Diesel"},
-    ]
-
-    # Guardamos order en memoria para que Wix lo lea con /public/order/{orderId}
-    ORDERS_DB[order_id] = {
-        "orderId": order_id,
-        "detectedEcu": detected_ecu,
-        "sourceFileName": os.path.basename(ecu_file),
+    order = {
+        "id": order_id,
+        "created_at": datetime.utcnow().isoformat(),
+        "status": "uploaded",
+        "paid": False,
+        "download_ready": False,
+        "detectedEcu": ecu or "UNKNOWN",
+        "sourceFileName": ecu_file.name,
         "sourceFileBytes": size,
-        "isZip": bool(is_zip),
-        "vehicle": {"brand": brand, "model": model, "year": year, "engine": engine, "ecu": ecu},
-        "availablePatches": available_patches,
-        "workdir": workdir,
-        "ecu_file_path": ecu_file,
-        "status": "uploaded"
+        "vehicle": {
+            "brand": brand,
+            "model": model,
+            "year": year,
+            "engine": engine,
+            "ecu": ecu,
+        },
+        "availablePatches": [
+            {"id": "speed_limiter", "name": "Speed Limiter OFF", "price": 49},
+            {"id": "dtc_off", "name": "DTC OFF", "price": 39},
+            {"id": "dpf_off", "name": "DPF OFF (off-road)", "price": 99},
+        ],
     }
 
-    return JSONResponse({
-        "orderId": order_id,
-        "detectedEcu": detected_ecu,
-        "sourceFileName": os.path.basename(ecu_file),
-        "sourceFileBytes": size,
-        "isZip": bool(is_zip),
-        "availablePatches": available_patches
-    })
+    save_order(order_id, order)
 
-# Endpoint público para Wix
-@router.get("/public/order/{order_id}")
-def public_get_order(order_id: str):
-    o = ORDERS_DB.get(order_id)
-    if not o:
-        raise HTTPException(404, "orderId not found")
-    # OJO: no devuelvo paths internos
-    return {
-        "orderId": o["orderId"],
-        "detectedEcu": o["detectedEcu"],
-        "sourceFileName": o["sourceFileName"],
-        "sourceFileBytes": o["sourceFileBytes"],
-        "isZip": o["isZip"],
-        "vehicle": o["vehicle"],
-        "availablePatches": o["availablePatches"],
-        "status": o["status"],
-    }
+    return {"orderId": order_id}
