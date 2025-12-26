@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pathlib import Path
 
-from app.services.store import load_order
+from app.services.storage import load_order
 
 router = APIRouter(prefix="/download", tags=["download"])
 
@@ -16,19 +16,15 @@ def download_by_order(order_id: str):
         raise HTTPException(status_code=403, detail="download not ready")
 
     path = o.get("mod_file_path")
-    if not path:
+    if not path or not Path(path).exists():
         raise HTTPException(status_code=404, detail="mod file not found")
-
-    p = Path(path)
-    if not p.exists():
-        raise HTTPException(status_code=404, detail="mod file missing on disk")
 
     family = o.get("family") or "ECU"
     patch_id = o.get("patch_option_id") or "patch"
     filename = f"EFX_{family}_{patch_id}.mod.bin"
 
     return FileResponse(
-        str(p),
+        path,
         filename=filename,
         media_type="application/octet-stream"
     )
