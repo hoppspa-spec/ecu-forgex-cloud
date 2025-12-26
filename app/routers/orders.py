@@ -14,7 +14,7 @@ from app.routers.public import ANALYSIS_DB, load_global_config, ecu_matches
 from app.routers.auth import get_current_user
 
 from app.services.storage import (
-    order_dir, save_order, load_order, iter_orders
+    order_dir, save_order, load_order
 )
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -158,3 +158,4 @@ def confirm_payment_demo(order_id: str, u: dict = Depends(get_current_user)):
         "status": o["status"],
         "download_url": o["download_url"],
     }
+
