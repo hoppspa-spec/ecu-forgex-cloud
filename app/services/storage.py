@@ -29,3 +29,15 @@ def load_order(order_id: str) -> Optional[dict]:
         return None
     with open(p, "r", encoding="utf-8") as f:
         return json.load(f)
+
+def iter_orders(limit: int = 200):
+    # devuelve dicts de order.json, más nuevos primero
+    files = sorted(ORDERS_DIR.glob("*/order.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for p in files[:limit]:
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                yield json.load(f)
+        except Exception:
+            continue
+
+
