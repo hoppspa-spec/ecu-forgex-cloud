@@ -1,7 +1,9 @@
 # main.py
 from __future__ import annotations
 
-import os, uuid, zipfile
+import os
+import uuid
+import zipfile
 from pathlib import Path
 from typing import Optional
 
@@ -9,13 +11,11 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-# ✅ tus routers existentes
 from app.routers import orders
 from app.routers import public_orders
 
-# -------------------------------------------------------------------
-# APP (SOLO 1)
-# -------------------------------------------------------------------
+from app.services.storage import order_dir, save_order, now_iso
+
 app = FastAPI()
 
 app.add_middleware(
@@ -26,7 +26,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ monta routers (se mantienen vivos)
 app.include_router(orders.router)
 app.include_router(public_orders.router)
 
@@ -34,40 +33,9 @@ app.include_router(public_orders.router)
 def health():
     return {"ok": True}
 
-# -------------------------------------------------------------------
-# STORAGE (Render Disk)
-# -------------------------------------------------------------------
-DATA_DIR = Path(os.getenv("DATA_DIR", "/storage/efx"))
-DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-TMP_DIR = DATA_DIR / "tmp"
-TMP_DIR.mkdir(parents=True, exist_ok=True)
-import json
-from datetime import datetime
-
-ORDERS_DIR = DATA_DIR / "orders"
-ORDERS_DIR.mkdir(parents=True, exist_ok=True)
-
-def order_dir(order_id: str) -> Path:
-    d = ORDERS_DIR / order_id
-    d.mkdir(parents=True, exist_ok=True)
-    return d
-
-def order_json_path(order_id: str) -> Path:
-    return order_dir(order_id) / "order.json"
-
-def save_order(order_id: str, data: dict) -> None:
-    p = order_json_path(order_id)
-    with open(p, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-def load_order(order_id: str) -> dict | None:
-    p = order_json_path(order_id)
-    if not p.exists():
-        return None
-    with open(p, "r", encoding="utf-8") as f:
-        return json.load(f)
-
+# -------------------------
+# Upload config
+# -------------------------
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
 
@@ -110,13 +78,11 @@ def pick_ecu_file(extract_dir: str) -> Optional[str]:
 
     return best
 
-# -------------------------------------------------------------------
-# DRAG & DROP UPLOAD PAGE (Option B)
-# -------------------------------------------------------------------
+# -------------------------
+# Drag & Drop Upload page
+# -------------------------
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(brand: str = "", model: str = "", year: str = "", engine: str = "", ecu: str = ""):
-    # ✅ IMPORTANTE: el POST va a https://ecu-forgex-cloud.onrender.com/api/ingest-multipart
-    # pero como está en el mismo dominio, usamos relativo /api/ingest-multipart
     return f"""
 <!doctype html>
 <html>
@@ -217,7 +183,6 @@ sendBtn.addEventListener("click", async () => {{
   const data = JSON.parse(txt);
   setStatus("OK ✅ Redirecting…\\nOrder: " + data.orderId);
 
-  // ✅ vuelve a Wix Analyze con orderId
   window.location.href = `https://hopp.cl/analyze?orderId=${{encodeURIComponent(data.orderId)}}`;
 }});
 </script>
@@ -225,9 +190,9 @@ sendBtn.addEventListener("click", async () => {{
 </html>
 """
 
-# -------------------------------------------------------------------
-# INGEST MULTIPART (receives real file)
-# -------------------------------------------------------------------
+# -------------------------
+# ingest multipart (real)
+# -------------------------
 @app.post("/api/ingest-multipart")
 async def ingest_multipart(
     file: UploadFile = File(...),
@@ -239,11 +204,9 @@ async def ingest_multipart(
 ):
     order_id = str(uuid.uuid4())
     workdir = order_dir(order_id)
-    workdir.mkdir(parents=True, exist_ok=True)
 
-    filename = file.filename or "upload.bin"
     filename = (file.filename or "upload.bin").replace("/", "_").replace("\\", "_")
-
+    raw_path = workdir / filename
 
     with open(raw_path, "wb") as f:
         while True:
@@ -257,7 +220,6 @@ async def ingest_multipart(
 
     ecu_file = str(raw_path)
 
-    # Si es zip: extrae y elige mejor candidato
     if filename.lower().endswith(".zip"):
         try:
             with zipfile.ZipFile(str(raw_path), "r") as z:
@@ -278,18 +240,15 @@ async def ingest_multipart(
 
     detected_ecu = ecu or "UNKNOWN"
 
-        # ✅ Order REAL (persistente en /storage/efx)
     order = {
         "id": order_id,
-        "created_at": datetime.utcnow().isoformat(),
-
+        "created_at": now_iso(),
         "status": "uploaded",
         "paid": False,
         "download_ready": False,
 
         "vehicle": {"brand": brand, "model": model, "year": year, "engine": engine, "ecu": ecu},
         "detectedEcu": detected_ecu,
-
         "sourceFileName": os.path.basename(ecu_file),
         "sourceFileBytes": size,
 
@@ -299,7 +258,6 @@ async def ingest_multipart(
             {"id": "dpf_off", "name": "DPF OFF (off-road)", "price": 99},
         ],
 
-        # ✅ rutas internas (no las expongas en public)
         "paths": {
             "workdir": str(workdir),
             "raw_upload": str(raw_path),
@@ -310,7 +268,6 @@ async def ingest_multipart(
 
     save_order(order_id, order)
 
-    # ✅ Respuesta para el front (compatible con tu JS actual)
     return {
         "orderId": order_id,
         "detectedEcu": detected_ecu,
@@ -318,36 +275,4 @@ async def ingest_multipart(
         "sourceFileBytes": order["sourceFileBytes"],
         "vehicle": order["vehicle"],
         "availablePatches": order["availablePatches"],
-    }
-@app.get("/api/order/{order_id}")
-def api_get_order(order_id: str):
-    o = load_order(order_id)
-    if not o:
-        raise HTTPException(status_code=404, detail="order_id not found")
-    return o
-
-
-@app.get("/public/order/{order_id}")
-def public_get_order(order_id: str):
-    o = load_order(order_id)
-    if not o:
-        raise HTTPException(status_code=404, detail="order_id not found")
-
-    # ✅ público sanitizado
-    return {
-        "id": o.get("id"),
-        "created_at": o.get("created_at"),
-        "status": o.get("status"),
-        "paid": o.get("paid"),
-        "download_ready": o.get("download_ready"),
-
-        "vehicle": o.get("vehicle"),
-        "detectedEcu": o.get("detectedEcu"),
-        "sourceFileName": o.get("sourceFileName"),
-        "sourceFileBytes": o.get("sourceFileBytes"),
-        "availablePatches": o.get("availablePatches"),
-
-        # si luego metes pagos:
-        "checkout_url": o.get("checkout_url"),
-        "download_url": o.get("download_url") if o.get("download_ready") else None,
     }
