@@ -44,3 +44,21 @@ def load_order(order_id: str) -> Optional[dict]:
 
 def now_iso() -> str:
     return datetime.utcnow().isoformat()
+
+from typing import List
+
+def iter_orders() -> List[dict]:
+    out = []
+    if not ORDERS_DIR.exists():
+        return out
+    for d in ORDERS_DIR.iterdir():
+        if d.is_dir():
+            p = d / "order.json"
+            if p.exists():
+                try:
+                    with open(p, "r", encoding="utf-8") as f:
+                        out.append(json.load(f))
+                except Exception:
+                    pass
+    return out
+
