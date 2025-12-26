@@ -1,20 +1,29 @@
 # app/routers/orders.py
-from fastapi import APIRouter, HTTPException, Depends, Header
-from pydantic import BaseModel
-import uuid, tempfile
+from __future__ import annotations
+
+import os
+import uuid
 from datetime import datetime
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 
 from app.services.patcher import apply_patch
 from app.routers.public import ANALYSIS_DB, load_global_config, ecu_matches
-from app.routers.auth import get_current_user  # ✅ usamos el auth real
+from app.routers.auth import get_current_user
+
+from app.services.storage import (
+    order_dir, save_order, load_order, iter_orders
+)
 
 router = APIRouter(prefix="/orders", tags=["orders"])
+
 
 class OrderCreate(BaseModel):
     analysis_id: str
     patch_option_id: str
 
-ORDERS_DB = {}
 
 def find_patch_for_family(family: str, engine: str, patch_id: str) -> dict | None:
     cfg = load_global_config()
@@ -23,7 +32,7 @@ def find_patch_for_family(family: str, engine: str, patch_id: str) -> dict | Non
     fam = (family or "").strip()
     eng = (engine or "auto").strip().lower()
     if eng == "auto":
-        eng = "diesel"  # demo
+        eng = "diesel"  # demo default
 
     pid = (patch_id or "").strip()
 
@@ -42,6 +51,7 @@ def find_patch_for_family(family: str, engine: str, patch_id: str) -> dict | Non
         return p
 
     return None
+
 
 @router.post("")
 def create_order(data: OrderCreate, u: dict = Depends(get_current_user)):
@@ -64,75 +74,87 @@ def create_order(data: OrderCreate, u: dict = Depends(get_current_user)):
         raise HTTPException(status_code=400, detail="BIN too large for this patch")
 
     price_usd = (patch.get("price") or {}).get("USD")
-    files = patch.get("files") or {}
-    yml_path = files.get("yml")
-    diff_path = files.get("diff")
 
+    # ✅ genera mod
     mod_bytes = apply_patch(a["bytes"], patch)
 
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mod.bin")
-    tmp.write(mod_bytes)
-    tmp.close()
-
     order_id = str(uuid.uuid4())
+    odir = order_dir(order_id)
+
+    # ✅ persistimos el mod en el disk (no tempfile)
+    mod_path = odir / "output.mod.bin"
+    with open(mod_path, "wb") as f:
+        f.write(mod_bytes)
+
     order = {
         "id": order_id,
         "created_at": datetime.utcnow().isoformat(),
-        "owner_email": u["email"],  # ✅ dueño
+        "owner_email": u["email"],
+
         "analysis_id": data.analysis_id,
         "family": family,
         "engine": engine,
+
         "patch_option_id": data.patch_option_id,
         "patch_label": patch.get("label"),
         "price_usd": price_usd,
-        "yml_path": yml_path,
-        "diff_path": diff_path,
-        "status": "pending_payment",   # ✅ ahora sí: no queda listo gratis
+
+        "status": "pending_payment",
         "paid": False,
         "download_ready": False,
-        "mod_file_path": tmp.name,
+
+        # ✅ paths internos (no exponer en public)
+        "paths": {
+            "mod_file_path": str(mod_path),
+        },
+
         "original_filename": a.get("filename"),
         "checkout_url": f"/static/checkout.html?order_id={order_id}",
     }
 
-    ORDERS_DB[order_id] = order
+    save_order(order_id, order)
     return order
+
 
 @router.get("/mine")
 def my_orders(u: dict = Depends(get_current_user)):
-    mine = [o for o in ORDERS_DB.values() if o.get("owner_email") == u["email"]]
+    all_orders = iter_orders()
+    mine = [o for o in all_orders if o.get("owner_email") == u["email"]]
     mine.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     return {"orders": mine}
 
+
 @router.get("/{order_id}")
 def get_order(order_id: str, u: dict = Depends(get_current_user)):
-    o = ORDERS_DB.get(order_id)
+    o = load_order(order_id)
     if not o:
         raise HTTPException(status_code=404, detail="order_id not found")
 
-    # ✅ dueño o admin
     if o.get("owner_email") != u["email"] and u.get("role") != "admin":
         raise HTTPException(status_code=403, detail="forbidden")
 
     return o
 
+
 @router.post("/{order_id}/confirm_payment")
 def confirm_payment_demo(order_id: str, u: dict = Depends(get_current_user)):
-    o = ORDERS_DB.get(order_id)
+    o = load_order(order_id)
     if not o:
         raise HTTPException(status_code=404, detail="order_id not found")
 
     if o.get("owner_email") != u["email"] and u.get("role") != "admin":
         raise HTTPException(status_code=403, detail="forbidden")
 
-    # demo: marcar pagado
     o["status"] = "paid"
     o["paid"] = True
     o["download_ready"] = True
+    o["download_url"] = f"/download/{order_id}"
+
+    save_order(order_id, o)
 
     return {
         "ok": True,
         "order_id": order_id,
         "status": o["status"],
-        "download_url": f"/download/{order_id}",
+        "download_url": o["download_url"],
     }
