@@ -1,32 +1,35 @@
 # app/routers/public_orders.py
+from __future__ import annotations
+
 from fastapi import APIRouter, HTTPException
-from app.routers.orders import ORDERS_DB  # 👈 in-memory DB actual
+
+from app.services.storage import load_order
 
 router = APIRouter(prefix="/public", tags=["public"])
 
+
 @router.get("/order/{order_id}")
 def public_get_order(order_id: str):
-    o = ORDERS_DB.get(order_id)
+    o = load_order(order_id)
     if not o:
         raise HTTPException(status_code=404, detail="order_id not found")
 
-    # ⚠️ Público: devuelve solo lo necesario (no emails, no rutas internas)
+    # ✅ público sanitizado (nada de emails ni rutas internas)
     return {
         "id": o.get("id"),
         "created_at": o.get("created_at"),
         "status": o.get("status"),
         "paid": o.get("paid"),
         "download_ready": o.get("download_ready"),
-        "family": o.get("family"),
-        "engine": o.get("engine"),
-        "patch_option_id": o.get("patch_option_id"),
-        "patch_label": o.get("patch_label"),
-        "price_usd": o.get("price_usd"),
-        "original_filename": o.get("original_filename"),
 
-        # si quieres mostrar el checkout link en Wix:
+        "vehicle": o.get("vehicle"),
+        "detectedEcu": o.get("detectedEcu"),
+        "sourceFileName": o.get("sourceFileName"),
+        "sourceFileBytes": o.get("sourceFileBytes"),
+
+        "availablePatches": o.get("availablePatches"),
+
+        # si luego metes pagos:
         "checkout_url": o.get("checkout_url"),
-
-        # si está listo, muestra download:
-        "download_url": f"/download/{order_id}" if o.get("download_ready") else None,
+        "download_url": o.get("download_url") if o.get("download_ready") else None,
     }
