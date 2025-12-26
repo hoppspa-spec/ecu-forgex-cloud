@@ -11,6 +11,9 @@ from app.services.storage import save_order
 
 router = APIRouter(prefix="/api", tags=["ingest"])
 
+# -------------------------------------------------------------------
+# CONFIG
+# -------------------------------------------------------------------
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
 
@@ -21,7 +24,9 @@ DATA_DIR = Path(os.getenv("DATA_DIR", "/storage/efx"))
 ORDERS_DIR = DATA_DIR / "orders"
 ORDERS_DIR.mkdir(parents=True, exist_ok=True)
 
-
+# -------------------------------------------------------------------
+# HELPERS
+# -------------------------------------------------------------------
 def pick_ecu_file(extract_dir: Path) -> Optional[Path]:
     best = None
     best_score = -999
@@ -56,7 +61,9 @@ def pick_ecu_file(extract_dir: Path) -> Optional[Path]:
 
     return best
 
-
+# -------------------------------------------------------------------
+# ENDPOINT
+# -------------------------------------------------------------------
 @router.post("/ingest-multipart")
 async def ingest_multipart(
     file: UploadFile = File(...),
@@ -81,6 +88,7 @@ async def ingest_multipart(
     if raw_path.suffix.lower() == ".zip":
         extract_dir = workdir / "extract"
         extract_dir.mkdir()
+
         try:
             with zipfile.ZipFile(raw_path) as z:
                 z.extractall(extract_dir)
