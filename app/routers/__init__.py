@@ -1,3 +1,3 @@
-from . import orders
-from . import public_orders
-from . import downloads
+# app/routers/__init__.py
+# (empty on purpose)
+
