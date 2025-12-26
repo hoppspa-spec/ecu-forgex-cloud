@@ -13,6 +13,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import orders
 from app.routers import public_orders
+from app.routers import download
+
+app.include_router(download.router)
 
 from app.services.storage import order_dir, save_order, now_iso
 
