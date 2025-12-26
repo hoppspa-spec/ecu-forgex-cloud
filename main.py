@@ -1,26 +1,23 @@
 # main.py
 from __future__ import annotations
 
-import os
-import uuid
-import zipfile
+import os, uuid, zipfile, json
 from pathlib import Path
 from typing import Optional
+from datetime import datetime
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+# ✅ routers existentes (ojo: downloads.py se importa como downloads, no download)
 from app.routers import orders
 from app.routers import public_orders
-from app.routers import downloads
+from app.routers import downloads  # <- tu archivo se llama downloads.py
 
-app.include_router(orders.router)
-app.include_router(public_orders.router)
-app.include_router(downloads.router)
-
-from app.services.storage import order_dir, save_order, now_iso
-
+# -------------------------------------------------------------------
+# APP (SOLO 1)  ✅ IMPORTANTE: esto VA ANTES de include_router
+# -------------------------------------------------------------------
 app = FastAPI()
 
 app.add_middleware(
@@ -31,16 +28,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ monta routers
 app.include_router(orders.router)
 app.include_router(public_orders.router)
+app.include_router(downloads.router)
 
 @app.get("/health")
 def health():
     return {"ok": True}
 
-# -------------------------
-# Upload config
-# -------------------------
+# -------------------------------------------------------------------
+# STORAGE (Render Disk)
+# -------------------------------------------------------------------
+DATA_DIR = Path(os.getenv("DATA_DIR", "/storage/efx"))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+ORDERS_DIR = DATA_DIR / "orders"
+ORDERS_DIR.mkdir(parents=True, exist_ok=True)
+
+def order_dir(order_id: str) -> Path:
+    d = ORDERS_DIR / order_id
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+def order_json_path(order_id: str) -> Path:
+    return order_dir(order_id) / "order.json"
+
+def save_order(order_id: str, data: dict) -> None:
+    p = order_json_path(order_id)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def load_order(order_id: str) -> dict | None:
+    p = order_json_path(order_id)
+    if not p.exists():
+        return None
+    with open(p, "r", encoding="utf-8") as f:
+        return json.load(f)
+
 MIN_BYTES = 32 * 1024
 MAX_BYTES = 64 * 1024 * 1024
 
@@ -83,9 +108,9 @@ def pick_ecu_file(extract_dir: str) -> Optional[str]:
 
     return best
 
-# -------------------------
-# Drag & Drop Upload page
-# -------------------------
+# -------------------------------------------------------------------
+# DRAG & DROP UPLOAD PAGE
+# -------------------------------------------------------------------
 @app.get("/upload", response_class=HTMLResponse)
 def upload_page(brand: str = "", model: str = "", year: str = "", engine: str = "", ecu: str = ""):
     return f"""
@@ -187,7 +212,6 @@ sendBtn.addEventListener("click", async () => {{
 
   const data = JSON.parse(txt);
   setStatus("OK ✅ Redirecting…\\nOrder: " + data.orderId);
-
   window.location.href = `https://hopp.cl/analyze?orderId=${{encodeURIComponent(data.orderId)}}`;
 }});
 </script>
@@ -195,9 +219,9 @@ sendBtn.addEventListener("click", async () => {{
 </html>
 """
 
-# -------------------------
-# ingest multipart (real)
-# -------------------------
+# -------------------------------------------------------------------
+# INGEST MULTIPART
+# -------------------------------------------------------------------
 @app.post("/api/ingest-multipart")
 async def ingest_multipart(
     file: UploadFile = File(...),
@@ -210,7 +234,7 @@ async def ingest_multipart(
     order_id = str(uuid.uuid4())
     workdir = order_dir(order_id)
 
-    filename = (file.filename or "upload.bin").replace("/", "_").replace("\\", "_")
+    filename = file.filename or "upload.bin"
     raw_path = workdir / filename
 
     with open(raw_path, "wb") as f:
@@ -243,41 +267,24 @@ async def ingest_multipart(
     if size > MAX_BYTES:
         raise HTTPException(400, f"ECU file too large: {size} bytes")
 
-    detected_ecu = ecu or "UNKNOWN"
-
     order = {
         "id": order_id,
-        "created_at": now_iso(),
-        "status": "uploaded",
+        "created_at": datetime.utcnow().isoformat(),
+        "status": "analyzed",
         "paid": False,
         "download_ready": False,
-
-        "vehicle": {"brand": brand, "model": model, "year": year, "engine": engine, "ecu": ecu},
-        "detectedEcu": detected_ecu,
+        "family": ecu or "UNKNOWN",
+        "engine": engine or "",
+        "patch_option_id": None,
+        "patch_label": None,
+        "price_usd": None,
+        "original_filename": os.path.basename(ecu_file),
         "sourceFileName": os.path.basename(ecu_file),
         "sourceFileBytes": size,
-
-        "availablePatches": [
-            {"id": "speed_limiter", "name": "Speed Limiter OFF", "price": 49},
-            {"id": "dtc_off", "name": "DTC OFF", "price": 39},
-            {"id": "dpf_off", "name": "DPF OFF (off-road)", "price": 99},
-        ],
-
-        "paths": {
-            "workdir": str(workdir),
-            "raw_upload": str(raw_path),
-            "extract_dir": str(extract_dir),
-            "chosen_ecu_file": str(ecu_file),
-        }
+        "vehicle": {"brand":brand,"model":model,"year":year,"engine":engine,"ecu":ecu},
+        "checkout_url": None,
+        "download_url": None,
     }
-
     save_order(order_id, order)
 
-    return {
-        "orderId": order_id,
-        "detectedEcu": detected_ecu,
-        "sourceFileName": order["sourceFileName"],
-        "sourceFileBytes": order["sourceFileBytes"],
-        "vehicle": order["vehicle"],
-        "availablePatches": order["availablePatches"],
-    }
+    return {"orderId": order_id}
