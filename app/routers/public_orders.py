@@ -1,12 +1,7 @@
-# app/routers/public_orders.py
-from __future__ import annotations
-
 from fastapi import APIRouter, HTTPException
-
-from app.services.storage import load_order
+from app.services.store import load_order
 
 router = APIRouter(prefix="/public", tags=["public"])
-
 
 @router.get("/order/{order_id}")
 def public_get_order(order_id: str):
@@ -14,22 +9,23 @@ def public_get_order(order_id: str):
     if not o:
         raise HTTPException(status_code=404, detail="order_id not found")
 
-    # ✅ público sanitizado (nada de emails ni rutas internas)
+    # público: solo lo necesario
     return {
         "id": o.get("id"),
         "created_at": o.get("created_at"),
         "status": o.get("status"),
         "paid": o.get("paid"),
         "download_ready": o.get("download_ready"),
-
-        "vehicle": o.get("vehicle"),
-        "detectedEcu": o.get("detectedEcu"),
+        "family": o.get("family"),
+        "engine": o.get("engine"),
+        "patch_option_id": o.get("patch_option_id"),
+        "patch_label": o.get("patch_label"),
+        "price_usd": o.get("price_usd"),
+        "original_filename": o.get("original_filename"),
         "sourceFileName": o.get("sourceFileName"),
         "sourceFileBytes": o.get("sourceFileBytes"),
-
-        "availablePatches": o.get("availablePatches"),
-
-        # si luego metes pagos:
+        "vehicle": o.get("vehicle"),
+        "availablePatches": o.get("availablePatches", []),
         "checkout_url": o.get("checkout_url"),
-        "download_url": o.get("download_url") if o.get("download_ready") else None,
+        "download_url": f"/download/{order_id}" if o.get("download_ready") else None,
     }
