@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ECU FORGE X</title>
+  <title>ECU FORGE X — Checkout</title>
 
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/efx.css">
@@ -16,20 +16,21 @@
   <div class="brand">ECU FORGE X</div>
 
   <div class="efx-actions">
-    <button class="btn icon" onclick="EFX.toggleTheme()" title="Dark / Light">🌙 / ☀️</button>
-    <button id="btnLogout" class="btn" onclick="EFX.logout()">Cerrar sesión</button>
+    <button class="btn icon" id="btnTheme" type="button" title="Dark / Light">🌙 / ☀️</button>
   </div>
 </header>
 
 <div class="wrap">
   <div class="card">
-    <h3>Checkout (DEMO)</h3>
+    <h3>Checkout</h3>
+
     <div id="orderBox" class="muted">Cargando orden…</div>
 
     <div class="actions" style="margin-top:14px">
-      <button id="btnDemoPay" class="btn" type="button">✅ Confirmar pago DEMO</button>
+      <!-- Pay (redirige a checkout_url si existe) -->
+      <a id="btnPay" class="btn ok" href="#" style="display:none">💳 Pagar</a>
 
-      <!-- ✅ ÚNICO botón de descarga REAL (body) -->
+      <!-- Download (solo si está listo) -->
       <a id="btnDownloadMain" class="btn ok" href="#" style="display:none" download>⬇️ Descargar .MOD</a>
 
       <a class="btn gray" href="/static/index.html">← Volver</a>
@@ -41,188 +42,129 @@
   <div class="card">
     <h3>Ayuda</h3>
     <ul class="help">
-      <li>Modo demo: confirmas el pago y se habilita descarga.</li>
-      <li>La descarga viene de <code>/download/&lt;order_id&gt;</code>.</li>
+      <li>Si el pago se confirma, la descarga se habilita automáticamente.</li>
+      <li>Si no aparece el botón de pago, revisa que la orden tenga <code>checkout_url</code>.</li>
     </ul>
   </div>
 </div>
 
 <script>
-/* =========================================================
-   ✅ auth.js INLINE (mínimo REAL) — limpio
-========================================================= */
-(function () {
-  const TOKEN_KEYS = ["EFX_TOKEN","token","access_token","jwt"];
-
-  function getToken(){
-    for (const k of TOKEN_KEYS){
-      const v = localStorage.getItem(k) || sessionStorage.getItem(k);
-      if (v && String(v).trim()) return String(v).trim();
-    }
-    return null;
-  }
-
-  function clearToken(){
-    for (const k of TOKEN_KEYS){
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    }
-  }
-
-  function isLoggedIn(){ return !!getToken(); }
-
-  function requireLogin(nextUrl){
-    const next = encodeURIComponent(nextUrl || location.href);
-    location.href = "/static/usuarios.html#login?next=" + next;
-  }
-
-  function logout(){
-    clearToken();
-    location.href = "/static/index.html";
-  }
-
-  window.EFX = window.EFX || {};
-  window.EFX.getToken = getToken;
-  window.EFX.clearToken = clearToken;
-  window.EFX.isLoggedIn = isLoggedIn;
-  window.EFX.requireLogin = requireLogin;
-  window.EFX.logout = logout;
-
-  if (!window.EFX.toggleTheme){
-    window.EFX.toggleTheme = function(){
-      document.documentElement.classList.toggle("dark");
-    };
-  }
-})();
-</script>
-
-<script>
-/* =========================================================
-   Checkout lógica (orden + pago demo + descarga)
-========================================================= */
-const $ = (q,el=document)=>el.querySelector(q);
+/* =========================
+   Utils
+========================= */
+const $ = (q, el=document) => el.querySelector(q);
 const params = new URLSearchParams(location.search);
-const ORDER_ID = params.get("order_id") || "";
+const ORDER_ID = params.get("order_id") || params.get("orderId") || "";
 
-function lockForAuthIfNeeded(){
-  const isDemo = true;
-  if (!isDemo) return false;
+function setMsg(t){ $("#msg").textContent = t || ""; }
 
-  if (!EFX.isLoggedIn()){
-    const payBtn = $("#btnDemoPay");
-    const dlBtn  = $("#btnDownloadMain");
-
-    if (payBtn){
-      payBtn.disabled = true;
-      payBtn.title = "Debes iniciar sesión para continuar (DEMO)";
-      payBtn.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
-    }
-
-    if (dlBtn){
-      dlBtn.style.pointerEvents = "none";
-      dlBtn.style.opacity = "0.6";
-      dlBtn.title = "Debes iniciar sesión para descargar (DEMO)";
-      dlBtn.addEventListener("click", (e)=>{ e.preventDefault(); EFX.requireLogin(location.href); });
-    }
-
-    const box = document.createElement("div");
-    box.className = "card";
-    box.style.marginTop = "12px";
-    box.innerHTML = "<b>🔒 DEMO</b><br>Para descargar debes <b>iniciar sesión</b>.";
-    (document.querySelector(".wrap") || document.body).appendChild(box);
-
-    $("#msg").textContent = "Debes iniciar sesión para continuar.";
-    return true;
-  }
-  return false;
+function fmtMoney(n){
+  if (n === null || n === undefined || n === "") return "—";
+  const num = Number(n);
+  if (!Number.isFinite(num)) return String(n);
+  return "$" + num.toFixed(2) + " USD";
 }
 
-async function fetchOrder(){
-  const box = $("#orderBox");
-  try{
-    const r = await fetch(`/orders/${ORDER_ID}`, {
-      headers: { "Authorization":"Bearer " + EFX.getToken() }
-    });
-
-    if(!r.ok){
-      const t = await r.text().catch(()=>"(sin detalle)");
-      box.textContent = "No se pudo cargar la orden. " + t;
-      return null;
-    }
-
-    const o = await r.json();
-    const price = (o.price_usd ?? 59);
-    const priceTxt = (typeof price === "number") ? price.toFixed(2) : "59.00";
-
-    box.innerHTML = `
-      <div class="row"><div class="muted">ID</div><div>${o.id}</div></div>
-      <div class="row"><div class="muted">Parche</div><div>${o.patch_option_id}</div></div>
-      <div class="row"><div class="muted">Estado</div><div>${o.status}</div></div>
-      <div class="row"><div class="muted">Fecha</div><div>${o.created_at || "—"}</div></div>
-      <div class="row"><div class="muted">Monto</div><div>$${priceTxt} <span class="muted">(demo)</span></div></div>
-    `;
-
-    const canDownload = (o.status === "paid" || o.status === "done") && !!o.download_ready;
-    const dlMain = $("#btnDownloadMain");
-
-    if (canDownload && dlMain){
-      const url = `/download/${o.id}`;
-      dlMain.style.display = "inline-flex";
-      dlMain.href = url;
-      dlMain.setAttribute("download", "");
-      dlMain.textContent = "⬇️ Descargar .MOD";
-    } else if (dlMain){
-      dlMain.style.display = "none";
-      dlMain.removeAttribute("href");
-      dlMain.removeAttribute("download");
-    }
-
-    return o;
-  }catch(e){
-    box.textContent = "Error de red.";
-    return null;
-  }
-}
-
-async function demoPay(){
-  $("#msg").textContent = "Procesando pago demo…";
-
-  const r = await fetch(`/orders/${ORDER_ID}/confirm_payment`, {
-    method: "POST",
-    headers: { "Authorization": "Bearer " + EFX.getToken() }
-  });
-
+/* =========================
+   API (público)
+   Ajusta estas rutas si tu backend usa otras.
+========================= */
+async function fetchPublicOrder(){
+  const r = await fetch(`/public/order/${encodeURIComponent(ORDER_ID)}`);
   if(!r.ok){
     const t = await r.text().catch(()=>"(sin detalle)");
-    $("#msg").textContent = "No se pudo confirmar el pago: " + t;
-    return;
+    throw new Error(`No se pudo cargar la orden (${r.status}): ${t}`);
   }
-
-  const d = await r.json();
-  $("#msg").textContent = "Pago confirmado. MOD listo ✅";
-
-  const dl = $("#btnDownloadMain");
-  if (dl){
-    dl.style.display = "inline-flex";
-    dl.href = d.download_url;
-    dl.setAttribute("download", "");
-    dl.textContent = "⬇️ Descargar .MOD";
-  }
-
-  await fetchOrder();
+  return await r.json();
 }
 
-function init(){
+/* =========================
+   UI render
+========================= */
+function renderOrder(o){
+  const box = $("#orderBox");
+  const price = o.price_usd ?? o.amount_usd ?? o.total_usd ?? null;
+
+  box.innerHTML = `
+    <div class="row"><div class="muted">ID</div><div>${o.id || "—"}</div></div>
+    <div class="row"><div class="muted">Estado</div><div>${o.status || "—"}</div></div>
+    <div class="row"><div class="muted">Pagado</div><div>${o.paid ? "✅ Sí" : "⏳ No"}</div></div>
+    <div class="row"><div class="muted">Parche(s)</div><div>${o.patch_label || o.patch_option_id || (Array.isArray(o.patches) ? o.patches.join(", ") : "—")}</div></div>
+    <div class="row"><div class="muted">Monto</div><div>${fmtMoney(price)}</div></div>
+    <div class="row"><div class="muted">Creada</div><div>${o.created_at || "—"}</div></div>
+  `;
+
+  // Botón pagar (si existe checkout_url y no está pagado)
+  const pay = $("#btnPay");
+  const hasCheckout = !!o.checkout_url;
+  const shouldPay = hasCheckout && !o.paid && (o.status !== "paid" && o.status !== "done");
+
+  if (shouldPay){
+    pay.style.display = "inline-flex";
+    pay.href = o.checkout_url;
+    pay.textContent = "💳 Pagar";
+  } else {
+    pay.style.display = "none";
+    pay.removeAttribute("href");
+  }
+
+  // Botón descargar (si download_ready)
+  const dl = $("#btnDownloadMain");
+  const ready = !!o.download_ready && (o.paid || o.status === "paid" || o.status === "done");
+
+  if (ready){
+    dl.style.display = "inline-flex";
+    // Preferimos download_url si viene, si no usamos /download/<id>
+    dl.href = o.download_url || `/download/${encodeURIComponent(o.id || ORDER_ID)}`;
+    dl.setAttribute("download", "");
+    dl.textContent = "⬇️ Descargar .MOD";
+  } else {
+    dl.style.display = "none";
+    dl.removeAttribute("href");
+    dl.removeAttribute("download");
+  }
+}
+
+/* =========================
+   Init
+========================= */
+async function init(){
+  // Theme toggle (si no existe theme.js, no rompe)
+  $("#btnTheme").addEventListener("click", () => {
+    if (window.EFX && typeof window.EFX.toggleTheme === "function") return window.EFX.toggleTheme();
+    document.documentElement.classList.toggle("dark");
+  });
+
   if(!ORDER_ID){
-    alert("Falta order_id en la URL");
     $("#orderBox").textContent = "Falta order_id en la URL.";
+    setMsg("Ejemplo: /static/checkout.html?order_id=ORD_123");
     return;
   }
 
-  if (lockForAuthIfNeeded()) return;
+  try{
+    setMsg("");
+    const o = await fetchPublicOrder();
+    renderOrder(o);
 
-  $("#btnDemoPay").onclick = demoPay;
-  fetchOrder();
+    // Poll simple: refresca estado cada 4s si aún no está listo
+    const isReady = !!o.download_ready && (o.paid || o.status === "paid" || o.status === "done");
+    if (!isReady){
+      setMsg("Esperando confirmación de pago / generación…");
+      setInterval(async ()=>{
+        try{
+          const o2 = await fetchPublicOrder();
+          renderOrder(o2);
+          const ok = !!o2.download_ready && (o2.paid || o2.status === "paid" || o2.status === "done");
+          if (ok) setMsg("✅ Listo. Descarga habilitada.");
+        }catch(e){}
+      }, 4000);
+    } else {
+      setMsg("✅ Listo. Descarga habilitada.");
+    }
+  }catch(e){
+    $("#orderBox").textContent = "Error cargando orden.";
+    setMsg(e.message || "Error de red.");
+  }
 }
 
 document.addEventListener("DOMContentLoaded", init);
