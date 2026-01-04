@@ -146,12 +146,31 @@ function validateCustomer(c){
    resp: { order_id, checkout_url }
 ========================= */
 async function createCheckout(customer){
-  // TODO (Step 2): replace mock with real API call.
-  // For now, we just return a placeholder to prove the form works.
-  return {
-    order_id: ORDER_ID || "ORD_PLACEHOLDER",
-    checkout_url: null
-  };
+  const r = await fetch(`/public/checkout`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      customer: {
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        city: customer.city,
+        country: customer.country,
+      },
+      // 🔥 para Step 2: en V1 mínimo manda patches desde Wix/session o URL
+      // aquí puedes mandar desde query params o luego lo conectamos directo con Wix
+      vehicle: window.__EFX_VEHICLE__ || null,
+      patches: window.__EFX_PATCHES__ || [],
+    })
+  });
+
+  if(!r.ok){
+    const t = await r.text().catch(()=>"(sin detalle)");
+    throw new Error(`Checkout failed (${r.status}): ${t}`);
+  }
+
+  return await r.json(); // { order_id, checkout_url }
 }
 
 /* =========================
