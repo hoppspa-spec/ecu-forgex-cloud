@@ -129,11 +129,7 @@ function renderOrder(o){
 ========================= */
 async function init(){
   // Theme toggle (si no existe theme.js, no rompe)
-  $("#btnTheme").addEventListener("click", () => {
-    if (window.EFX && typeof window.EFX.toggleTheme === "function") return window.EFX.toggleTheme();
-    document.documentElement.classList.toggle("dark");
-  });
-
+  
   if(!ORDER_ID){
     $("#orderBox").textContent = "Falta order_id en la URL.";
     setMsg("Ejemplo: /static/checkout.html?order_id=ORD_123");
