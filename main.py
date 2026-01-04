@@ -8,6 +8,8 @@ from app.routers.orders import router as orders_router
 from app.routers.public_orders import router as public_orders_router
 from app.routers.downloads import router as downloads_router
 from app.routers.ingest import router as ingest_router
+from app.routers.checkout_public import router as checkout_public_router
+app.include_router(checkout_public_router)
 
 # -------------------------------------------------------------------
 # APP (SOLO UNA)
