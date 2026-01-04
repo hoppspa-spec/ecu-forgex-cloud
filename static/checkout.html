@@ -7,162 +7,226 @@
 
   <link rel="stylesheet" href="/static/css/base.css">
   <link rel="stylesheet" href="/static/css/efx.css">
-
-  <script src="/static/js/theme.js"></script>
 </head>
 
 <body>
 <header class="efx-topbar">
   <div class="brand">ECU FORGE X</div>
-
- <header class="efx-topbar">
-  <div class="brand">ECU FORGE X</div>
 </header>
 
 <div class="wrap">
-  <div class="card">
-    <h3>Checkout</h3>
 
-    <div id="orderBox" class="muted">Cargando orden…</div>
+  <!-- 1) Customer form -->
+  <div class="card" id="customerCard">
+    <h3>Customer details</h3>
+    <div class="muted">Required to proceed to payment.</div>
 
-    <div class="actions" style="margin-top:14px">
-      <!-- Pay (redirige a checkout_url si existe) -->
-      <a id="btnPay" class="btn ok" href="#" style="display:none">💳 Pagar</a>
+    <div class="grid" style="margin-top:12px; gap:10px;">
+      <div>
+        <label class="muted">Company / Full name *</label>
+        <input id="c_name" class="input" type="text" placeholder="e.g. ACME Ltd. / John Smith" />
+      </div>
 
-      <!-- Download (solo si está listo) -->
-      <a id="btnDownloadMain" class="btn ok" href="#" style="display:none" download>⬇️ Descargar .MOD</a>
+      <div>
+        <label class="muted">Email *</label>
+        <input id="c_email" class="input" type="email" placeholder="name@domain.com" />
+      </div>
 
-      <a class="btn gray" href="/static/index.html">← Volver</a>
+      <div>
+        <label class="muted">Confirm email *</label>
+        <input id="c_email2" class="input" type="email" placeholder="repeat email" />
+      </div>
+
+      <div>
+        <label class="muted">Phone *</label>
+        <input id="c_phone" class="input" type="tel" placeholder="+1 555 123 4567" />
+      </div>
+
+      <div>
+        <label class="muted">Address *</label>
+        <input id="c_address" class="input" type="text" placeholder="Street + number" />
+      </div>
+
+      <div>
+        <label class="muted">City / Comuna *</label>
+        <input id="c_city" class="input" type="text" placeholder="e.g. Las Condes" />
+      </div>
+
+      <div>
+        <label class="muted">Country *</label>
+        <input id="c_country" class="input" type="text" placeholder="e.g. Chile / USA" />
+      </div>
     </div>
 
-    <div id="msg" class="muted" style="margin-top:10px"></div>
+    <div class="actions" style="margin-top:14px">
+      <button id="btnContinue" class="btn ok" type="button">Continue to payment</button>
+      <a class="btn gray" href="https://www.hopp.cl/efxv1">← Back</a>
+    </div>
+
+    <div id="formMsg" class="muted" style="margin-top:10px"></div>
   </div>
 
-  <div class="card">
-    <h3>Ayuda</h3>
-    <ul class="help">
-      <li>Si el pago se confirma, la descarga se habilita automáticamente.</li>
-      <li>Si no aparece el botón de pago, revisa que la orden tenga <code>checkout_url</code>.</li>
-    </ul>
+  <!-- 2) Order / summary -->
+  <div class="card" id="summaryCard" style="display:none;">
+    <h3>Order summary</h3>
+    <div id="summaryBox" class="muted">Loading…</div>
+
+    <div class="actions" style="margin-top:14px">
+      <a id="btnPay" class="btn ok" href="#" style="display:none">💳 Pay</a>
+      <a id="btnDownload" class="btn ok" href="#" style="display:none" download>⬇️ Download .MOD</a>
+      <a class="btn gray" href="/static/index.html">← Home</a>
+    </div>
+
+    <div id="orderMsg" class="muted" style="margin-top:10px"></div>
   </div>
+
 </div>
 
 <script>
 /* =========================
-   Utils
+   Utils / storage
 ========================= */
 const $ = (q, el=document) => el.querySelector(q);
 const params = new URLSearchParams(location.search);
 const ORDER_ID = params.get("order_id") || params.get("orderId") || "";
 
-function setMsg(t){ $("#msg").textContent = t || ""; }
+const LS_KEY = "EFX_CUSTOMER_V1";
 
-function fmtMoney(n){
-  if (n === null || n === undefined || n === "") return "—";
-  const num = Number(n);
-  if (!Number.isFinite(num)) return String(n);
-  return "$" + num.toFixed(2) + " USD";
+function setMsg(id, t){ const el = $(id); if (el) el.textContent = t || ""; }
+function show(id){ const el = $(id); if (el) el.style.display = ""; }
+function hide(id){ const el = $(id); if (el) el.style.display = "none"; }
+
+function loadSavedCustomer(){
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+function saveCustomer(c){
+  localStorage.setItem(LS_KEY, JSON.stringify(c));
+}
+
+function isValidEmail(email){
+  const e = String(email || "").trim();
+  // suficiente para V1 (sin sobre-validar)
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+}
+
+function getCustomerFromForm(){
+  return {
+    name: $("#c_name").value.trim(),
+    email: $("#c_email").value.trim(),
+    email2: $("#c_email2").value.trim(),
+    phone: $("#c_phone").value.trim(),
+    address: $("#c_address").value.trim(),
+    city: $("#c_city").value.trim(),
+    country: $("#c_country").value.trim(),
+  };
+}
+
+function validateCustomer(c){
+  if (!c.name) return "Company / Full name is required.";
+  if (!c.email) return "Email is required.";
+  if (!isValidEmail(c.email)) return "Email format is invalid.";
+  if (!c.email2) return "Please confirm your email.";
+  if (c.email.toLowerCase() !== c.email2.toLowerCase()) return "Emails do not match.";
+  if (!c.phone || c.phone.replace(/\D/g,"").length < 7) return "Phone is required (min 7 digits).";
+  if (!c.address) return "Address is required.";
+  if (!c.city) return "City / Comuna is required.";
+  if (!c.country) return "Country is required.";
+  return null;
 }
 
 /* =========================
-   API (público)
-   Ajusta estas rutas si tu backend usa otras.
+   Step 2 placeholder:
+   This will be wired in next step to your backend:
+   POST /public/checkout
+   body: { order_id(optional), customer, vehicle, patches }
+   resp: { order_id, checkout_url }
 ========================= */
-async function fetchPublicOrder(){
-  const r = await fetch(`/public/order/${encodeURIComponent(ORDER_ID)}`);
-  if(!r.ok){
-    const t = await r.text().catch(()=>"(sin detalle)");
-    throw new Error(`No se pudo cargar la orden (${r.status}): ${t}`);
-  }
-  return await r.json();
-}
-
-/* =========================
-   UI render
-========================= */
-function renderOrder(o){
-  const box = $("#orderBox");
-  const price = o.price_usd ?? o.amount_usd ?? o.total_usd ?? null;
-
-  box.innerHTML = `
-    <div class="row"><div class="muted">ID</div><div>${o.id || "—"}</div></div>
-    <div class="row"><div class="muted">Estado</div><div>${o.status || "—"}</div></div>
-    <div class="row"><div class="muted">Pagado</div><div>${o.paid ? "✅ Sí" : "⏳ No"}</div></div>
-    <div class="row"><div class="muted">Parche(s)</div><div>${o.patch_label || o.patch_option_id || (Array.isArray(o.patches) ? o.patches.join(", ") : "—")}</div></div>
-    <div class="row"><div class="muted">Monto</div><div>${fmtMoney(price)}</div></div>
-    <div class="row"><div class="muted">Creada</div><div>${o.created_at || "—"}</div></div>
-  `;
-
-  // Botón pagar (si existe checkout_url y no está pagado)
-  const pay = $("#btnPay");
-  const hasCheckout = !!o.checkout_url;
-  const shouldPay = hasCheckout && !o.paid && (o.status !== "paid" && o.status !== "done");
-
-  if (shouldPay){
-    pay.style.display = "inline-flex";
-    pay.href = o.checkout_url;
-    pay.textContent = "💳 Pagar";
-  } else {
-    pay.style.display = "none";
-    pay.removeAttribute("href");
-  }
-
-  // Botón descargar (si download_ready)
-  const dl = $("#btnDownloadMain");
-  const ready = !!o.download_ready && (o.paid || o.status === "paid" || o.status === "done");
-
-  if (ready){
-    dl.style.display = "inline-flex";
-    // Preferimos download_url si viene, si no usamos /download/<id>
-    dl.href = o.download_url || `/download/${encodeURIComponent(o.id || ORDER_ID)}`;
-    dl.setAttribute("download", "");
-    dl.textContent = "⬇️ Descargar .MOD";
-  } else {
-    dl.style.display = "none";
-    dl.removeAttribute("href");
-    dl.removeAttribute("download");
-  }
+async function createCheckout(customer){
+  // TODO (Step 2): replace mock with real API call.
+  // For now, we just return a placeholder to prove the form works.
+  return {
+    order_id: ORDER_ID || "ORD_PLACEHOLDER",
+    checkout_url: null
+  };
 }
 
 /* =========================
    Init
 ========================= */
-async function init(){
-  // Theme toggle (si no existe theme.js, no rompe)
-  
-  if(!ORDER_ID){
-    $("#orderBox").textContent = "Falta order_id en la URL.";
-    setMsg("Ejemplo: /static/checkout.html?order_id=ORD_123");
+function prefill(){
+  const c = loadSavedCustomer();
+  if (!c) return;
+  $("#c_name").value = c.name || "";
+  $("#c_email").value = c.email || "";
+  $("#c_email2").value = c.email || "";
+  $("#c_phone").value = c.phone || "";
+  $("#c_address").value = c.address || "";
+  $("#c_city").value = c.city || "";
+  $("#c_country").value = c.country || "";
+}
+
+async function onContinue(){
+  setMsg("#formMsg", "");
+  const c = getCustomerFromForm();
+  const err = validateCustomer(c);
+  if (err){
+    setMsg("#formMsg", "❌ " + err);
     return;
   }
 
-  try{
-    setMsg("");
-    const o = await fetchPublicOrder();
-    renderOrder(o);
+  // Save customer (without email2)
+  saveCustomer({
+    name: c.name,
+    email: c.email,
+    phone: c.phone,
+    address: c.address,
+    city: c.city,
+    country: c.country,
+  });
 
-    // Poll simple: refresca estado cada 4s si aún no está listo
-    const isReady = !!o.download_ready && (o.paid || o.status === "paid" || o.status === "done");
-    if (!isReady){
-      setMsg("Esperando confirmación de pago / generación…");
-      setInterval(async ()=>{
-        try{
-          const o2 = await fetchPublicOrder();
-          renderOrder(o2);
-          const ok = !!o2.download_ready && (o2.paid || o2.status === "paid" || o2.status === "done");
-          if (ok) setMsg("✅ Listo. Descarga habilitada.");
-        }catch(e){}
-      }, 4000);
-    } else {
-      setMsg("✅ Listo. Descarga habilitada.");
+  $("#btnContinue").disabled = true;
+  $("#btnContinue").textContent = "Saving…";
+
+  try{
+    const data = await createCheckout(c);
+
+    // V1: mostramos summaryCard aunque checkout_url aún no exista (se conecta en Step 2)
+    hide("#customerCard");
+    show("#summaryCard");
+
+    const lines = [];
+    lines.push("Customer saved ✅");
+    lines.push("");
+    lines.push(`Order: ${data.order_id || "-"}`);
+    lines.push("Next: connect PayPal checkout (Step 2).");
+
+    $("#summaryBox").textContent = lines.join("\n");
+    setMsg("#orderMsg", "Waiting backend checkout_url…");
+
+    // si existiera checkout_url (Step 2), mostramos botón pagar
+    if (data.checkout_url){
+      const pay = $("#btnPay");
+      pay.style.display = "inline-flex";
+      pay.href = data.checkout_url;
     }
+
   }catch(e){
-    $("#orderBox").textContent = "Error cargando orden.";
-    setMsg(e.message || "Error de red.");
+    console.error(e);
+    setMsg("#formMsg", "❌ Error: " + (e.message || "Unknown"));
+  }finally{
+    $("#btnContinue").disabled = false;
+    $("#btnContinue").textContent = "Continue to payment";
   }
 }
 
-document.addEventListener("DOMContentLoaded", init);
+document.addEventListener("DOMContentLoaded", () => {
+  prefill();
+  $("#btnContinue").addEventListener("click", onContinue);
+});
 </script>
 
 </body>
