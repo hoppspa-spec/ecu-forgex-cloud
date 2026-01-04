@@ -212,6 +212,11 @@ async function onContinue(){
 
   try{
     const data = await createCheckout(c);
+    if (data.checkout_url){
+  location.href = data.checkout_url; // 🔥 pay now
+  return;
+  }
+
 
     // V1: mostramos summaryCard aunque checkout_url aún no exista (se conecta en Step 2)
     hide("#customerCard");
