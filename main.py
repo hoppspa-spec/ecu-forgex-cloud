@@ -1,7 +1,9 @@
+from fastapi.staticfiles import StaticFiles
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.routers.orders import router as orders_router
 from app.routers.public_orders import router as public_orders_router
@@ -19,6 +21,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ mount static
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# ✅ routers
 app.include_router(orders_router)
 app.include_router(public_orders_router)
 app.include_router(downloads_router)
