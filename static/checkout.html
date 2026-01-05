@@ -84,173 +84,138 @@
 
 <script>
 /* =========================
-   Utils / storage
+   Utils
 ========================= */
 const $ = (q, el=document) => el.querySelector(q);
 const params = new URLSearchParams(location.search);
 const ORDER_ID = params.get("order_id") || params.get("orderId") || "";
 
-const LS_KEY = "EFX_CUSTOMER_V1";
+function setMsg(sel, t){ const el = $(sel); if (el) el.textContent = t || ""; }
+function show(sel){ const el = $(sel); if (el) el.style.display = ""; }
+function hide(sel){ const el = $(sel); if (el) el.style.display = "none"; }
 
-function setMsg(id, t){ const el = $(id); if (el) el.textContent = t || ""; }
-function show(id){ const el = $(id); if (el) el.style.display = ""; }
-function hide(id){ const el = $(id); if (el) el.style.display = "none"; }
-
-function loadSavedCustomer(){
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  }catch(e){ return null; }
-}
-function saveCustomer(c){
-  localStorage.setItem(LS_KEY, JSON.stringify(c));
-}
-
-function isValidEmail(email){
-  const e = String(email || "").trim();
-  // suficiente para V1 (sin sobre-validar)
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
-}
-
-function getCustomerFromForm(){
-  return {
-    name: $("#c_name").value.trim(),
-    email: $("#c_email").value.trim(),
-    email2: $("#c_email2").value.trim(),
-    phone: $("#c_phone").value.trim(),
-    address: $("#c_address").value.trim(),
-    city: $("#c_city").value.trim(),
-    country: $("#c_country").value.trim(),
-  };
-}
-
-function validateCustomer(c){
-  if (!c.name) return "Company / Full name is required.";
-  if (!c.email) return "Email is required.";
-  if (!isValidEmail(c.email)) return "Email format is invalid.";
-  if (!c.email2) return "Please confirm your email.";
-  if (c.email.toLowerCase() !== c.email2.toLowerCase()) return "Emails do not match.";
-  if (!c.phone || c.phone.replace(/\D/g,"").length < 7) return "Phone is required (min 7 digits).";
-  if (!c.address) return "Address is required.";
-  if (!c.city) return "City / Comuna is required.";
-  if (!c.country) return "Country is required.";
-  return null;
+function moneyUSD(n){
+  const v = Number(n || 0);
+  return `$${v.toFixed(2)} USD`;
 }
 
 /* =========================
-   Step 2 placeholder:
-   This will be wired in next step to your backend:
-   POST /public/checkout
-   body: { order_id(optional), customer, vehicle, patches }
-   resp: { order_id, checkout_url }
+   Public API
 ========================= */
-async function createCheckout(customer){
-  const r = await fetch(`/public/checkout`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      customer: {
-        name: customer.name,
-        email: customer.email,
-        phone: customer.phone,
-        address: customer.address,
-        city: customer.city,
-        country: customer.country,
-      },
-      // 🔥 para Step 2: en V1 mínimo manda patches desde Wix/session o URL
-      // aquí puedes mandar desde query params o luego lo conectamos directo con Wix
-      vehicle: window.__EFX_VEHICLE__ || null,
-      patches: window.__EFX_PATCHES__ || [],
-    })
-  });
-
+async function fetchPublicOrder(orderId){
+  const r = await fetch(`/public/order/${encodeURIComponent(orderId)}`);
   if(!r.ok){
     const t = await r.text().catch(()=>"(sin detalle)");
-    throw new Error(`Checkout failed (${r.status}): ${t}`);
+    throw new Error(`Order fetch failed (${r.status}): ${t}`);
   }
+  return await r.json();
+}
 
-  return await r.json(); // { order_id, checkout_url }
+async function demoConfirmPayment(orderId){
+  const r = await fetch(`/public/demo/confirm_payment/${encodeURIComponent(orderId)}`, {
+    method: "POST"
+  });
+  if(!r.ok){
+    const t = await r.text().catch(()=>"(sin detalle)");
+    throw new Error(`Confirm payment failed (${r.status}): ${t}`);
+  }
+  return await r.json(); // { ok, order_id, download_url }
 }
 
 /* =========================
-   Init
+   UI render
 ========================= */
-function prefill(){
-  const c = loadSavedCustomer();
-  if (!c) return;
-  $("#c_name").value = c.name || "";
-  $("#c_email").value = c.email || "";
-  $("#c_email2").value = c.email || "";
-  $("#c_phone").value = c.phone || "";
-  $("#c_address").value = c.address || "";
-  $("#c_city").value = c.city || "";
-  $("#c_country").value = c.country || "";
+function renderOrder(o){
+  const patches = o.selected_patches || o.patches || [];
+  const patchTxt = Array.isArray(patches) ? patches.join(", ") : String(patches || "-");
+
+  const lines = [];
+  lines.push(`Order: ${o.id || "-"}`);
+  lines.push(`Status: ${o.status || "-"}`);
+  lines.push(`Total: ${moneyUSD(o.price_usd ?? o.total_usd ?? 0)}`);
+  lines.push(`Patches: ${patchTxt}`);
+
+  // si viene vehicle
+  if (o.vehicle){
+    const v = o.vehicle;
+    lines.push("");
+    lines.push(`Vehicle: ${v.brand || "-"} ${v.model || "-"} ${v.serie || ""}`.trim());
+    lines.push(`Year: ${v.year || "-"}`);
+    lines.push(`Fuel: ${v.fuelDb || v.fuel || "-"}`);
+    lines.push(`ECU: ${v.ecu || "-"}`);
+  }
+
+  $("#summaryBox").textContent = lines.join("\n");
+
+  // Download button
+  const dlBtn = $("#btnDownload");
+  const canDownload = (o.status === "paid" || o.status === "done") && !!o.download_ready;
+  if (canDownload && dlBtn){
+    dlBtn.style.display = "inline-flex";
+    dlBtn.href = o.download_url || `/download/${o.id}`;
+    dlBtn.setAttribute("download", "");
+  } else if (dlBtn){
+    dlBtn.style.display = "none";
+    dlBtn.removeAttribute("href");
+    dlBtn.removeAttribute("download");
+  }
 }
 
-async function onContinue(){
+/* =========================
+   Main init (Wix flow)
+========================= */
+async function init(){
   setMsg("#formMsg", "");
-  const c = getCustomerFromForm();
-  const err = validateCustomer(c);
-  if (err){
-    setMsg("#formMsg", "❌ " + err);
+  setMsg("#orderMsg", "");
+
+  // ✅ Si hay order_id → es flujo Wix: SOLO LEER orden
+  if (ORDER_ID){
+    hide("#customerCard");
+    show("#summaryCard");
+    $("#summaryBox").textContent = "Loading order…";
+
+    try{
+      const o = await fetchPublicOrder(ORDER_ID);
+      renderOrder(o);
+
+      // Botón Pay (DEMO): en V1 lo usamos como "Confirm demo payment"
+      const payBtn = $("#btnPay");
+      if (payBtn){
+        payBtn.style.display = "inline-flex";
+        payBtn.textContent = "✅ Confirm payment (DEMO)";
+        payBtn.href = "#";
+        payBtn.onclick = async (e) => {
+          e.preventDefault();
+          setMsg("#orderMsg", "Processing demo payment…");
+          try{
+            await demoConfirmPayment(ORDER_ID);
+            const o2 = await fetchPublicOrder(ORDER_ID);
+            renderOrder(o2);
+            setMsg("#orderMsg", "Paid ✅ Download enabled.");
+          }catch(err){
+            console.error(err);
+            setMsg("#orderMsg", "❌ " + (err.message || "Payment error"));
+          }
+        };
+      }
+
+    }catch(e){
+      console.error(e);
+      $("#summaryBox").textContent = "Error loading order.";
+      setMsg("#orderMsg", "❌ " + (e.message || "Unknown error"));
+    }
     return;
   }
 
-  // Save customer (without email2)
-  saveCustomer({
-    name: c.name,
-    email: c.email,
-    phone: c.phone,
-    address: c.address,
-    city: c.city,
-    country: c.country,
-  });
-
-  $("#btnContinue").disabled = true;
-  $("#btnContinue").textContent = "Saving…";
-
-  try{
-    const data = await createCheckout(c);
-    if (data.checkout_url){
-  location.href = data.checkout_url; // 🔥 pay now
-  return;
-  }
-
-
-    // V1: mostramos summaryCard aunque checkout_url aún no exista (se conecta en Step 2)
-    hide("#customerCard");
-    show("#summaryCard");
-
-    const lines = [];
-    lines.push("Customer saved ✅");
-    lines.push("");
-    lines.push(`Order: ${data.order_id || "-"}`);
-    lines.push("Next: connect PayPal checkout (Step 2).");
-
-    $("#summaryBox").textContent = lines.join("\n");
-    setMsg("#orderMsg", "Waiting backend checkout_url…");
-
-    // si existiera checkout_url (Step 2), mostramos botón pagar
-    if (data.checkout_url){
-      const pay = $("#btnPay");
-      pay.style.display = "inline-flex";
-      pay.href = data.checkout_url;
-    }
-
-  }catch(e){
-    console.error(e);
-    setMsg("#formMsg", "❌ Error: " + (e.message || "Unknown"));
-  }finally{
-    $("#btnContinue").disabled = false;
-    $("#btnContinue").textContent = "Continue to payment";
-  }
+  // ❗ Si NO hay order_id, no estamos en el flujo Wix.
+  // Puedes mantener tu formulario para un futuro flow “standalone”.
+  // Por ahora, dejamos claro el error:
+  show("#customerCard");
+  hide("#summaryCard");
+  setMsg("#formMsg", "❌ Missing order_id. This page must be opened from Wix checkout redirect.");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  prefill();
-  $("#btnContinue").addEventListener("click", onContinue);
-});
+document.addEventListener("DOMContentLoaded", init);
 </script>
 
 </body>
